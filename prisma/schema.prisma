@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Coach {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  clients       Client[]
+  stripeConnect StripeConnect?
+}
+
+model Client {
+  id              String           @id @default(cuid())
+  name            String
+  email           String
+  stripeCustomerId String          @unique
+  coachId         String
+  coach           Coach            @relation(fields: [coachId], references: [id])
+  subscriptions   Subscription[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([coachId])
+}
+
+model Subscription {
+  id                String            @id @default(cuid())
+  stripeSubscriptionId String         @unique
+  clientId          String
+  client            Client            @relation(fields: [clientId], references: [id])
+  status            SubscriptionStatus
+  planName          String
+  amount            Float
+  currency          String
+  currentPeriodEnd  DateTime
+  cancelAtPeriodEnd Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([clientId])
+}
+
+model StripeConnect {
+  id            String   @id @default(cuid())
+  coachId       String   @unique
+  coach         Coach    @relation(fields: [coachId], references: [id])
+  stripeAccountId String @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+} 
