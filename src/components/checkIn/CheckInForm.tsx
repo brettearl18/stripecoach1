@@ -1,188 +1,176 @@
 import { useState } from 'react';
-import type { CheckInForm, CheckInAnswer, Question } from '@/types/checkIn';
+import type { CheckInForm as CheckInFormType } from '@/types/checkIn';
+import { CompletionScreen } from './CompletionScreen';
 
 interface CheckInFormProps {
-  form: CheckInForm;
-  onSubmit: (answers: CheckInAnswer[]) => Promise<void>;
+  form: CheckInFormType;
+  onSubmit: (answers: CheckInFormType['answers']) => void;
 }
 
 export function CheckInForm({ form, onSubmit }: CheckInFormProps) {
-  const [answers, setAnswers] = useState<CheckInAnswer[]>(form.answers);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
 
-  const updateAnswer = (questionId: string, value: string | number | boolean | string[]) => {
-    setAnswers(prev => {
-      const existingAnswer = prev.find(a => a.questionId === questionId);
-      if (existingAnswer) {
-        return prev.map(a => 
-          a.questionId === questionId 
-            ? { ...a, value, updatedAt: new Date().toISOString() }
-            : a
-        );
-      }
-      return [...prev, {
-        questionId,
-        value,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }];
-    });
+  const handleInputChange = (questionId: string, value: any) => {
+    setAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    const formattedAnswers = form.questions.map(question => ({
+      questionId: question.id,
+      value: answers[question.id] || null
+    }));
+    
     try {
-      await onSubmit(answers);
+      await onSubmit(formattedAnswers);
+      setIsCompleted(true);
     } catch (error) {
-      console.error('Error submitting check-in:', error);
-    } finally {
-      setIsSubmitting(false);
+      console.error('Error submitting form:', error);
+      // Handle error here
     }
   };
 
-  const renderQuestionInput = (question: Question) => {
-    const answer = answers.find(a => a.questionId === question.id);
-    const value = answer?.value || '';
+  const currentQuestion = form.questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / form.questions.length) * 100;
 
+  const goToNextQuestion = () => {
+    if (currentQuestionIndex < form.questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const goToPreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  const renderInput = (question: CheckInFormType['questions'][0]) => {
     switch (question.type) {
-      case 'text':
-        return (
-          <input
-            type="text"
-            value={value as string}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            required={question.required}
-            placeholder={question.placeholder}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white sm:text-sm"
-          />
-        );
-
       case 'number':
         return (
           <input
             type="number"
-            value={value as number}
-            onChange={(e) => updateAnswer(question.id, Number(e.target.value))}
+            value={answers[question.id] || ''}
+            onChange={(e) => handleInputChange(question.id, parseFloat(e.target.value))}
+            className="w-full px-4 py-3 text-lg bg-gray-800/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-white placeholder-gray-400"
+            placeholder="Enter a number"
+            min={0}
             required={question.required}
-            min={question.min}
-            max={question.max}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white sm:text-sm"
           />
         );
-
-      case 'select':
+      case 'rating_scale':
         return (
-          <select
-            value={value as string}
-            onChange={(e) => updateAnswer(question.id, e.target.value)}
-            required={question.required}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white sm:text-sm"
-          >
-            <option value="">Select an option</option>
-            {question.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-        );
-
-      case 'multiselect':
-        return (
-          <div className="space-y-2">
-            {question.options?.map(option => (
-              <label key={option} className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={(value as string[] || []).includes(option)}
-                  onChange={(e) => {
-                    const currentValue = value as string[] || [];
-                    const newValue = e.target.checked
-                      ? [...currentValue, option]
-                      : currentValue.filter(v => v !== option);
-                    updateAnswer(question.id, newValue);
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{option}</span>
-              </label>
-            ))}
-          </div>
-        );
-
-      case 'checkbox':
-        return (
-          <input
-            type="checkbox"
-            checked={value as boolean}
-            onChange={(e) => updateAnswer(question.id, e.target.checked)}
-            required={question.required}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700"
-          />
-        );
-
-      case 'rating':
-        return (
-          <div className="flex items-center space-x-2">
+          <div className="flex justify-center space-x-4 py-6">
             {[1, 2, 3, 4, 5].map((rating) => (
               <button
                 key={rating}
                 type="button"
-                onClick={() => updateAnswer(question.id, rating)}
-                className={`p-2 rounded-full ${
-                  (value as number) === rating
-                    ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                    : 'text-gray-400 hover:text-gray-500 dark:hover:text-gray-300'
+                onClick={() => handleInputChange(question.id, rating)}
+                className={`w-12 h-12 rounded-full text-lg font-semibold transition-all duration-200 ${
+                  answers[question.id] === rating
+                    ? 'bg-blue-500 text-white transform scale-110'
+                    : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
                 }`}
               >
-                ★
+                {rating}
               </button>
             ))}
           </div>
         );
-
       default:
         return null;
     }
   };
 
+  if (isCompleted) {
+    return <CompletionScreen formTitle={form.title} />;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white">
-          Check-in Form
-        </h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Due: {new Date(form.dueDate).toLocaleDateString()}
-        </p>
-      </div>
-
-      <div className="space-y-6">
-        {form.questions.map((question) => (
-          <div key={question.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              {question.text}
-              {question.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <div className="mt-2">
-              {renderQuestionInput(question)}
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Progress bar */}
+      <div className="relative pt-1">
+        <div className="flex mb-2 items-center justify-between">
+          <div>
+            <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-500 bg-blue-900/30">
+              Progress
+            </span>
           </div>
-        ))}
+          <div className="text-right">
+            <span className="text-xs font-semibold inline-block text-blue-500">
+              {Math.round(progress)}%
+            </span>
+          </div>
+        </div>
+        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded-full bg-gray-800/50">
+          <div
+            style={{ width: `${progress}%` }}
+            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500 ease-out"
+          />
+        </div>
       </div>
 
-      <div className="flex justify-end">
+      {/* Question card */}
+      <div className="bg-gray-800/30 rounded-xl p-8 backdrop-blur-sm border border-gray-700/50 shadow-xl">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-400">
+              Question {currentQuestionIndex + 1} of {form.questions.length}
+            </span>
+            {currentQuestion.required && (
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-red-900/30 text-red-400">
+                Required
+              </span>
+            )}
+          </div>
+          
+          <h3 className="text-xl font-medium text-white">
+            {currentQuestion.text}
+          </h3>
+
+          <div className="pt-4">
+            {renderInput(currentQuestion)}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="flex justify-between items-center pt-6">
         <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-            isSubmitting
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
+          type="button"
+          onClick={goToPreviousQuestion}
+          disabled={currentQuestionIndex === 0}
+          className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+            currentQuestionIndex === 0
+              ? 'bg-gray-800/30 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-800/50 text-white hover:bg-gray-700/50'
           }`}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Check-in'}
+          Previous
         </button>
+
+        {currentQuestionIndex === form.questions.length - 1 ? (
+          <button
+            type="submit"
+            className="px-6 py-3 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-200"
+          >
+            Submit Check-in
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={goToNextQuestion}
+            className="px-6 py-3 rounded-lg font-medium bg-blue-500 text-white hover:bg-blue-600 transition-all duration-200"
+          >
+            Next Question
+          </button>
+        )}
       </div>
     </form>
   );

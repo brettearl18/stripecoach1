@@ -2,48 +2,80 @@
 
 import { useState } from 'react';
 import { CheckInForm } from '@/components/checkIn/CheckInForm';
-import { useCheckIn } from '@/hooks/useCheckIn';
 import type { CheckInForm as CheckInFormType } from '@/types/checkIn';
 
+// Utility function for consistent date formatting
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD format
+  } catch (error) {
+    return dateString;
+  }
+};
+
+// Mock data for development
+const mockForms: CheckInFormType[] = [
+  {
+    id: 'daily-checkin-1',
+    title: 'Quick Daily Check-in',
+    description: 'A brief daily check-in to track essential metrics and habits',
+    questions: [
+      {
+        id: 'daily-water',
+        type: 'number',
+        text: 'How many liters of water did you drink today?',
+        required: true,
+      },
+      {
+        id: 'daily-meals',
+        type: 'number',
+        text: 'How many meals did you eat today?',
+        required: true,
+      },
+      {
+        id: 'daily-energy',
+        type: 'rating_scale',
+        text: 'How would you rate your energy levels today?',
+        required: true,
+      },
+      {
+        id: 'daily-sleep-hours',
+        type: 'number',
+        text: 'How many hours of sleep did you get last night?',
+        required: true,
+      },
+      {
+        id: 'daily-sleep-quality',
+        type: 'rating_scale',
+        text: 'Rate your sleep quality',
+        required: true,
+      }
+    ],
+    status: 'pending',
+    dueDate: new Date().toISOString(),
+    answers: [],
+    clientId: 'test-client',
+    templateId: 'quick-daily-checkin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
 export default function CheckInsPage() {
-  const { forms, loading, error, submitAnswers } = useCheckIn();
   const [selectedForm, setSelectedForm] = useState<CheckInFormType | null>(null);
+  const [forms] = useState<CheckInFormType[]>(mockForms);
 
   const handleSubmitAnswers = async (answers: CheckInFormType['answers']) => {
     if (!selectedForm) return;
     
     try {
-      await submitAnswers(selectedForm.id, answers);
+      console.log('Submitted answers:', answers);
       setSelectedForm(null);
     } catch (error) {
       console.error('Error submitting answers:', error);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg">
-          {error}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
@@ -104,14 +136,14 @@ export default function CheckInsPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500 dark:text-gray-400">Due Date:</span>
                     <span className="font-medium text-gray-900 dark:text-white">
-                      {new Date(form.dueDate).toLocaleDateString()}
+                      {formatDate(form.dueDate)}
                     </span>
                   </div>
                   {form.completedAt && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500 dark:text-gray-400">Completed:</span>
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {new Date(form.completedAt).toLocaleDateString()}
+                        {formatDate(form.completedAt)}
                       </span>
                     </div>
                   )}

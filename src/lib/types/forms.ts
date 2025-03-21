@@ -11,16 +11,16 @@ export type QuestionType =
 
 export interface Question {
   id: string;
-  type: QuestionType;
-  category: Category;
+  type: 'text' | 'number' | 'select' | 'multiselect' | 'checkbox' | 'rating_scale' | 'photo';
   text: string;
   required: boolean;
-  scoreEnabled: boolean;
-  trackProgress: boolean;
-  options?: string[]; // For multiple choice/checkbox
-  minValue?: number; // For rating/number
-  maxValue?: number; // For rating/number
-  unit?: string; // For measurements
+  options?: string[];
+  minValue?: number;
+  maxValue?: number;
+  unit?: string;
+  category?: string;
+  subcategories?: string[];
+  priority?: 'Vital' | 'Important' | 'Optional';
 }
 
 export type Frequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'custom';
@@ -43,10 +43,12 @@ export interface FormTemplate {
   description: string;
   categories: Category[];
   questions: Question[];
-  createdAt: Date;
-  updatedAt: Date;
-  createdBy: string; // Coach ID
-  isTemplate: boolean; // Whether this is a pre-made template
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  coachId?: string;
+  clientId?: string;
+  isTemplate?: boolean;
   frequency: Frequency | CustomFrequency;
   dueWindow: DueWindow;
 }
