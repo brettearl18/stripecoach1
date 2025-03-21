@@ -1,41 +1,12 @@
 rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    // Helper functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    function isAdmin() {
-      return isAuthenticated() && 
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Profile images
-    match /users/{userId}/profile/{fileName} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (isOwner(userId) || isAdmin());
-    }
-
-    // Client documents
-    match /users/{userId}/clients/{clientId}/{fileName} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow write: if isAuthenticated() && (isOwner(userId) || isAdmin());
-    }
-
-    // Subscription documents
-    match /users/{userId}/subscriptions/{subscriptionId}/{fileName} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow write: if isAdmin();
-    }
-
-    // Deny access to all other files by default
     match /{allPaths=**} {
       allow read, write: if false;
     }
   }
-} 
+}

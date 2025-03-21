@@ -2,8 +2,103 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isClientManager(clientId) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/clients/$(clientId)).data.managerId == request.auth.uid
+      );
+    }
+
+    function isAssignedToForm(formId) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/checkInForms/$(formId)).data.assignedClients.hasAny([request.auth.uid])
+      );
+    }
+    
+    // Check-in form rules
+    match /checkInForms/{formId} {
+      // Only admins can create and modify forms
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+      
+      // Forms can be read by authenticated users who are either:
+      // - Admin
+      // - Manager of any client assigned to the form
+      // - Client assigned to the form
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.assignedClients.hasAny(
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.managedClients
+        ) ||
+        resource.data.assignedClients.hasAny([request.auth.uid])
+      );
+    }
+    
+    // Form submissions rules
+    match /formSubmissions/{submissionId} {
+      // Submissions can be created by:
+      // - Admin
+      // - Client assigned to the form
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        isAssignedToForm(request.resource.data.formId)
+      );
+      
+      // Submissions can be read by:
+      // - Admin
+      // - Client who submitted the form
+      // - Manager of the client who submitted the form
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.clientId == request.auth.uid ||
+        isClientManager(resource.data.clientId)
+      );
+      
+      // Only admins can update or delete submissions
+      allow update, delete: if isAdmin();
+    }
+    
+    // Client rules
+    match /clients/{clientId} {
+      // Clients can be read by:
+      // - Admin
+      // - The client's manager
+      allow read: if isClientManager(clientId);
+      
+      // Only admins can create clients
+      allow create: if isAdmin();
+      
+      // Updates can be made by:
+      // - Admin
+      // - The client's manager (limited fields)
+      allow update: if isClientManager(clientId) && (
+        isAdmin() || (
+          // Non-admin managers can only update specific fields
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['assignedForms', 'goals', 'preferences', 'updatedAt'])
+        )
+      );
+      
+      // Only admins can delete clients
+      allow delete: if isAdmin();
+    }
+    
+    // User rules
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
     }
   }
 }
