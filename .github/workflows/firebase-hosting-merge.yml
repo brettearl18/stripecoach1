@@ -21,6 +21,9 @@ jobs:
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_OPENAI_API_KEY: ${{ secrets.NEXT_PUBLIC_OPENAI_API_KEY }}
+      NEXT_PUBLIC_ELEVENLABS_API_KEY: ${{ secrets.NEXT_PUBLIC_ELEVENLABS_API_KEY }}
+      NEXT_PUBLIC_ELEVENLABS_VOICE_ID: ${{ secrets.NEXT_PUBLIC_ELEVENLABS_VOICE_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,6 +38,6 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STRIPE_COACH }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CLIENT_CHECK_IN_AV89Q1 }}
           channelId: live
-          projectId: stripe-coach
+          projectId: client-check-in-av89q1
