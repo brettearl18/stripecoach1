@@ -203,7 +203,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'nutrition-hydration-5',
         type: 'text',
-        text: 'What's your biggest hydration challenge?',
+        text: "What's your biggest hydration challenge?",
         required: false,
       },
     ],
@@ -289,7 +289,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'sleep-5',
         type: 'text',
-        text: 'What's your biggest sleep challenge?',
+        text: "What's your biggest sleep challenge?",
         required: false,
       },
     ],
@@ -324,7 +324,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'stress-4',
         type: 'text',
-        text: 'What's your biggest source of stress right now?',
+        text: "What's your biggest source of stress right now?",
         required: false,
       },
       {
@@ -367,7 +367,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'goals-4',
         type: 'text',
-        text: 'What's your biggest achievement this week?',
+        text: "What's your biggest achievement this week?",
         required: false,
       },
       {
@@ -494,7 +494,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'hydration-4',
         type: 'text',
-        text: 'What's your biggest hydration challenge?',
+        text: "What's your biggest hydration challenge?",
         required: false,
       },
       {
@@ -563,7 +563,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'motivation-2',
         type: 'select',
-        text: 'What's your primary source of motivation?',
+        text: "What's your primary source of motivation?",
         required: true,
         options: ['Health', 'Appearance', 'Performance', 'Competition', 'Personal Challenge'],
       },
@@ -577,7 +577,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'motivation-4',
         type: 'text',
-        text: 'What's your biggest motivation challenge?',
+        text: "What's your biggest motivation challenge?",
         required: false,
       },
       {
@@ -612,7 +612,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'lifestyle-3',
         type: 'text',
-        text: 'What's your biggest lifestyle challenge?',
+        text: "What's your biggest lifestyle challenge?",
         required: false,
       },
       {
