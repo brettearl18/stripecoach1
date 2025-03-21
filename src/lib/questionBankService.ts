@@ -85,7 +85,7 @@ const defaultCategories: QuestionCategory[] = [
       {
         id: 'nutrition-macros-5',
         type: 'text',
-        text: 'What's your biggest challenge with macronutrient tracking?',
+        text: "What's your biggest challenge with macronutrient tracking?",
         required: false,
       },
     ],
