@@ -13,7 +13,8 @@ import {
   ShieldCheckIcon,
   HomeIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 // List of implemented pages
@@ -24,7 +25,8 @@ const implementedPages = [
   '/admin/analytics',
   '/coach/dashboard',
   '/client/dashboard',
-  '/client/check-in'
+  '/client/check-in',
+  '/admin/avatars'
 ];
 
 interface NavigationSection {
@@ -49,6 +51,12 @@ export default function NavigationHub() {
           href: '/admin/dashboard2',
           icon: HomeIcon,
           description: 'Main admin dashboard with overview and controls'
+        },
+        {
+          name: 'Business Avatars',
+          href: '/admin/avatars',
+          icon: UserCircleIcon,
+          description: 'Create and manage business personas'
         },
         {
           name: 'Coach Management',

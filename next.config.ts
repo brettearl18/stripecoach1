@@ -9,8 +9,7 @@ const nextConfig = {
     serverActions: {
       enabled: true
     }
-  },
-  output: 'export'
+  }
 };
 
 export default nextConfig;

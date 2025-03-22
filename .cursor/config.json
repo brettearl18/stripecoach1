@@ -1,0 +1,26 @@
+{
+  "cursor.aiPrompting": {
+    "defaultTone": "Professional, supportive",
+    "defaultContext": "You are building a coaching check-in platform for health and fitness coaches to track client progress weekly.",
+    "defaultGoal": "Code should be modular, secure, scalable, and easy to maintain. Avoid hardcoding. Prioritise user experience.",
+    "badWords": ["hacky", "quick fix", "ignore validation", "console.log"],
+    "preferredResponses": ["Modular React code", "Firestore integration", "Tailwind styling", "Clean function-based logic"]
+  },
+  "cursor.projectStructure": {
+    "src/components": "All reusable UI components",
+    "src/pages": "Page views with layout",
+    "src/hooks": "Custom hooks (e.g. useCheckinData)",
+    "src/context": "React contexts (e.g. AuthContext, CoachContext)",
+    "src/services": "Firebase and business logic",
+    "src/utils": "Utility functions and shared logic",
+    "src/types": "Type definitions for props, data, etc."
+  },
+  "cursor.aiAssistLinter": {
+    "noConsoleLog": true,
+    "preferAsyncAwait": true,
+    "enforceTryCatch": true,
+    "noInlineStyles": true,
+    "noHardcodedText": true
+  },
+  "cursor.defaultPrompt": "You are a senior full-stack developer helping build a health coaching check-in platform. Write clean, scalable code using React, Tailwind, and Firebase. Always explain complex decisions briefly. Avoid overly verbose code. Follow the project folder structure and coding conventions."
+} 
