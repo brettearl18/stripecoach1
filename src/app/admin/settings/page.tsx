@@ -35,6 +35,7 @@ import { db } from '@/lib/firebase/config';
 import { encrypt, decrypt } from '@/lib/utils/encryption';
 import { getCommunicationSettings, saveCommunicationSettings, addQuickResponse, removeQuickResponse } from '@/lib/services/communicationsService';
 import { CommunicationSettings } from '@/lib/services/communicationsService';
+import { useSecuritySettings } from '@/hooks/useSecuritySettings';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -85,6 +86,15 @@ const sections = [
 
 export default function SettingsPage() {
   const { user } = useAuth();
+  const {
+    settings: securitySettings,
+    loading: securityLoading,
+    saving: securitySaving,
+    updateSettings: updateSecuritySettings,
+    resetToDefault: resetSecuritySettings
+  } = useSecuritySettings(user?.uid);
+
+  const [activeTab, setActiveTab] = useState(0);
   const [selectedSection, setSelectedSection] = useState(0);
   const [primaryColor, setPrimaryColor] = useState('#4F46E5');
   const [secondaryColor, setSecondaryColor] = useState('#1E40AF');
@@ -164,7 +174,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ domain }),
       });
 
-      const data = await response.json();
+        const data = await response.json();
 
       if (!response.ok) {
         setDomainError(data.error);
@@ -179,7 +189,7 @@ export default function SettingsPage() {
       // Show success message
       toast.success('Please configure your DNS records to complete verification');
 
-    } catch (error) {
+      } catch (error) {
       console.error('Error verifying domain:', error);
       setDomainError('Failed to verify domain. Please try again.');
       setVerificationStatus('failed');
@@ -431,10 +441,30 @@ export default function SettingsPage() {
     }
   };
 
+  // Add security settings handlers
+  const handleSecuritySettingChange = (category: string, subcategory: string | null, field: string, value: any) => {
+    if (!securitySettings) return;
+
+    const newSettings = { ...securitySettings };
+    if (subcategory) {
+      newSettings[category][subcategory][field] = value;
+    } else {
+      newSettings[category][field] = value;
+    }
+    updateSecuritySettings(newSettings);
+  };
+
+  const handleResetSecuritySettings = async () => {
+    if (window.confirm('Are you sure you want to reset all security settings to default values? This action cannot be undone.')) {
+      await resetSecuritySettings();
+      toast.success('Security settings have been reset to default values');
+    }
+  };
+
   const renderContent = () => {
     switch (selectedSection) {
       case 0: // Platform Settings
-        return (
+  return (
           <div className="space-y-8">
             {/* Platform Identity */}
             <div>
@@ -480,7 +510,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <p className="mt-2 text-sm text-gray-400">Recommended size: 512x512px. PNG or SVG format.</p>
-                </div>
+        </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300">Favicon</label>
@@ -536,7 +566,7 @@ export default function SettingsPage() {
                       OpenAI's platform
                     </a>
                   </p>
-                </div>
+            </div>
 
                 <div className="flex items-center justify-between p-4 bg-[#1E1F25] rounded-lg">
                   <div>
@@ -576,7 +606,7 @@ export default function SettingsPage() {
             {/* Domain Settings */}
             <div>
               <h3 className="text-lg font-medium text-white mb-4">Domain Settings</h3>
-              <div className="space-y-6">
+            <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-300">Custom Domain</label>
                   <div className="mt-1">
@@ -646,7 +676,7 @@ export default function SettingsPage() {
                         ) : (
                           <XCircleIcon className="h-5 w-5 text-red-400" />
                         )}
-                      </div>
+                    </div>
                       <div className="ml-3">
                         <h3 className="text-sm font-medium text-white">
                           {verificationStatus === 'verified'
@@ -671,7 +701,7 @@ export default function SettingsPage() {
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-4">
-                  <button
+                    <button
                     onClick={handleVerifyDomain}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     disabled={!domain || verificationStatus === 'verified'}
@@ -688,7 +718,7 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
-            </div>
+                </div>
 
             {/* Brand Colors Section */}
             <div>
@@ -838,7 +868,7 @@ export default function SettingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                         Administrator
-                      </span>
+                        </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -858,7 +888,7 @@ export default function SettingsPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center">
                           <span className="text-lg text-white">JS</span>
-                        </div>
+                      </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-white">Jane Smith</div>
                           <div className="text-sm text-gray-400">jane@example.com</div>
@@ -868,7 +898,7 @@ export default function SettingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                         Coach
-                      </span>
+                        </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -888,7 +918,7 @@ export default function SettingsPage() {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center">
                           <span className="text-lg text-white">RJ</span>
-                        </div>
+                      </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-white">Robert Johnson</div>
                           <div className="text-sm text-gray-400">robert@example.com</div>
@@ -898,7 +928,7 @@ export default function SettingsPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
                         Client
-                      </span>
+                        </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
@@ -976,8 +1006,8 @@ export default function SettingsPage() {
                       <input type="checkbox" className="sr-only peer" />
                       <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
                 <div className="flex items-center justify-between py-3 border-t border-gray-800">
                   <div>
@@ -1228,13 +1258,13 @@ export default function SettingsPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-white">Client-Specific Settings</h3>
-                <button
+                      <button
                   type="button"
                   className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
+                      >
                   Add Client Override
-                </button>
-              </div>
+                      </button>
+                    </div>
 
               {/* Client Search */}
               <div className="mb-6">
@@ -1270,10 +1300,10 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <div>
+                      <div>
                       <span className="text-xs text-gray-400">Check-in Frequency</span>
                       <p className="text-sm text-white">Daily</p>
-                    </div>
+                      </div>
                     <div>
                       <span className="text-xs text-gray-400">Session Duration</span>
                       <p className="text-sm text-white">45 minutes</p>
@@ -1337,7 +1367,7 @@ export default function SettingsPage() {
               >
                 Save All Settings
               </button>
-            </div>
+                    </div>
           </div>
         );
       case 6: // AI Settings
@@ -1351,7 +1381,7 @@ export default function SettingsPage() {
               </div>
             )}
             
-            <div>
+                      <div>
               <h3 className="text-lg font-medium text-white mb-4">AI Communication Settings</h3>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
@@ -1369,7 +1399,7 @@ export default function SettingsPage() {
                     <option value="casual">Casual</option>
                     <option value="formal">Formal</option>
                   </select>
-                </div>
+                      </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1386,11 +1416,11 @@ export default function SettingsPage() {
                     <option value="technical">Technical</option>
                     <option value="simple">Simple</option>
                   </select>
-                </div>
+                    </div>
               </div>
             </div>
 
-            <div>
+                      <div>
               <h3 className="text-lg font-medium text-white mb-4">Key Brand Messages</h3>
               <div className="space-y-4">
                 <div className="flex flex-col space-y-2">
@@ -1408,7 +1438,7 @@ export default function SettingsPage() {
                   >
                     + Add Message
                   </button>
-                </div>
+                      </div>
                 
                 <div className="bg-[#13141A] rounded-lg border border-gray-800">
                   {aiSettings.keyBrandMessages?.map((message, index) => (
@@ -1423,17 +1453,17 @@ export default function SettingsPage() {
                         >
                           Remove
                         </button>
-                      </div>
                     </div>
+                  </div>
                   ))}
                   {aiSettings.keyBrandMessages?.length === 0 && (
                     <div className="p-4 text-gray-500 text-center">
                       No brand messages added yet
-                    </div>
-                  )}
+                  </div>
+                )}
                 </div>
               </div>
-            </div>
+              </div>
 
             <div>
               <h3 className="text-lg font-medium text-white mb-4">Additional Settings</h3>
@@ -1512,7 +1542,7 @@ export default function SettingsPage() {
             {/* Messaging Settings */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Messaging Settings</h2>
-              <div className="space-y-4">
+                  <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Default Response Time
@@ -1533,8 +1563,8 @@ export default function SettingsPage() {
                     <option value="60">1 hour</option>
                     <option value="120">2 hours</option>
                     <option value="240">4 hours</option>
-                  </select>
-                </div>
+                      </select>
+                    </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1565,8 +1595,8 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Max File Size (MB)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         className="w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                         value={communicationSettings.messaging?.fileUploadLimits?.maxFileSize}
                         onChange={(e) => setCommunicationSettings(prev => ({
@@ -1599,7 +1629,7 @@ export default function SettingsPage() {
                         }))}
                         placeholder="pdf, doc, jpg, png"
                       />
-                    </div>
+                  </div>
                   </div>
                 </div>
               </div>
@@ -1878,6 +1908,297 @@ export default function SettingsPage() {
             </div>
           </div>
         );
+      case 7: // Security Settings
+        return (
+          <div className="space-y-8">
+            {/* Authentication Settings */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Authentication Settings</h3>
+              <div className="space-y-6">
+                {/* Password Requirements */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Password Requirements</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Minimum Password Length</label>
+                      <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                        <option value="8">8 characters</option>
+                        <option value="10">10 characters</option>
+                        <option value="12">12 characters</option>
+                        <option value="14">14 characters</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="flex items-center">
+                        <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" />
+                        <span className="ml-2 text-sm text-gray-300">Require uppercase letters</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" />
+                        <span className="ml-2 text-sm text-gray-300">Require numbers</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" />
+                        <span className="ml-2 text-sm text-gray-300">Require special characters</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Session Settings */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Session Security</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Session Timeout</label>
+                      <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="120">2 hours</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Max Login Attempts</label>
+                      <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                        <option value="3">3 attempts</option>
+                        <option value="5">5 attempts</option>
+                        <option value="10">10 attempts</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Two-Factor Authentication */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Two-Factor Authentication (2FA)</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-white">Require 2FA</h4>
+                    <p className="text-sm text-gray-400">Enforce two-factor authentication for all users</p>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300">2FA Method</label>
+                    <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                      <option value="authenticator">Authenticator App</option>
+                      <option value="sms">SMS</option>
+                      <option value="email">Email</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300">2FA Expiry</label>
+                    <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                      <option value="24">24 hours</option>
+                      <option value="72">3 days</option>
+                      <option value="168">7 days</option>
+                      <option value="720">30 days</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Data Security */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Data Security</h3>
+              <div className="space-y-4">
+                {/* Encryption Settings */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Encryption</h4>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                      <span className="ml-2 text-sm text-gray-300">Enable end-to-end encryption for messages</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                      <span className="ml-2 text-sm text-gray-300">Encrypt file uploads</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                      <span className="ml-2 text-sm text-gray-300">Enable secure key rotation</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Data Retention */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Data Retention</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">Message Retention</label>
+                      <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                        <option value="30">30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="180">180 days</option>
+                        <option value="365">1 year</option>
+                        <option value="forever">Forever</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300">File Retention</label>
+                      <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                        <option value="30">30 days</option>
+                        <option value="90">90 days</option>
+                        <option value="180">180 days</option>
+                        <option value="365">1 year</option>
+                        <option value="forever">Forever</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Access Control */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Access Control</h3>
+              <div className="space-y-4">
+                {/* IP Restrictions */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">IP Restrictions</h4>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" />
+                      <span className="ml-2 text-sm text-gray-300">Enable IP whitelisting</span>
+                    </label>
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-300">Allowed IP Addresses</label>
+                      <textarea
+                        rows={3}
+                        className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2"
+                        placeholder="Enter IP addresses (one per line)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Role-Based Access */}
+                <div>
+                  <h4 className="text-sm font-medium text-white mb-2">Role Permissions</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-300 mb-2">Admin Access</h5>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Full system access</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">User management</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Security settings</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-300 mb-2">Coach Access</h5>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Client management</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Session scheduling</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Resource access</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-300 mb-2">Client Access</h5>
+                      <div className="space-y-2">
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Profile management</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Session booking</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                          <span className="ml-2 text-sm text-gray-300">Resource viewing</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Audit Logging */}
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Audit Logging</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-white">Enable Audit Logging</h4>
+                    <p className="text-sm text-gray-400">Track all security-related events</p>
+                  </div>
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" defaultChecked />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                    <span className="ml-2 text-sm text-gray-300">Log authentication attempts</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                    <span className="ml-2 text-sm text-gray-300">Log data access</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" className="h-4 w-4 rounded border-gray-700 bg-[#13141A] text-blue-600 focus:ring-blue-500" defaultChecked />
+                    <span className="ml-2 text-sm text-gray-300">Log configuration changes</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300">Log Retention</label>
+                  <select className="mt-1 block w-full rounded-md border border-gray-700 bg-[#13141A] text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2">
+                    <option value="30">30 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">180 days</option>
+                    <option value="365">1 year</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="pt-6">
+              <button
+                type="button"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Save Security Settings
+              </button>
+            </div>
+          </div>
+        );
       default:
         return <div className="text-gray-400">Content for {sections[selectedSection].name}</div>;
     }
@@ -1917,7 +2238,7 @@ export default function SettingsPage() {
                   <div className="flex flex-col items-start">
                     <span>{section.name}</span>
                     <span className="text-xs text-gray-500">{section.description}</span>
-                  </div>
+              </div>
                 </button>
               ))}
               <Link
@@ -1938,7 +2259,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col items-start">
                   <span>User Management</span>
                   <span className="text-xs text-gray-500">Manage user roles, permissions and account settings</span>
-                </div>
+            </div>
               </Link>
             </nav>
           </div>

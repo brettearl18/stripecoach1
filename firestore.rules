@@ -25,6 +25,31 @@ service cloud.firestore {
         get(/databases/$(database)/documents/checkInForms/$(formId)).data.assignedClients.hasAny([request.auth.uid])
       );
     }
+
+    function hasValidIP() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        !get(/databases/$(database)/documents/securitySettings/$(request.auth.uid)).data.accessControl.ipWhitelisting.enabled ||
+        get(/databases/$(database)/documents/securitySettings/$(request.auth.uid)).data.accessControl.ipWhitelisting.allowedIPs.hasAny([request.ip])
+      );
+    }
+
+    function hasRequiredPermissions(collection, operation) {
+      let settings = get(/databases/$(database)/documents/securitySettings/$(request.auth.uid)).data;
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      
+      return isAuthenticated() && (
+        isAdmin() ||
+        (role == 'coach' && settings.accessControl.rolePermissions.coach[operation]) ||
+        (role == 'client' && settings.accessControl.rolePermissions.client[operation])
+      );
+    }
+    
+    // Security Settings rules
+    match /securitySettings/{adminId} {
+      allow read: if isAdmin() && request.auth.uid == adminId;
+      allow write: if isAdmin() && request.auth.uid == adminId;
+    }
     
     // AI Settings rules
     match /aiSettings/{adminId} {
@@ -34,15 +59,15 @@ service cloud.firestore {
     // Check-in form rules
     match /checkInForms/{formId} {
       // Only admins can create and modify forms
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isAdmin() && hasValidIP();
+      allow update: if isAdmin() && hasValidIP();
+      allow delete: if isAdmin() && hasValidIP();
       
       // Forms can be read by authenticated users who are either:
       // - Admin
       // - Manager of any client assigned to the form
       // - Client assigned to the form
-      allow read: if isAuthenticated() && (
+      allow read: if isAuthenticated() && hasValidIP() && (
         isAdmin() ||
         resource.data.assignedClients.hasAny(
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.managedClients
@@ -56,7 +81,7 @@ service cloud.firestore {
       // Submissions can be created by:
       // - Admin
       // - Client assigned to the form
-      allow create: if isAuthenticated() && (
+      allow create: if isAuthenticated() && hasValidIP() && (
         isAdmin() ||
         isAssignedToForm(request.resource.data.formId)
       );
@@ -65,14 +90,14 @@ service cloud.firestore {
       // - Admin
       // - Client who submitted the form
       // - Manager of the client who submitted the form
-      allow read: if isAuthenticated() && (
+      allow read: if isAuthenticated() && hasValidIP() && (
         isAdmin() ||
         resource.data.clientId == request.auth.uid ||
         isClientManager(resource.data.clientId)
       );
       
       // Only admins can update or delete submissions
-      allow update, delete: if isAdmin();
+      allow update, delete: if isAdmin() && hasValidIP();
     }
     
     // Client rules
@@ -80,15 +105,15 @@ service cloud.firestore {
       // Clients can be read by:
       // - Admin
       // - The client's manager
-      allow read: if isClientManager(clientId);
+      allow read: if isClientManager(clientId) && hasValidIP();
       
       // Only admins can create clients
-      allow create: if isAdmin();
+      allow create: if isAdmin() && hasValidIP();
       
       // Updates can be made by:
       // - Admin
       // - The client's manager (limited fields)
-      allow update: if isClientManager(clientId) && (
+      allow update: if isClientManager(clientId) && hasValidIP() && (
         isAdmin() || (
           // Non-admin managers can only update specific fields
           request.resource.data.diff(resource.data).affectedKeys()
@@ -97,13 +122,20 @@ service cloud.firestore {
       );
       
       // Only admins can delete clients
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && hasValidIP();
     }
     
     // User rules
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+      allow read: if isAuthenticated() && hasValidIP() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin() && hasValidIP();
+    }
+
+    // Audit log rules
+    match /auditLogs/{logId} {
+      allow read: if isAdmin() && hasValidIP();
+      allow create: if isAuthenticated() && hasValidIP();
+      allow update, delete: if false; // Audit logs should never be modified or deleted
     }
   }
 }
