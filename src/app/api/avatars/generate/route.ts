@@ -1,19 +1,68 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createAvatar } from '@/lib/firebase/avatars';
+import { headers } from 'next/headers';
 
-// Check if OpenAI API key is configured
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not configured in environment variables');
+// Enhanced API key validation
+function validateOpenAIKey(apiKey: string | undefined): boolean {
+  if (!apiKey) return false;
+  // OpenAI API keys start with 'sk-' and are 51 characters long
+  return apiKey.startsWith('sk-') && apiKey.length === 51;
+}
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10;
+
+// Rate limiting store (in-memory for now, consider using Redis in production)
+const rateLimitStore = new Map<string, { count: number; timestamp: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const userLimit = rateLimitStore.get(ip);
+
+  if (!userLimit) {
+    rateLimitStore.set(ip, { count: 1, timestamp: now });
+    return false;
+  }
+
+  if (now - userLimit.timestamp > RATE_LIMIT_WINDOW) {
+    rateLimitStore.set(ip, { count: 1, timestamp: now });
+    return false;
+  }
+
+  if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+
+  userLimit.count++;
+  return false;
+}
+
+// Check if OpenAI API key is configured and valid
+const apiKey = process.env.OPENAI_API_KEY;
+if (!validateOpenAIKey(apiKey)) {
+  throw new Error('Invalid or missing OPENAI_API_KEY in environment variables');
 }
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  organization: 'org-7Ug4CKVa0F4ZqNZHwGqSVBxH'
+  apiKey: apiKey
 });
 
 export async function POST(request: Request) {
   try {
+    // Get client IP for rate limiting
+    const headersList = headers();
+    const ip = headersList.get('x-forwarded-for') || 'unknown';
+
+    // Check rate limit
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const data = await request.json();
     
     // Validate required fields

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   ClipboardDocumentCheckIcon, 
@@ -10,28 +10,55 @@ import {
   ArrowDownIcon 
 } from '@heroicons/react/24/outline';
 import { defaultTemplates } from '@/lib/data/form-templates';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
-// Temporary test data for past check-ins
-const pastCheckIns = [
-  {
-    id: '1',
-    date: '2024-03-15',
-    scores: {
-      nutrition: 85,
-      training: 90,
-      mindset: 75,
-      sleep: 80,
-      measurements: null
-    },
-    overallScore: 82.5,
-    trend: 'up',
-    trendValue: 5.2
-  },
-  // Add more past check-ins here
-];
+interface CheckIn {
+  id: string;
+  date: string;
+  scores: {
+    nutrition: number;
+    training: number;
+    mindset: number;
+    sleep: number;
+    measurements?: number;
+  };
+  overallScore: number;
+  trend?: 'up' | 'down';
+  trendValue?: number;
+}
+
+interface Metrics {
+  latestScore: number;
+  totalCheckIns: number;
+  nextCheckIn: string;
+}
 
 export default function ClientCheckInPage() {
   const [activeTab, setActiveTab] = useState<'forms' | 'history'>('forms');
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCheckInData();
+  }, []);
+
+  const fetchCheckInData = async () => {
+    try {
+      const response = await fetch('/api/client/check-in');
+      if (!response.ok) {
+        throw new Error('Failed to fetch check-in data');
+      }
+      const data = await response.json();
+      setCheckIns(data.checkIns);
+      setMetrics(data.metrics);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const MetricCard = ({ title, value, trend = null, trendValue = null }) => (
     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
@@ -51,6 +78,22 @@ export default function ClientCheckInPage() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -66,17 +109,17 @@ export default function ClientCheckInPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <MetricCard
             title="Latest Overall Score"
-            value={`${pastCheckIns[0]?.overallScore || 0}%`}
-            trend={pastCheckIns[0]?.trend}
-            trendValue={pastCheckIns[0]?.trendValue}
+            value={`${metrics?.latestScore || 0}%`}
+            trend={checkIns[0]?.trend}
+            trendValue={checkIns[0]?.trendValue}
           />
           <MetricCard
             title="Check-ins Completed"
-            value={pastCheckIns.length}
+            value={metrics?.totalCheckIns || 0}
           />
           <MetricCard
             title="Next Check-in"
-            value="In 2 days"
+            value={metrics?.nextCheckIn || 'Today'}
           />
         </div>
 
@@ -147,7 +190,7 @@ export default function ClientCheckInPage() {
         ) : (
           <div className="bg-white shadow-sm rounded-lg">
             <ul role="list" className="divide-y divide-gray-200">
-              {pastCheckIns.map((checkIn) => (
+              {checkIns.map((checkIn) => (
                 <li key={checkIn.id} className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
