@@ -2,35 +2,26 @@ import { getApps, initializeApp, cert, ServiceAccount } from 'firebase-admin/app
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Initialize Firebase Admin only if it hasn't been initialized
 if (!getApps().length) {
   try {
-    // Use application default credentials if service account is not configured
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-
-    if (!projectId) {
-      console.warn('Firebase Admin: Project ID not configured. Some features may not work.');
-    }
+    // Read the service account file
+    const serviceAccountPath = path.join(process.cwd(), 'stripe-coach-firebase-adminsdk-fbsvc-212fe97e98.json');
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 
     initializeApp({
-      projectId,
-      storageBucket,
-      credential: process.env.FIREBASE_PRIVATE_KEY 
-        ? cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-          } as ServiceAccount)
-        : undefined, // Will use application default credentials
+      credential: cert(serviceAccount as ServiceAccount),
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     });
   } catch (error) {
-    console.warn('Firebase Admin initialization skipped:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Firebase Admin initialization error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
-// Export admin services with error handling
+// Export admin services
 export const adminAuth = getApps().length ? getAuth() : null;
 export const adminDb = getApps().length ? getFirestore() : null;
 export const adminStorage = getApps().length ? getStorage() : null;

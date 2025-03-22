@@ -26,6 +26,11 @@ service cloud.firestore {
       );
     }
     
+    // AI Settings rules
+    match /aiSettings/{adminId} {
+      allow read, write: if isAdmin() && request.auth.uid == adminId;
+    }
+    
     // Check-in form rules
     match /checkInForms/{formId} {
       // Only admins can create and modify forms

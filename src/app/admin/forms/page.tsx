@@ -52,102 +52,110 @@ export default function FormsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-[#13141A] text-white p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Check-in Forms</h1>
-            <p className="mt-2 text-sm text-gray-600">Create and manage your client check-in forms</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Check-in Forms</h1>
+            <p className="text-gray-400">Create and manage your client check-in forms</p>
           </div>
-          <Link
-            href="/admin/forms/new"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-semibold rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex items-center">
+            <span className="mr-2">+</span>
             Create New Form
-          </Link>
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-8">
-          <nav className="flex space-x-4" aria-label="Tabs">
+        <div className="mb-6 border-b border-gray-800">
+          <div className="flex gap-6">
             <button
               onClick={() => setActiveTab('templates')}
-              className={`${
-                activeTab === 'templates'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              } px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200`}
+              className={`pb-4 text-sm font-medium relative ${
+                activeTab === 'templates' ? 'text-white' : 'text-gray-400 hover:text-gray-300'
+              }`}
             >
               Templates
+              {activeTab === 'templates' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('my-forms')}
-              className={`${
-                activeTab === 'my-forms'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              } px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200`}
+              className={`pb-4 text-sm font-medium relative ${
+                activeTab === 'my-forms' ? 'text-white' : 'text-gray-400 hover:text-gray-300'
+              }`}
             >
               My Forms
+              {activeTab === 'my-forms' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+              )}
             </button>
-          </nav>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {activeTab === 'my-forms' ? (
             myForms.length > 0 ? (
               myForms.map((form) => (
                 <div
                   key={form.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 hover:border-indigo-500 transition-all duration-200 overflow-hidden group"
+                  className="bg-[#1a1b1e] rounded-lg p-6 border border-gray-800"
                 >
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                          {form.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                          {form.description}
-                        </p>
-                      </div>
-                      <Link
-                        href={`/admin/forms/${form.id}`}
-                        className="text-gray-400 hover:text-indigo-600 transition-colors"
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">
+                        {form.name}
+                      </h3>
+                      <p className="text-gray-400 text-sm mb-4">
+                        {form.description}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/admin/forms/${form.id}`}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </Link>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {form.categories.map((category) => (
+                      <span
+                        key={category}
+                        className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs"
                       >
-                        <PencilIcon className="h-5 w-5" />
-                      </Link>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {form.categories.map((category) => (
-                        <span
-                          key={category}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                        >
-                          {category}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <ClipboardDocumentIcon className="h-4 w-4 mr-1" />
-                      {form.questions.length} questions
-                    </div>
+                        {category}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-400 mb-4">
+                    <ClipboardDocumentIcon className="h-4 w-4 mr-2" />
+                    {form.questions.length} questions
+                  </div>
+                  <div className="space-y-3">
+                    <button
+                      className="w-full py-2 bg-[#13141A] text-gray-300 rounded-md hover:bg-gray-800 transition-colors"
+                      onClick={() => setPreviewTemplate(form)}
+                    >
+                      Preview Template
+                    </button>
+                    <button
+                      className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      onClick={() => handleDuplicateTemplate(form)}
+                    >
+                      Use Template
+                    </button>
                   </div>
                 </div>
               ))
             ) : (
               <div className="col-span-full">
-                <div className="text-center rounded-lg border-2 border-dashed border-gray-300 p-12">
+                <div className="text-center rounded-lg border-2 border-dashed border-gray-800 p-12">
                   <ClipboardDocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-semibold text-gray-900">No forms yet</h3>
+                  <h3 className="mt-2 text-sm font-semibold text-gray-400">No forms yet</h3>
                   <p className="mt-1 text-sm text-gray-500">Get started by creating a new form or using a template</p>
                   <div className="mt-6">
                     <Link
                       href="/admin/forms/new"
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       <PlusIcon className="h-5 w-5 mr-2" />
                       Create your first form
@@ -160,53 +168,49 @@ export default function FormsPage() {
             defaultTemplates.map((template) => (
               <div
                 key={template.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 hover:border-indigo-500 transition-all duration-200 overflow-hidden group"
+                className="bg-[#1a1b1e] rounded-lg p-6 border border-gray-800"
               >
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                        {template.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                        {template.description}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDuplicateTemplate(template)}
-                      className="text-gray-400 hover:text-indigo-600 transition-colors"
-                    >
-                      <DocumentDuplicateIcon className="h-5 w-5" />
-                    </button>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {template.name}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      {template.description}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {template.categories.map((category) => (
-                      <span
-                        key={category}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
-                      >
-                        {category}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <ClipboardDocumentIcon className="h-4 w-4 mr-1" />
-                    {template.questions.length} questions
-                  </div>
-                </div>
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 space-y-3">
                   <button
-                    onClick={() => setPreviewTemplate(template)}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
+                    className="text-gray-400 hover:text-white"
+                    onClick={() => handleDuplicateTemplate(template)}
                   >
-                    <EyeIcon className="h-5 w-5 mr-2" />
+                    <ClipboardDocumentIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {template.categories.map((category) => (
+                    <span
+                      key={category}
+                      className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs"
+                    >
+                      {category}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center text-sm text-gray-400 mb-4">
+                  <ClipboardDocumentIcon className="h-4 w-4 mr-2" />
+                  {template.questions.length} questions
+                </div>
+                <div className="space-y-3">
+                  <button
+                    className="w-full py-2 bg-[#13141A] text-gray-300 rounded-md hover:bg-gray-800 transition-colors"
+                    onClick={() => setPreviewTemplate(template)}
+                  >
                     Preview Template
                   </button>
                   <button
+                    className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                     onClick={() => handleDuplicateTemplate(template)}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
                   >
-                    <DocumentDuplicateIcon className="h-5 w-5 mr-2" />
                     Use Template
                   </button>
                 </div>

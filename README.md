@@ -5,41 +5,37 @@ Stripe Coach is a modern, AI-enhanced coaching platform that helps fitness profe
 
 ## Current Features
 
+### Admin Dashboard
+- **Business Management**
+  - Client overview and management
+  - Revenue tracking and analytics
+  - AI settings configuration
+  - Business avatar creation
+  - Payment processing (Stripe integration)
+
 ### Client Dashboard
-- **Weekly Check-in Results**
-  - Real-time metrics tracking (Nutrition, Training, Sleep, Water, Steps)
-  - Visual progress indicators with color-coded status
-  - Trend analysis and goal completion rates
+- **Progress Tracking**
+  - Weekly check-in system
+  - Visual progress indicators
+  - Goal tracking and milestones
+  - Progress photo gallery
+  - Metrics visualization (Nutrition, Exercise, Sleep, Stress, Energy)
 
-### Goals Roadmap
-- Interactive progress tracking
-- Milestone achievement system
-- Customizable goal settings with rewards
-- Visual progress bars and achievement badges
+### Check-in System
+- **Smart Forms**
+  - Dynamic form generation
+  - Progress metrics tracking
+  - Historical data comparison
+  - AI-powered insights
+  - Coach review interface
 
-### AI-Powered Coaching
-- **Smart Insights System**
-  - AI-generated progress analysis
-  - Personalized recommendations
-  - Coach review interface for AI suggestions
-  - Multiple response options (Loom videos, voice notes)
-
-### Progress Tracking
-- **Visual Progress Gallery**
-  - Progress photo management
-  - Timeline-based photo organization
-  - Before/after comparisons
-
-### Client Management
-- **Subscription & Payment Tracking**
-  - Automated billing management
-  - Invoice history
-  - Payment status monitoring
-
-### Achievement System
-- Custom achievement badges
-- Progress-based rewards
-- Point accumulation system
+### Goals & Achievement System
+- **Interactive Tracking**
+  - Goal setting and monitoring
+  - Milestone tracking
+  - Achievement badges
+  - Progress visualization
+  - Custom goal templates
 
 ## Technical Stack
 
@@ -48,41 +44,45 @@ Stripe Coach is a modern, AI-enhanced coaching platform that helps fitness profe
 - React (Latest)
 - TailwindCSS for styling
 - Heroicons for iconography
+- Chart.js for data visualization
 
-### AI Integration
-- OpenAI GPT-4 for response generation
-- Custom AI review system for coach oversight
+### Backend & Services
+- Firebase (Authentication, Firestore, Storage)
+- OpenAI GPT-4 for AI features
+- Stripe for payment processing
+- ElevenLabs for voice synthesis
 
 ### Authentication & Security
+- Role-based access control (Admin, Coach, Client)
 - Secure client data handling
-- Role-based access control
 - Payment information encryption
+- Environment variable protection
 
-## Upcoming Features (Roadmap)
+## In Progress Features
 
-### Phase 1: Enhanced AI Capabilities
-- [ ] Advanced metrics analysis
-- [ ] Predictive progress tracking
-- [ ] Automated goal adjustments
-- [ ] Nutrition plan generation
+### Phase 1: Core Platform Enhancement
+- [ ] Complete AI coaching integration
+- [ ] Enhanced check-in form builder
+- [ ] Advanced analytics dashboard
+- [ ] Client onboarding flow
 
-### Phase 2: Communication Enhancements
-- [ ] In-app video messaging
-- [ ] Integrated chat system
+### Phase 2: Communication Tools
+- [ ] In-app messaging system
+- [ ] Video response integration
 - [ ] Automated check-in reminders
 - [ ] Group coaching features
 
 ### Phase 3: Business Tools
-- [ ] Advanced analytics dashboard
+- [ ] Advanced revenue analytics
 - [ ] Client acquisition tracking
-- [ ] Revenue forecasting
 - [ ] Marketing integration
+- [ ] Coach management system
 
 ### Phase 4: Mobile Experience
-- [ ] Native mobile apps
-- [ ] Offline functionality
+- [ ] Mobile-responsive design
 - [ ] Push notifications
-- [ ] Mobile-optimized workouts
+- [ ] Offline functionality
+- [ ] Mobile-optimized check-ins
 
 ## Getting Started
 
@@ -115,11 +115,27 @@ cp .env.example .env.local
 npm run dev
 ```
 
-### Environment Variables
+### Required Environment Variables
 ```
-NEXT_PUBLIC_API_URL=your_api_url
+# OpenAI Configuration
 OPENAI_API_KEY=your_openai_key
-DATABASE_URL=your_database_url
+
+# Firebase Configuration
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+
+# Stripe Configuration
+STRIPE_SECRET_KEY=your_stripe_key
+STRIPE_WEBHOOK_SECRET=your_webhook_secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_publishable_key
+
+# ElevenLabs Configuration
+NEXT_PUBLIC_ELEVENLABS_API_KEY=your_elevenlabs_key
+NEXT_PUBLIC_ELEVENLABS_VOICE_ID=your_voice_id
 ```
 
 ## Development Guidelines
@@ -127,8 +143,8 @@ DATABASE_URL=your_database_url
 ### Code Structure
 - `/app` - Next.js app router pages
 - `/components` - Reusable React components
-- `/lib` - Utility functions and helpers
-- `/styles` - Global styles and Tailwind config
+- `/lib` - Utility functions and services
+- `/types` - TypeScript type definitions
 - `/public` - Static assets
 
 ### Best Practices
@@ -136,6 +152,7 @@ DATABASE_URL=your_database_url
 - Implement component-level testing
 - Maintain accessibility standards
 - Use semantic versioning
+- Follow the established folder structure
 
 ## Contributing
 1. Fork the repository
@@ -155,13 +172,14 @@ For support, email support@stripecoach.com or join our Slack community.
 ## Release Notes
 
 ### Current Version: 0.1.0
-- Initial dashboard implementation
+- Initial platform implementation
+- Basic admin dashboard
+- Client check-in system
 - AI coaching integration
-- Basic progress tracking
-- Payment system integration
+- Payment processing setup
 
-### Upcoming Version: 0.2.0
+### Next Version: 0.2.0
 - Enhanced AI response system
 - Improved coach review interface
 - Mobile responsiveness updates
-- Performance optimizations
+- Performance optimizations 

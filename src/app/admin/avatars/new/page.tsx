@@ -1,14 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { useState, useCallback } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ProgressSteps } from '@/components/avatars/ProgressSteps';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { InfoCircledIcon } from '@radix-ui/react-icons';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   BUSINESS_NICHES,
   CLIENT_TYPES,
@@ -29,136 +32,46 @@ import {
 interface FormStep {
   title: string;
   description: string;
+  icon?: string;
 }
 
 const steps: FormStep[] = [
   {
     title: 'Basic Information',
-    description: 'Enter the foundational details about your coaching business'
+    description: 'Enter the foundational details about your coaching business',
+    icon: '👋'
   },
   {
     title: 'Mission & Values',
-    description: 'Define your purpose and core values'
+    description: 'Define your purpose and core values',
+    icon: '🎯'
   },
   {
     title: 'Target Audience',
-    description: 'Specify who you want to help and their needs'
+    description: 'Specify who you want to help and their needs',
+    icon: '🎯'
   },
   {
     title: 'Coaching Approach',
-    description: 'Define your coaching style and methodology'
+    description: 'Define your coaching style and methodology',
+    icon: '🚀'
   }
 ];
 
 interface Question {
   id: string;
   label: string;
+  description?: string;
   placeholder?: string;
   type: 'text' | 'textarea' | 'checkbox' | 'select';
   options?: string[];
   field: string;
+  required?: boolean;
 }
-
-const questions: Record<number, Question[]> = {
-  0: [
-    {
-      id: 'name',
-      label: 'Business Name',
-      placeholder: 'Enter your coaching business name',
-      type: 'text',
-      field: 'name'
-    },
-    {
-      id: 'niches',
-      label: 'Coaching Niches',
-      type: 'checkbox',
-      options: BUSINESS_NICHES,
-      field: 'niches'
-    },
-    {
-      id: 'gender',
-      label: 'Target Gender',
-      type: 'checkbox',
-      options: GENDER_OPTIONS,
-      field: 'gender'
-    },
-    {
-      id: 'description',
-      label: 'Business Description',
-      placeholder: 'Describe your coaching business and its unique value proposition',
-      type: 'textarea',
-      field: 'description'
-    }
-  ],
-  1: [
-    {
-      id: 'missionStatement',
-      label: 'Mission Statement',
-      placeholder: "What is your coaching business's mission and purpose?",
-      type: 'textarea',
-      field: 'missionStatement'
-    },
-    {
-      id: 'values',
-      label: 'Core Values',
-      placeholder: 'Enter values separated by commas (e.g., Integrity, Excellence, Growth)',
-      type: 'text',
-      field: 'values'
-    }
-  ],
-  2: [
-    {
-      id: 'clientTypes',
-      label: 'Target Client Types',
-      type: 'checkbox',
-      options: CLIENT_TYPES,
-      field: 'clientTypes'
-    },
-    {
-      id: 'painPoints',
-      label: 'Client Pain Points',
-      placeholder: 'Enter pain points separated by commas',
-      type: 'text',
-      field: 'painPoints'
-    },
-    {
-      id: 'demographics',
-      label: 'Target Demographics',
-      placeholder: 'Describe your ideal client demographics',
-      type: 'text',
-      field: 'demographics'
-    },
-    {
-      id: 'goals',
-      label: 'Client Goals',
-      placeholder: 'Enter client goals separated by commas',
-      type: 'text',
-      field: 'goals'
-    }
-  ],
-  3: [
-    {
-      id: 'communicationStyle',
-      label: 'Communication Style',
-      type: 'select',
-      options: COACHING_STYLES,
-      field: 'communicationStyle'
-    },
-    {
-      id: 'approachTypes',
-      label: 'Coaching Approach',
-      type: 'checkbox',
-      options: APPROACH_TYPES,
-      field: 'approachTypes'
-    }
-  ]
-};
 
 export default function NewAvatarPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     niches: [] as BusinessNiche[],
@@ -170,7 +83,7 @@ export default function NewAvatarPage() {
     painPoints: [] as string[],
     demographics: '',
     goals: [] as string[],
-    communicationStyle: '' as CoachingStyle,
+    communicationStyle: '',
     approachTypes: [] as ApproachType[],
     personalityTraits: [] as PersonalityTrait[],
     communicationTone: '' as CommunicationTone,
@@ -179,181 +92,328 @@ export default function NewAvatarPage() {
     experience: ''
   });
 
-  const currentQuestions = questions[currentStep] || [];
-  const currentQuestion = currentQuestions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === currentQuestions.length - 1;
-  const isFirstQuestion = currentQuestionIndex === 0;
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
 
   const handleArrayInputChange = (field: string, value: string) => {
-    const array = value.split(',').map(item => item.trim());
-    setFormData(prev => ({ ...prev, [field]: array }));
-  };
-
-  const handleMultiSelect = (field: string, value: string) => {
-    setFormData(prev => {
-      const currentValues = prev[field] as string[];
-      if (currentValues.includes(value)) {
-        return { ...prev, [field]: currentValues.filter(v => v !== value) };
-      }
-      return { ...prev, [field]: [...currentValues, value] };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [field]: prev[field].includes(value)
+        ? prev[field].filter((item: string) => item !== value)
+        : [...prev[field], value]
+    }));
   };
 
   const handleNext = () => {
-    if (!isLastQuestion) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
-      setCurrentQuestionIndex(0);
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
     }
   };
 
   const handleBack = () => {
-    if (!isFirstQuestion) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    } else if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-      setCurrentQuestionIndex(questions[currentStep - 1].length - 1);
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
     }
   };
 
   const generateAIAvatar = async () => {
-    setIsGenerating(true);
+    setIsLoading(true);
+    setError(null);
+
     try {
       const response = await fetch('/api/avatars/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate avatar');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate avatar');
       }
 
       const data = await response.json();
-      router.push(`/admin/avatars/${data.id}`);
-    } catch (error) {
-      console.error('Error generating avatar:', error);
+      router.push('/admin/avatars');
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
-  const renderQuestion = (question: Question) => {
+  const renderField = (question: Question) => {
+    const FieldWrapper = ({ children }: { children: React.ReactNode }) => (
+      <div className="space-y-2 mb-6">
+        <div className="flex items-center gap-2">
+          <Label htmlFor={question.id} className="text-base font-semibold">
+            {question.label}
+            {question.required && <span className="text-red-500 ml-1">*</span>}
+          </Label>
+          {question.description && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoCircledIcon className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">{question.description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        {children}
+      </div>
+    );
+
     switch (question.type) {
       case 'text':
         return (
-          <Input
-            id={question.id}
-            value={Array.isArray(formData[question.field]) ? formData[question.field].join(', ') : formData[question.field]}
-            onChange={(e) => Array.isArray(formData[question.field]) 
-              ? handleArrayInputChange(question.field, e.target.value)
-              : handleInputChange(question.field, e.target.value)
-            }
-            placeholder={question.placeholder}
-            className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-          />
+          <FieldWrapper>
+            <Input
+              id={question.id}
+              placeholder={question.placeholder}
+              value={formData[question.field] || ''}
+              onChange={(e) => handleInputChange(question.field, e.target.value)}
+              className="w-full"
+            />
+          </FieldWrapper>
         );
+
       case 'textarea':
         return (
-          <Textarea
-            id={question.id}
-            value={formData[question.field]}
-            onChange={(e) => handleInputChange(question.field, e.target.value)}
-            placeholder={question.placeholder}
-            className="h-32 bg-gray-800 border-gray-700 text-white placeholder:text-gray-500"
-          />
+          <FieldWrapper>
+            <Textarea
+              id={question.id}
+              placeholder={question.placeholder}
+              value={formData[question.field] || ''}
+              onChange={(e) => handleInputChange(question.field, e.target.value)}
+              className="min-h-[100px]"
+            />
+          </FieldWrapper>
         );
+
       case 'checkbox':
         return (
-          <div className="space-y-2">
-            {question.options?.map((option) => (
-              <div key={option} className="flex items-center">
-                <input
-                  type="checkbox"
-                  id={`${question.id}-${option}`}
-                  checked={formData[question.field].includes(option)}
-                  onChange={() => handleMultiSelect(question.field, option)}
-                  className="mr-2 bg-gray-800 border-gray-700"
-                />
-                <Label htmlFor={`${question.id}-${option}`} className="text-gray-300">{option}</Label>
-              </div>
-            ))}
-          </div>
-        );
-      case 'select':
-        return (
-          <Select
-            value={formData[question.field]}
-            onValueChange={(value) => handleInputChange(question.field, value)}
-          >
-            <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-              <SelectValue placeholder={`Select your ${question.label.toLowerCase()}`} />
-            </SelectTrigger>
-            <SelectContent>
+          <FieldWrapper>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {question.options?.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
+                <div key={option} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`${question.id}-${option}`}
+                    checked={formData[question.field].includes(option)}
+                    onCheckedChange={() => handleArrayInputChange(question.field, option)}
+                  />
+                  <label
+                    htmlFor={`${question.id}-${option}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {option}
+                  </label>
+                </div>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          </FieldWrapper>
         );
+
       default:
         return null;
     }
   };
 
+  const getCurrentQuestions = () => {
+    switch (currentStep) {
+      case 0:
+        return [
+          {
+            id: 'name',
+            label: 'Avatar Name',
+            description: 'Choose a memorable name for your coaching avatar',
+            placeholder: 'e.g., Coach Sarah',
+            type: 'text',
+            field: 'name',
+            required: true
+          },
+          {
+            id: 'niches',
+            label: 'Coaching Niches',
+            description: 'Select the areas you specialize in',
+            type: 'checkbox',
+            options: BUSINESS_NICHES,
+            field: 'niches',
+            required: true
+          },
+          {
+            id: 'gender',
+            label: 'Target Gender',
+            description: 'Select the gender(s) you primarily work with',
+            type: 'checkbox',
+            options: GENDER_OPTIONS,
+            field: 'gender',
+            required: true
+          },
+          {
+            id: 'description',
+            label: 'Brief Description',
+            description: 'Describe your coaching avatar in a few sentences',
+            placeholder: 'Tell us about your coaching approach and what makes you unique...',
+            type: 'textarea',
+            field: 'description',
+            required: true
+          }
+        ];
+      case 1:
+        return [
+          {
+            id: 'missionStatement',
+            label: 'Mission Statement',
+            description: 'Define the purpose and impact of your coaching practice',
+            placeholder: 'To empower individuals to...',
+            type: 'textarea',
+            field: 'missionStatement',
+            required: true
+          },
+          {
+            id: 'values',
+            label: 'Core Values',
+            description: 'Select the principles that guide your coaching practice',
+            type: 'checkbox',
+            options: ['Integrity', 'Growth', 'Empowerment', 'Innovation', 'Authenticity', 'Excellence', 'Compassion', 'Accountability'],
+            field: 'values',
+            required: true
+          }
+        ];
+      case 2:
+        return [
+          {
+            id: 'clientTypes',
+            label: 'Target Client Types',
+            description: 'Select the types of clients you work with',
+            type: 'checkbox',
+            options: CLIENT_TYPES,
+            field: 'clientTypes',
+            required: true
+          },
+          {
+            id: 'painPoints',
+            label: 'Client Pain Points',
+            description: 'What challenges do your clients typically face?',
+            type: 'checkbox',
+            options: [
+              'Lack of Direction',
+              'Low Confidence',
+              'Work-Life Balance',
+              'Career Transition',
+              'Relationship Issues',
+              'Health & Wellness',
+              'Personal Growth',
+              'Leadership Skills',
+              'Time Management',
+              'Stress & Anxiety'
+            ],
+            field: 'painPoints',
+            required: true
+          },
+          {
+            id: 'demographics',
+            label: 'Target Demographics',
+            description: 'Describe your ideal client profile',
+            placeholder: 'e.g., Professionals aged 30-50, entrepreneurs, working parents...',
+            type: 'textarea',
+            field: 'demographics',
+            required: true
+          }
+        ];
+      case 3:
+        return [
+          {
+            id: 'approachTypes',
+            label: 'Coaching Approach',
+            description: 'Select your primary coaching methodologies',
+            type: 'checkbox',
+            options: APPROACH_TYPES,
+            field: 'approachTypes',
+            required: true
+          },
+          {
+            id: 'personalityTraits',
+            label: 'Personality Traits',
+            description: 'Choose traits that define your coaching style',
+            type: 'checkbox',
+            options: PERSONALITY_TRAITS,
+            field: 'personalityTraits',
+            required: true
+          },
+          {
+            id: 'communicationTone',
+            label: 'Communication Style',
+            description: 'How do you prefer to communicate with clients?',
+            type: 'checkbox',
+            options: COMMUNICATION_TONES,
+            field: 'communicationTone',
+            required: true
+          }
+        ];
+      default:
+        return [];
+    }
+  };
+
   return (
-    <div className="container max-w-3xl py-8">
-      <Card className="bg-gray-900 border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white">Create New Avatar</CardTitle>
-          <CardDescription className="text-gray-400">Set up your AI coaching avatar</CardDescription>
+    <div className="container max-w-4xl mx-auto py-8 px-4">
+      <Card className="border-2 shadow-lg">
+        <CardHeader className="space-y-1 pb-8">
+          <CardTitle className="text-2xl font-bold">{steps[currentStep].title}</CardTitle>
+          <CardDescription className="text-base">
+            {steps[currentStep].description}
+          </CardDescription>
+          <div className="pt-6">
+            <ProgressSteps
+              steps={steps}
+              currentStep={currentStep}
+              onStepClick={setCurrentStep}
+            />
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="mb-8">
-            <ProgressSteps steps={steps} currentStep={currentStep} />
-          </div>
-          <div className="space-y-6">
-            <div className="min-h-[300px] flex flex-col">
-              <Label htmlFor={currentQuestion?.id} className="text-gray-200 text-lg mb-4">
-                {currentQuestion?.label}
-              </Label>
-              {currentQuestion && renderQuestion(currentQuestion)}
+
+        <CardContent className="space-y-6">
+          {getCurrentQuestions().map((question) => renderField(question))}
+          
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
+              {error}
             </div>
-            <div className="flex justify-between items-center mt-8">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 0 && isFirstQuestion}
-                className="text-gray-300 border-gray-700 hover:bg-gray-800"
-              >
-                Back
-              </Button>
-              <div className="text-gray-400">
-                Question {currentQuestionIndex + 1} of {currentQuestions.length}
-              </div>
-              <Button
-                onClick={currentStep === steps.length - 1 && isLastQuestion ? generateAIAvatar : handleNext}
-                disabled={isGenerating}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {currentStep === steps.length - 1 && isLastQuestion ? (
-                  isGenerating ? 'Generating...' : 'Generate Avatar'
-                ) : (
-                  'Next'
-                )}
-              </Button>
-            </div>
-          </div>
+          )}
         </CardContent>
+
+        <CardFooter className="flex justify-between pt-6">
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={currentStep === 0}
+          >
+            Back
+          </Button>
+          
+          {currentStep === steps.length - 1 ? (
+            <Button
+              onClick={generateAIAvatar}
+              disabled={isLoading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isLoading ? 'Generating...' : 'Generate Avatar'}
+            </Button>
+          ) : (
+            <Button onClick={handleNext}>Next</Button>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );

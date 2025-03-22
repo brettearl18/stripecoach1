@@ -5,96 +5,124 @@ export const COACHING_STYLES = [
 ] as const;
 export type CoachingStyle = (typeof COACHING_STYLES)[number];
 
-export const BUSINESS_NICHES = [
-  'High Performance Athletics',
-  'Weight Management & Nutrition',
-  'Holistic Wellness & Mindfulness',
-  'Mental Performance & Psychology',
-  'Lifestyle Transformation',
-  'Business & Career Coaching',
+export type BusinessNiche = 
+  | 'Life Coaching'
+  | 'Business Coaching'
+  | 'Career Coaching'
+  | 'Health & Wellness'
+  | 'Relationship Coaching'
+  | 'Leadership Coaching'
+  | 'Performance Coaching'
+  | 'Financial Coaching';
+
+export type Gender = 'Male' | 'Female' | 'All';
+
+export type ClientType =
+  | 'Individuals'
+  | 'Entrepreneurs'
+  | 'Executives'
+  | 'Teams'
+  | 'Small Businesses'
+  | 'Corporate';
+
+export type ApproachType =
+  | 'Data-Driven & Analytical'
+  | 'Holistic & Integrative'
+  | 'Motivational & Inspiring'
+  | 'Educational & Informative'
+  | 'Transformational & Deep Work';
+
+export type PersonalityTrait =
+  | 'Empathetic'
+  | 'Direct'
+  | 'Supportive'
+  | 'Challenging'
+  | 'Patient'
+  | 'Energetic'
+  | 'Structured'
+  | 'Flexible';
+
+export type CommunicationTone =
+  | 'Professional & Formal'
+  | 'Friendly & Casual'
+  | 'Motivational & Energetic'
+  | 'Calm & Supportive'
+  | 'Direct & Straightforward';
+
+export const BUSINESS_NICHES: BusinessNiche[] = [
+  'Life Coaching',
+  'Business Coaching',
+  'Career Coaching',
+  'Health & Wellness',
   'Relationship Coaching',
-  'Personal Development',
-  'Custom'
-] as const;
+  'Leadership Coaching',
+  'Performance Coaching',
+  'Financial Coaching'
+];
 
-export const GENDER_OPTIONS = [
-  'Male',
-  'Female',
-  'Non-Binary',
-  'All',
-  'Other'
-] as const;
+export const GENDER_OPTIONS: Gender[] = ['Male', 'Female', 'All'];
 
-export type BusinessNiche = typeof BUSINESS_NICHES[number];
-export type Gender = typeof GENDER_OPTIONS[number];
-
-export const CLIENT_TYPES = [
-  'Elite Athletes',
-  'Busy Professionals',
-  'Wellness Enthusiasts',
-  'Weight Loss Seekers',
-  'Performance Optimizers',
+export const CLIENT_TYPES: ClientType[] = [
+  'Individuals',
   'Entrepreneurs',
-  'Corporate Teams',
-  'Students & Young Professionals'
-] as const;
-export type ClientType = (typeof CLIENT_TYPES)[number];
+  'Executives',
+  'Teams',
+  'Small Businesses',
+  'Corporate'
+];
 
-export const APPROACH_TYPES = [
+export const APPROACH_TYPES: ApproachType[] = [
   'Data-Driven & Analytical',
   'Holistic & Integrative',
   'Motivational & Inspiring',
   'Educational & Informative',
   'Transformational & Deep Work'
-] as const;
-export type ApproachType = (typeof APPROACH_TYPES)[number];
+];
 
-export const PERSONALITY_TRAITS = [
+export const PERSONALITY_TRAITS: PersonalityTrait[] = [
   'Empathetic',
-  'Analytical',
-  'Motivating',
+  'Direct',
+  'Supportive',
+  'Challenging',
   'Patient',
   'Energetic',
-  'Strategic',
-  'Creative',
-  'Structured'
-] as const;
-export type PersonalityTrait = (typeof PERSONALITY_TRAITS)[number];
+  'Structured',
+  'Flexible'
+];
 
-export const COMMUNICATION_TONES = [
+export const COMMUNICATION_TONES: CommunicationTone[] = [
   'Professional & Formal',
   'Friendly & Casual',
-  'Inspirational & Energetic',
-  'Educational & Informative',
-  'Compassionate & Understanding'
-] as const;
-export type CommunicationTone = (typeof COMMUNICATION_TONES)[number];
+  'Motivational & Energetic',
+  'Calm & Supportive',
+  'Direct & Straightforward'
+];
 
 export interface BusinessAvatar {
-  id: string;
+  id?: string;
   name: string;
   niches: BusinessNiche[];
   gender: Gender[];
   description: string;
   missionStatement: string;
-  targetAudience: {
-    clientTypes: ClientType[];
-    painPoints: string[];
-    goals: string[];
-    demographics: string;
+  values: string[];
+  clientTypes: ClientType[];
+  painPoints: string[];
+  demographics: string;
+  goals: string[];
+  communicationStyle: string;
+  approachTypes: ApproachType[];
+  personalityTraits: PersonalityTrait[];
+  communicationTone: CommunicationTone;
+  specialties: string[];
+  certifications: string[];
+  experience: string;
+  aiPersonality?: {
+    basePrompt: string;
+    contextualMemory: any[];
+    adaptiveResponses: Record<string, any>;
   };
-  coachingStyle: {
-    communication: CoachingStyle;
-    approach: ApproachType[];
-    personalityTraits: PersonalityTrait[];
-    tone: CommunicationTone;
-  };
-  expertise: {
-    specialties: string[];
-    certifications: string[];
-    experience: string;
-  };
-  branding: {
+  branding?: {
     colors: {
       primary: string;
       secondary: string;
@@ -107,25 +135,34 @@ export interface BusinessAvatar {
     };
     values: string[];
   };
-  formTemplates: {
-    checkIn: FormTemplate;
-    assessment: FormTemplate;
-    progress: FormTemplate;
-  };
-  badges: {
-    style: string;
-    themes: string[];
-    achievements: Achievement[];
-  };
-  aiPersonality: {
-    basePrompt: string;
-    contextualMemory: string[];
-    adaptiveResponses: {
-      [key: string]: string;
+  formTemplates?: {
+    checkIn: {
+      id: string;
+      name: string;
+      description: string;
+      questions: Array<{
+        text: string;
+        type: string;
+      }>;
+    };
+    assessment: {
+      id: string;
+      name: string;
+      description: string;
+      questions: any[];
+    };
+    progress: {
+      id: string;
+      name: string;
+      description: string;
+      questions: any[];
     };
   };
-  createdAt: Date;
-  updatedAt: Date;
+  badges?: {
+    style: string;
+    themes: string[];
+    achievements: any[];
+  };
 }
 
 export interface FormTemplate {

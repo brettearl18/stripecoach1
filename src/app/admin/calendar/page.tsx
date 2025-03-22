@@ -11,7 +11,8 @@ import {
   CameraIcon,
   VideoCameraIcon,
   CheckCircleIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import CalendarView from './components/CalendarView';
 import NotificationSettings from './components/NotificationSettings';
@@ -100,6 +101,35 @@ export default function CalendarManagement() {
   });
   const [activeTab, setActiveTab] = useState('calendar'); // 'calendar', 'schedule', 'notifications'
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [events] = useState([
+    {
+      id: 1,
+      title: 'Client Check-in: Sarah Johnson',
+      type: 'Check-in',
+      date: '2024-03-22',
+      time: '10:00 AM',
+      status: 'scheduled',
+      coach: 'Michael Smith'
+    },
+    {
+      id: 2,
+      title: 'Progress Review: James Wilson',
+      type: 'Review',
+      date: '2024-03-22',
+      time: '2:00 PM',
+      status: 'completed',
+      coach: 'Emma Davis'
+    },
+    {
+      id: 3,
+      title: 'Initial Consultation: Lisa Brown',
+      type: 'Consultation',
+      date: '2024-03-23',
+      time: '11:30 AM',
+      status: 'cancelled',
+      coach: 'Michael Smith'
+    }
+  ]);
 
   const handleSchedule = () => {
     // This would integrate with your backend to create the recurring events
@@ -110,19 +140,129 @@ export default function CalendarManagement() {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return 'bg-blue-500/10 text-blue-400';
+      case 'completed':
+        return 'bg-green-500/10 text-green-400';
+      case 'cancelled':
+        return 'bg-red-500/10 text-red-400';
+      default:
+        return 'bg-gray-500/10 text-gray-400';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return <ClockIcon className="h-5 w-5 text-blue-400" />;
+      case 'completed':
+        return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
+      case 'cancelled':
+        return <XCircleIcon className="h-5 w-5 text-red-400" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="p-6">
+    <div className="min-h-screen bg-[#13141A] text-white p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header with Settings Button */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Calendar Management</h1>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Calendar</h1>
+            <p className="text-gray-400">Manage your coaching sessions and events</p>
+          </div>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center px-4 py-2 text-gray-700 hover:text-gray-900"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex items-center"
           >
             <Cog6ToothIcon className="h-5 w-5 mr-2" />
             Calendar Settings
           </button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="bg-[#1a1b1e] rounded-lg p-6 border border-gray-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Today's Sessions</p>
+                <h3 className="text-2xl font-bold text-white">8</h3>
+                <p className="text-blue-400 text-sm mt-1">2 starting soon</p>
+              </div>
+              <div className="bg-blue-500/10 p-3 rounded-lg">
+                <VideoCameraIcon className="h-6 w-6 text-blue-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1a1b1e] rounded-lg p-6 border border-gray-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Active Coaches</p>
+                <h3 className="text-2xl font-bold text-white">12</h3>
+                <p className="text-green-400 text-sm mt-1">All coaches available</p>
+              </div>
+              <div className="bg-green-500/10 p-3 rounded-lg">
+                <UserGroupIcon className="h-6 w-6 text-green-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#1a1b1e] rounded-lg p-6 border border-gray-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Upcoming Sessions</p>
+                <h3 className="text-2xl font-bold text-white">24</h3>
+                <p className="text-purple-400 text-sm mt-1">Next 7 days</p>
+              </div>
+              <div className="bg-purple-500/10 p-3 rounded-lg">
+                <CalendarIcon className="h-6 w-6 text-purple-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendar Events Table */}
+        <div className="bg-[#1a1b1e] rounded-lg border border-gray-800">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Upcoming Events</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Event</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Type</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Date</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Time</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Coach</th>
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event) => (
+                    <tr key={event.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                      <td className="py-3 px-4 text-gray-300">{event.title}</td>
+                      <td className="py-3 px-4 text-gray-300">{event.type}</td>
+                      <td className="py-3 px-4 text-gray-300">{event.date}</td>
+                      <td className="py-3 px-4 text-gray-300">{event.time}</td>
+                      <td className="py-3 px-4 text-gray-300">{event.coach}</td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center">
+                          {getStatusIcon(event.status)}
+                          <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getStatusColor(event.status)}`}>
+                            {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         {/* Navigation Tabs */}

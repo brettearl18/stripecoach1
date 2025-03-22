@@ -1,12 +1,12 @@
 import OpenAI from 'openai';
 import { ClientProfile } from '@/components/checkIn/ClientProfileModal';
 
-if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
+if (!process.env.OPENAI_API_KEY) {
   throw new Error('Missing OpenAI API Key. Please check your environment variables.');
 }
 
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true // Enable client-side usage
 });
 

@@ -19,7 +19,7 @@ import {
 
 // List of implemented pages
 const implementedPages = [
-  '/admin/dashboard2',
+  '/admin',
   '/admin/coaches',
   '/admin/clients',
   '/admin/analytics',
@@ -48,7 +48,7 @@ export default function NavigationHub() {
       items: [
         {
           name: 'Admin Dashboard',
-          href: '/admin/dashboard2',
+          href: '/admin',
           icon: HomeIcon,
           description: 'Main admin dashboard with overview and controls'
         },

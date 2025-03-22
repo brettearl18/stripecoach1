@@ -1,9 +1,8 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from 'react-hot-toast'
-import { ThemeProvider } from './providers'
+import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,13 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        <AuthProvider>
-          <ThemeProvider>
-            <div className="min-h-screen bg-gray-100">
-              {children}
-            </div>
-          </ThemeProvider>
-        </AuthProvider>
+        <Providers>
+          <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+            {children}
+          </div>
+        </Providers>
         <Toaster position="top-right" />
       </body>
     </html>
