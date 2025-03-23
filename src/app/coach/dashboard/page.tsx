@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getClients, getFormSubmissions, type Client, type FormSubmission, getCoach, getClientsByCoach, type Coach } from '@/lib/services/firebaseService';
+import { getClients, getFormSubmissions, type Client, type FormSubmission, getClientsByCoach, type Coach } from '@/lib/services/firebaseService';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import Link from 'next/link';
 import {
