@@ -264,3 +264,24 @@ export async function createTestData() {
     throw error;
   }
 }
+
+export async function getCoach(coachId: string): Promise<Coach | null> {
+  try {
+    const coachRef = doc(db, 'coaches', coachId);
+    const coachDoc = await getDocs(coachRef);
+    
+    if (!coachDoc.exists()) {
+      return null;
+    }
+
+    const data = coachDoc.data();
+    return {
+      id: coachDoc.id,
+      ...convertTimestampsToDates(data),
+      specialties: Array.isArray(data.specialties) ? data.specialties : []
+    } as Coach;
+  } catch (error) {
+    console.error('Error getting coach:', error);
+    throw error;
+  }
+}

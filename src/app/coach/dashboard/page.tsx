@@ -169,7 +169,7 @@ export default function CoachDashboard() {
                   </span>
                 </a>
                 <a 
-                  href="/coach/analytics" 
+                  href="/coach/dashboard/analytics" 
                   className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   Analytics
