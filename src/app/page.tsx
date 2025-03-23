@@ -23,10 +23,28 @@ const implementedPages = [
   '/admin/coaches',
   '/admin/clients',
   '/admin/analytics',
+  '/admin/forms',
+  '/admin/payments',
+  '/admin/calendar',
+  '/admin/settings',
+  '/admin/avatars',
   '/coach/dashboard',
+  '/coach/clients',
+  '/coach/check-ins',
+  '/coach/analytics',
   '/client/dashboard',
+  '/client/coach',
   '/client/check-in',
-  '/admin/avatars'
+  '/client/progress',
+  '/client/messages',
+  '/client/profile',
+  '/client/settings',
+  '/admin/sitemap'
+];
+
+// List of implemented footer links
+const implementedFooterLinks = [
+  '/admin/sitemap'
 ];
 
 interface NavigationSection {
@@ -156,7 +174,7 @@ export default function NavigationHub() {
         },
         {
           name: 'Check-ins',
-          href: '/client/check-ins',
+          href: '/client/check-in',
           icon: ClipboardDocumentListIcon,
           description: 'Submit and view check-ins'
         },
@@ -218,6 +236,81 @@ export default function NavigationHub() {
             </div>
           ))}
         </div>
+
+        {/* Footer */}
+        <footer className="bg-[#1A1F2B] text-white py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">About Us</h3>
+                <p className="text-gray-400">
+                  Connecting clients with expert coaches for personalized fitness and wellness journeys.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
+                <ul className="space-y-2">
+                  <li>
+                    <a href="/search" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/search') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      Find a Coach
+                      {!implementedFooterLinks.includes('/search') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/about" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/about') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      About Us
+                      {!implementedFooterLinks.includes('/about') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/contact" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/contact') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      Contact
+                      {!implementedFooterLinks.includes('/contact') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Resources</h3>
+                <ul className="space-y-2">
+                  <li>
+                    <a href="/blog" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/blog') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      Blog
+                      {!implementedFooterLinks.includes('/blog') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/faq" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/faq') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      FAQ
+                      {!implementedFooterLinks.includes('/faq') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                  <li>
+                    <a href="/privacy" className={`text-gray-400 hover:text-white transition-colors flex items-center gap-2 ${!implementedFooterLinks.includes('/privacy') ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      Privacy Policy
+                      {!implementedFooterLinks.includes('/privacy') && <XCircleIcon className="h-4 w-4 text-red-500" />}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Development</h3>
+                <ul className="space-y-2">
+                  <li>
+                    <a href="/admin/sitemap" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+                      <span>Site Map</span>
+                      <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded-full">Dev</span>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-400">
+              <p>&copy; {new Date().getFullYear()} Stripe Coach. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

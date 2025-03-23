@@ -1,27 +1,30 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase-admin';
-import { db } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { FormSubmission, FormTemplate } from '@/types/forms';
 
 export async function GET(request: Request) {
   try {
-    const sessionCookie = request.headers.get('session') || '';
-    if (!sessionCookie) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie);
-    const userId = decodedClaims.uid;
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await adminAuth?.verifyIdToken(token);
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const userId = decodedToken.uid;
 
     // Get the check-in form template
-    const templateDoc = await db
-      .collection('formTemplates')
+    const templateDoc = await adminDb
+      ?.collection('formTemplates')
       .where('name', '==', 'check-in')
       .where('isActive', '==', true)
       .limit(1)
       .get();
 
-    if (templateDoc.empty) {
+    if (!templateDoc || templateDoc.empty) {
       return NextResponse.json(
         { error: 'No active check-in form template found' },
         { status: 404 }
@@ -31,15 +34,15 @@ export async function GET(request: Request) {
     const template = templateDoc.docs[0].data() as FormTemplate;
 
     // Get the user's last submission if any
-    const lastSubmissionDoc = await db
-      .collection('formSubmissions')
+    const lastSubmissionDoc = await adminDb
+      ?.collection('formSubmissions')
       .where('templateId', '==', template.id)
       .where('userId', '==', userId)
       .orderBy('createdAt', 'desc')
       .limit(1)
       .get();
 
-    const lastSubmission = lastSubmissionDoc.empty
+    const lastSubmission = !lastSubmissionDoc || lastSubmissionDoc.empty
       ? null
       : (lastSubmissionDoc.docs[0].data() as FormSubmission);
 
@@ -58,13 +61,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const sessionCookie = request.headers.get('session') || '';
-    if (!sessionCookie) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie);
-    const userId = decodedClaims.uid;
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = await adminAuth?.verifyIdToken(token);
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+    const userId = decodedToken.uid;
 
     const body = await request.json();
     const { templateId, answers } = body;
@@ -86,22 +93,22 @@ export async function POST(request: Request) {
       updatedAt: new Date(),
     };
 
-    const submissionRef = await db.collection('formSubmissions').add(submission);
+    const submissionRef = await adminDb?.collection('formSubmissions').add(submission);
 
     // Calculate metrics for the submission
-    const templateDoc = await db.collection('formTemplates').doc(templateId).get();
-    const template = templateDoc.data() as FormTemplate;
+    const templateDoc = await adminDb?.collection('formTemplates').doc(templateId).get();
+    const template = templateDoc?.data() as FormTemplate;
 
     const metrics = calculateMetrics(answers, template);
 
     // Update the submission with metrics
-    await submissionRef.update({
+    await submissionRef?.update({
       metrics,
       updatedAt: new Date(),
     });
 
     return NextResponse.json({
-      id: submissionRef.id,
+      id: submissionRef?.id,
       ...submission,
       metrics,
     });

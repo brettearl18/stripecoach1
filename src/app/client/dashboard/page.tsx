@@ -38,11 +38,15 @@ import {
   CalendarDaysIcon,
   LightBulbIcon,
   ChevronDownIcon,
+  FaceSmileIcon,
+  AcademicCapIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline';
 import ClientProfileCard from './components/ClientProfileCard';
 import Link from 'next/link';
 import { DailyCheckInsList } from '@/components/dashboard/DailyCheckInsList';
 import type { CheckInForm } from '@/types/checkIn';
+import ProgressGallery from './components/ProgressGallery';
 
 // Temporary data - would come from backend in real app
 const timelineHighlights = [
@@ -362,6 +366,14 @@ const trackingTools = [
   }
 ];
 
+// Quick response templates
+const quickResponses = [
+  { emoji: "💪", text: "Great progress this week!" },
+  { emoji: "🎯", text: "Keep focusing on your goals" },
+  { emoji: "📈", text: "I see improvement in your metrics" },
+  { emoji: "🔄", text: "Let's adjust your program" },
+];
+
 export default function ClientDashboard() {
   const [selectedMetric, setSelectedMetric] = useState(progressData.metrics[0]);
   const [showBeforePhoto, setShowBeforePhoto] = useState(false);
@@ -369,18 +381,18 @@ export default function ClientDashboard() {
   const [showReplyOptions, setShowReplyOptions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioURLs, setAudioURLs] = useState<string[]>([]);
+  const [acceptedResponses, setAcceptedResponses] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState({
     weeklyResults: true,
-    trackingTools: true,
-    goalsRoadmap: true,
-    coachReview: true,
-    progressGallery: true,
-    subscription: true,
-    timeline: true
+    coachReview: false,
+    trackingTools: false,
+    progressPhotos: false
   });
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const [checkIns, setCheckIns] = useState<CheckInForm[]>([]);
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState<number[]>([]);
+  const [reviewStatus, setReviewStatus] = useState('pending'); // 'none' | 'pending' | 'completed'
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
@@ -435,8 +447,27 @@ export default function ClientDashboard() {
     // Handle reply option selection
   };
 
-  const handleApprove = () => {
-    // Handle approve action
+  const handleAcceptResponse = (insightId: string) => {
+    setAcceptedResponses(prev => [...prev, insightId]);
+    // Here you would typically make an API call to update the backend
+  };
+
+  const handleAcceptSuggestion = (index: number) => {
+    setAcceptedSuggestions(prev => {
+      const newAccepted = [...prev, index];
+      // If all suggestions are accepted, update the review status
+      if (newAccepted.length === 3) { // assuming 3 suggestions total
+        setReviewStatus('completed');
+        // Update localStorage
+        const status = {
+          checkInId: 'current-checkin',
+          allSuggestionsAccepted: true,
+          hasNewReview: false
+        };
+        localStorage.setItem('coachReviewStatus', JSON.stringify(status));
+      }
+      return newAccepted;
+    });
   };
 
   useEffect(() => {
@@ -605,6 +636,60 @@ export default function ClientDashboard() {
                 ))}
               </div>
             </div>
+
+            {/* Subscription Status - Moved to left panel */}
+            <div className="bg-gray-800/30 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CreditCardIcon className="h-5 w-5 text-gray-400" />
+                  <h2 className="text-lg font-semibold text-white">Subscription</h2>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">
+                  <CheckCircleIcon className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Active</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-lg bg-gray-700/50 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-sm">{paymentData.paymentMethod.brand} •••• {paymentData.paymentMethod.last4}</span>
+                </div>
+                <span className="text-xs text-gray-400">Exp. {paymentData.paymentMethod.expiryDate}</span>
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">Next Payment</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white">${paymentData.amount}</span>
+                  <span className="text-xs text-gray-400">
+                    {new Date(paymentData.nextPaymentDate).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric'
+                    })}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Payment button - shows different states based on payment status */}
+              <button
+                className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  new Date(paymentData.nextPaymentDate) < new Date()
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                    : 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
+                }`}
+                onClick={() => {
+                  if (new Date(paymentData.nextPaymentDate) < new Date()) {
+                    /* Payment handler will be implemented */
+                  }
+                }}
+                disabled={new Date(paymentData.nextPaymentDate) >= new Date()}
+              >
+                <CreditCardIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {new Date(paymentData.nextPaymentDate) < new Date() ? 'Pay Now' : 'Payment Up to Date'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Main Content Area */}
@@ -726,6 +811,97 @@ export default function ClientDashboard() {
                 </div>
               </section>
 
+              {/* Coach's Review Section */}
+              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                <button 
+                  onClick={() => toggleSection('coachReview')}
+                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <AcademicCapIcon className="h-5 w-5 text-gray-400" />
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Coach's Review</h2>
+                    {!expandedSections.coachReview && insights.filter(insight => !acceptedResponses.includes(insight.title)).length > 0 && (
+                      <span className="flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDownIcon 
+                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                      expandedSections.coachReview ? 'transform rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                <div className={`transition-all duration-200 ${
+                  expandedSections.coachReview ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+                }`}>
+                  <div className="p-6 pt-0">
+                    {/* Coach's Review Content */}
+                    <div className="space-y-6">
+                      {/* Coach's Response */}
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                            <AcademicCapIcon className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Coach Alex</h3>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">2 days ago</span>
+                            </div>
+                            <p className="mt-2 text-gray-600 dark:text-gray-300">
+                              Great progress this week! Your consistency in workouts is really showing. I've noticed significant improvements in your form and endurance. Let's focus on maintaining this momentum.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Suggestions */}
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Suggestions</h4>
+                        <div className="space-y-3">
+                          {insights
+                            .filter(insight => !acceptedResponses.includes(insight.title))
+                            .map((insight, index) => (
+                              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                <div className="flex-shrink-0">
+                                  <button
+                                    onClick={() => handleAcceptSuggestion(index)}
+                                    className={`p-1 rounded-full ${
+                                      acceptedSuggestions.includes(index)
+                                        ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
+                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-400 dark:text-gray-500 hover:bg-amber-100 dark:hover:bg-amber-900 hover:text-amber-600 dark:hover:text-amber-400'
+                                    }`}
+                                  >
+                                    <CheckIcon className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">{insight.recommendations?.at(0) || 'No suggestions available'}</p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Voice Message */}
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <button className="p-2 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400">
+                            <PlayIcon className="h-4 w-4" />
+                          </button>
+                          <div className="flex-1">
+                            <div className="h-1 bg-gray-200 dark:bg-gray-600 rounded-full">
+                              <div className="h-1 bg-amber-500 rounded-full" style={{ width: '0%' }}></div>
+                            </div>
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">1:30</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
               {/* Tracking Tools */}
               <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
                 <button 
@@ -785,408 +961,21 @@ export default function ClientDashboard() {
               {/* Goals Roadmap */}
               <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
                 <button 
-                  onClick={() => toggleSection('goalsRoadmap')}
+                  onClick={() => toggleSection('progressPhotos')}
                   className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <TrophyIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Goals Roadmap</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.goalsRoadmap ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.goalsRoadmap ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-3">
-                        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Goals Roadmap</h2>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">3 active goals</span>
-                      </div>
-                      <Link 
-                        href="/client/setup"
-                        className="text-sm font-medium px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 transition-opacity"
-                      >
-                        + New Goal
-                      </Link>
-                    </div>
-
-                    <div className="space-y-10">
-                      {fitnessGoals.map((goal, goalIndex) => {
-                        const progress = Math.round(((goal.current - goal.start) / (goal.target - goal.start)) * 100);
-                        
-                        return (
-                          <div key={goalIndex} className="relative">
-                            {/* Goal Header */}
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className={`p-1.5 rounded-lg bg-gradient-to-br ${goal.gradient}`}>
-                                  <goal.icon className="h-3.5 w-3.5 text-white" />
-                                </div>
-                                <div>
-                                  <h3 className="font-medium text-gray-900 dark:text-white text-sm">{goal.title}</h3>
-                                  <div className="flex items-center gap-1.5 text-xs">
-                                    <span className="text-gray-500">{goal.start}{goal.unit}</span>
-                                    <span className="text-gray-400">→</span>
-                                    <span className={`font-medium bg-gradient-to-r ${goal.gradient} bg-clip-text text-transparent`}>
-                                      {goal.current}{goal.unit}
-                                    </span>
-                                    <span className="text-gray-400">→</span>
-                                    <span className="text-gray-500">{goal.target}{goal.unit}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex -space-x-1.5">
-                                  {goal.milestones.filter(m => m.achieved).map((milestone, idx) => (
-                                    <div key={idx} className={`w-5 h-5 rounded-full ring-2 ring-white dark:ring-gray-900 flex items-center justify-center ${
-                                      milestone.badge === 'diamond' ? 'bg-gradient-to-br from-blue-400 via-indigo-400 to-purple-400' :
-                                      milestone.badge === 'gold' ? 'bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400' :
-                                      milestone.badge === 'silver' ? 'bg-gradient-to-br from-gray-300 via-gray-200 to-gray-400' :
-                                      'bg-gradient-to-br from-amber-700 via-orange-600 to-red-700'
-                                    }`}>
-                                      <TrophyIcon className="w-2.5 h-2.5 text-white" />
-                                    </div>
-                                  ))}
-                                </div>
-                                <span className="text-xs font-medium bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">
-                                  {progress}%
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Progress Track */}
-                            <div className="relative mt-3">
-                              {/* Base Track */}
-                              <div className="absolute inset-0 h-2 bg-gray-100 dark:bg-gray-700/50 rounded-full"></div>
-                              
-                              {/* Progress Bar */}
-                              <div 
-                                className={`absolute left-0 h-2 rounded-full bg-gradient-to-r ${goal.gradient}`}
-                                style={{ width: `${progress}%` }}
-                              ></div>
-
-                              {/* Milestone Markers */}
-                              <div className="relative h-2 flex justify-between items-center">
-                                {goal.milestones.map((milestone, index) => (
-                                  <div 
-                                    key={index}
-                                    className="group relative"
-                                    style={{ left: `${(index / (goal.milestones.length - 1)) * 100}%`, marginLeft: '-6px' }}
-                                  >
-                                    <div className={`w-3 h-3 rounded-full ${
-                                      milestone.achieved 
-                                        ? `bg-gradient-to-br ${goal.gradient} ring-2 ring-white dark:ring-gray-900` 
-                                        : 'bg-gray-200 dark:bg-gray-600'
-                                    }`}></div>
-                                    
-                                    {/* Tooltip */}
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg px-2 py-1 text-xs whitespace-nowrap">
-                                        <div className="font-medium text-gray-900 dark:text-white">{milestone.value}{goal.unit}</div>
-                                        <div className="text-gray-500">{milestone.date}</div>
-                                        <div className="flex items-center gap-1">
-                                          <span className={milestone.achieved ? 'text-amber-500' : 'text-gray-400'}>
-                                            {milestone.reward}
-                                          </span>
-                                          <span className={`${
-                                            milestone.badge === 'diamond' ? 'text-indigo-400' :
-                                            milestone.badge === 'gold' ? 'text-amber-400' :
-                                            milestone.badge === 'silver' ? 'text-gray-400' :
-                                            'text-amber-700'
-                                          }`}>
-                                            • {milestone.badge}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Add Goal Button */}
-                    <div className="mt-8 flex justify-center">
-                      <Link
-                        href="/client/setup"
-                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors"
-                      >
-                        <PlusIcon className="h-3.5 w-3.5 text-gray-400 group-hover:text-indigo-500" />
-                        <span className="text-xs font-medium text-gray-500 group-hover:text-indigo-500">
-                          Add Another Goal
-                        </span>
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Smart Insights - Coach Review */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('coachReview')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <BoltIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Coach Review</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.coachReview ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.coachReview ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 p-1.5 rounded-lg">
-                          <BoltIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            Coach Review
-                          </h2>
-                          <p className="text-sm text-gray-500">AI-generated insights pending your review</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 transition-opacity"
-                          onClick={() => {/* Handle playing latest AI message */}}
-                        >
-                          <MicrophoneIcon className="h-4 w-4" />
-                          <span className="text-sm font-medium">Listen to AI Coach</span>
-                          {/* Notification badge showing total unheard messages */}
-                          <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full">
-                            {insights.reduce((total, insight) => total + (insight.audioCount || 0), 0)}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4">
-                      {insights.map((insight, index) => {
-                        const gradientColor = insight.type === 'success'
-                          ? 'from-emerald-400 via-teal-500 to-cyan-600'
-                          : 'from-blue-400 via-indigo-500 to-purple-600';
-
-                        return (
-                          <div
-                            key={index}
-                            className="group bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 hover:shadow-lg transition-all duration-300"
-                          >
-                            {/* Status Badge */}
-                            <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400">
-                                  Pending Review
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  Generated {new Date().toLocaleDateString()}
-                                </span>
-                              </div>
-                              {insight.hasAudio && (
-                                <button 
-                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors relative"
-                                  onClick={() => {/* Handle playing audio */}}
-                                >
-                                  <MicrophoneIcon className="h-3.5 w-3.5" />
-                                  <span className="text-xs font-medium">Listen</span>
-                                  {insight.audioCount > 1 && (
-                                    <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">
-                                      {insight.audioCount}
-                                    </span>
-                                  )}
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="flex items-start gap-4">
-                              <div className={`bg-gradient-to-br ${gradientColor} p-2 rounded-lg transform transition-all duration-300 group-hover:scale-110 shadow-lg mt-1`}>
-                                {insight.type === 'success' ? (
-                                  <ArrowTrendingUpIcon className="h-4 w-4 text-white" />
-                                ) : (
-                                  <BoltIcon className="h-4 w-4 text-white" />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h3 className="font-medium text-base text-gray-900 dark:text-white">
-                                    {insight.title}
-                                  </h3>
-                                  <div className="flex items-center gap-2">
-                                    {insight.metric && (
-                                      <span className={`text-sm font-medium px-2 py-1 rounded-lg ${
-                                        insight.trend === 'up'
-                                          ? 'bg-emerald-500/10 text-emerald-500'
-                                          : 'bg-rose-500/10 text-rose-500'
-                                      }`}>
-                                        {insight.trend === 'up' ? '↑' : '↓'} {Math.abs(insight.change)}
-                                        {insight.metric !== 'Energy' && insight.metric !== 'Stress' ? ' ' + insight.metric : ''}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                                  {insight.description}
-                                </p>
-                                
-                                {/* AI Coach Recommendations */}
-                                <div className="mt-4 space-y-3">
-                                  <h4 className="text-sm font-medium text-gray-900 dark:text-white">Suggested Recommendations:</h4>
-                                  <div className="space-y-2">
-                                    {insight.recommendations?.map((rec, idx) => (
-                                      <div key={idx} className="flex items-start gap-2 text-sm">
-                                        <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5"></div>
-                                        <p className="text-gray-600 dark:text-gray-400">{rec}</p>
-                                      </div>
-                                    )) || (
-                                      <div className="text-sm text-gray-500 italic">
-                                        AI recommendations loading...
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Coach Response Options */}
-                                <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">Your Response:</h4>
-                                    <span className="text-xs text-gray-500">Minimum 10 words required for text</span>
-                                  </div>
-                                  
-                                  {/* Response Layout Container */}
-                                  <div className="flex gap-4">
-                                    {/* Text Input Area - 2/3 width */}
-                                    <div className="w-2/3 relative">
-                                      <textarea
-                                        value={responseText}
-                                        onChange={(e) => setResponseText(e.target.value)}
-                                        className="w-full h-40 px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-                                        placeholder="Type your response here (minimum 10 words)..."
-                                      />
-                                      <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-                                        {responseText.trim().split(/\s+/).filter(Boolean).length} words
-                                      </div>
-                                    </div>
-
-                                    {/* Buttons Stack - 1/3 width */}
-                                    <div className="w-1/3 flex flex-col gap-2">
-                                      {/* Audio Recording Button */}
-                                      <button 
-                                        onClick={() => isRecording ? stopRecording() : startRecording()}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                      >
-                                        <MicrophoneIcon className="h-4 w-4 text-gray-600" />
-                                        <span className="text-sm font-medium text-gray-900">
-                                          {isRecording ? 'Stop Recording' : 'Record Audio'}
-                                        </span>
-                                      </button>
-
-                                      {/* Text Reply Button */}
-                                      <button 
-                                        onClick={() => handleReplyOption('text')}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-                                        disabled={responseText.trim().split(/\s+/).filter(Boolean).length < 10}
-                                      >
-                                        <ChatBubbleLeftIcon className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Text Reply</span>
-                                      </button>
-
-                                      {/* Attach File Button */}
-                                      <button 
-                                        onClick={() => document.getElementById('file-upload')?.click()}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                                      >
-                                        <PaperClipIcon className="h-4 w-4 text-gray-600" />
-                                        <span className="text-sm font-medium text-gray-900 dark:text-white">Attach File</span>
-                                      </button>
-                                      <input
-                                        id="file-upload"
-                                        type="file"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                          // Handle file upload
-                                          const file = e.target.files?.[0];
-                                          if (file) {
-                                            // Handle the file upload logic here
-                                            console.log('File selected:', file);
-                                          }
-                                        }}
-                                      />
-
-                                      {/* Save for Later Button */}
-                                      <button className="w-full text-center text-sm font-medium text-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors px-4 py-2.5">
-                                        Save for Later
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Audio Recording Section */}
-                                  {audioURLs.length > 0 && (
-                                    <div className="mt-4 space-y-3">
-                                      {audioURLs.map((url, index) => (
-                                        <div key={index} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                              <MicrophoneIcon className="h-4 w-4 text-indigo-500" />
-                                              <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                Audio Response {audioURLs.length > 1 ? `${index + 1}` : ''}
-                                              </span>
-                                            </div>
-                                            <button
-                                              onClick={() => removeAudio(index)}
-                                              className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                                            >
-                                              Remove
-                                            </button>
-                                          </div>
-                                          <audio className="mt-2 w-full" controls src={url} />
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Progress Gallery */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('progressGallery')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <PhotoIcon className="h-5 w-5 text-gray-400" />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Progress Gallery</h2>
                   </div>
                   <ChevronDownIcon 
                     className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.progressGallery ? 'transform rotate-180' : ''
+                      expandedSections.progressPhotos ? 'transform rotate-180' : ''
                     }`}
                   />
                 </button>
                 <div className={`transition-all duration-200 ${
-                  expandedSections.progressGallery ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+                  expandedSections.progressPhotos ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
                 }`}>
                   <div className="p-6 pt-0">
                     <div className="flex items-center justify-between mb-6">
@@ -1253,157 +1042,29 @@ export default function ClientDashboard() {
                 </div>
               </section>
 
-              {/* Payment & Subscription */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('subscription')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <CreditCardIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Subscription Status</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.subscription ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.subscription ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-1.5 rounded-lg">
-                          <CreditCardIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          Subscription Status
-                        </h2>
-                      </div>
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500">
-                        <CheckCircleIcon className="h-4 w-4" />
-                        <span className="text-sm font-medium">Active</span>
-                      </div>
-                    </div>
-
-                    {/* Current Payment Method */}
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-white dark:bg-gray-700 shadow-sm">
-                          <CreditCardIcon className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {paymentData.paymentMethod.brand}
-                            </span>
-                            <span className="text-gray-500">
-                              •••• {paymentData.paymentMethod.last4}
-                            </span>
+              {/* Timeline Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {timelineHighlights.map((highlight) => (
+                  <div 
+                    key={highlight.title}
+                    className="bg-white dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
+                  >
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${highlight.gradient}`}>
+                            <highlight.icon className="h-3.5 w-3.5 text-white" />
                           </div>
-                          <p className="text-sm text-gray-500">
-                            Expires {paymentData.paymentMethod.expiryDate}
-                          </p>
-                        </div>
-                      </div>
-                      <button className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
-                        Update
-                      </button>
-                    </div>
-
-                    {/* Next Payment */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Next Payment</span>
-                        <div className="flex items-center gap-1.5">
-                          <ClockIcon className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
-                            {new Date(paymentData.nextPaymentDate).toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Amount</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          ${paymentData.amount.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Recent Invoices */}
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                        Recent Invoices
-                      </h3>
-                      <div className="space-y-3">
-                        {paymentData.recentInvoices.map((invoice) => (
-                          <div 
-                            key={invoice.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
-                          >
-                            <div className="flex items-center gap-3">
-                              <DocumentTextIcon className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                    {invoice.period}
-                                  </span>
-                                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                                    invoice.status === 'paid' 
-                                      ? 'bg-emerald-500/10 text-emerald-500' 
-                                      : 'bg-amber-500/10 text-amber-500'
-                                  }`}>
-                                    {invoice.status === 'paid' ? 'Paid' : 'Pending'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                  {invoice.id}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                ${invoice.amount.toFixed(2)}
-                              </span>
-                              <button className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-                                View
-                              </button>
-                            </div>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{highlight.title}</h3>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{highlight.description}</p>
                           </div>
-                        ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {timelineHighlights.map((highlight) => (
-                    <div 
-                      key={highlight.title}
-                      className="bg-white dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
-                    >
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-lg bg-gradient-to-br ${highlight.gradient}`}>
-                              <highlight.icon className="h-3.5 w-3.5 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="text-sm font-medium text-gray-900 dark:text-white">{highlight.title}</h3>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{highlight.description}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
+                ))}
+              </div>
             </div>
           </div>
         </div>

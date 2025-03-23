@@ -23,16 +23,12 @@ export interface FormTemplate {
 
 export interface FormSubmission {
   id: string;
-  templateId: string;
-  userId: string;
-  answers: {
-    questionId: string;
-    value: string | number | string[] | boolean;
-  }[];
-  status: 'draft' | 'submitted';
-  submittedAt?: string;
-  createdAt: string;
-  updatedAt: string;
+  clientId: string;
+  coachId: string;
+  type: 'check-in' | 'goal' | 'feedback';
+  data: Record<string, any>;
+  submittedAt: Date;
+  status: 'pending' | 'reviewed' | 'archived';
 }
 
 export interface FormCategory {

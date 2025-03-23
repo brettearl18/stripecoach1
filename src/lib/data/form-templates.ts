@@ -616,171 +616,123 @@ export const defaultCheckInTemplate: FormTemplate = {
   id: 'default-check-in',
   name: 'Weekly Check-in',
   description: 'Track your progress across different areas of your fitness journey',
-  categories: [
-    {
-      id: 'nutrition',
-      name: 'Nutrition',
-      description: 'Track your eating habits and nutrition goals',
-      icon: '🍽️',
-      color: 'green',
-    },
-    {
-      id: 'training',
-      name: 'Training',
-      description: 'Monitor your workout consistency and intensity',
-      icon: '💪',
-      color: 'blue',
-    },
-    {
-      id: 'mindset',
-      name: 'Mindset',
-      description: 'Assess your mental state and motivation',
-      icon: '🧠',
-      color: 'purple',
-    },
-    {
-      id: 'recovery',
-      name: 'Recovery',
-      description: 'Track your sleep and recovery habits',
-      icon: '😴',
-      color: 'orange',
-    },
-  ],
+  categories: ['nutrition', 'training', 'mindset', 'recovery'],
   questions: [
-    // Nutrition Questions
     {
       id: 'nutrition-1',
       text: 'How would you rate your meal preparation this week?',
       type: 'rating',
       required: true,
-      categoryId: 'nutrition',
-      helpText: 'Consider how well you stuck to your meal plan',
+      helpText: 'Consider how well you stuck to your meal plan'
     },
     {
       id: 'nutrition-2',
       text: 'How many meals did you eat out this week?',
       type: 'number',
       required: true,
-      categoryId: 'nutrition',
       min: 0,
       max: 21,
-      helpText: 'Include all meals eaten outside your home',
+      helpText: 'Include all meals eaten outside your home'
     },
     {
       id: 'nutrition-3',
       text: 'Which areas of nutrition need improvement?',
       type: 'multiselect',
       required: true,
-      categoryId: 'nutrition',
       options: [
         'Meal Planning',
         'Portion Control',
         'Protein Intake',
         'Vegetable Intake',
         'Water Intake',
-        'Snacking Habits',
+        'Snacking Habits'
       ],
-      helpText: 'Select all that apply',
+      helpText: 'Select all that apply'
     },
-
-    // Training Questions
     {
       id: 'training-1',
       text: 'How many workouts did you complete this week?',
       type: 'number',
       required: true,
-      categoryId: 'training',
       min: 0,
       max: 14,
-      helpText: 'Include both strength and cardio sessions',
+      helpText: 'Include both strength and cardio sessions'
     },
     {
       id: 'training-2',
       text: 'How would you rate your workout intensity?',
       type: 'rating',
       required: true,
-      categoryId: 'training',
-      helpText: 'Consider your effort level and energy during workouts',
+      helpText: 'Consider your effort level and energy during workouts'
     },
     {
       id: 'training-3',
       text: 'Did you experience any injuries or pain?',
       type: 'checkbox',
       required: true,
-      categoryId: 'training',
-      helpText: 'Check if you experienced any discomfort or injuries',
+      helpText: 'Check if you experienced any discomfort or injuries'
     },
-
-    // Mindset Questions
     {
       id: 'mindset-1',
       text: 'How would you rate your overall motivation this week?',
       type: 'rating',
       required: true,
-      categoryId: 'mindset',
-      helpText: 'Consider your drive and enthusiasm for your goals',
+      helpText: 'Consider your drive and enthusiasm for your goals'
     },
     {
       id: 'mindset-2',
       text: 'What challenges did you face this week?',
       type: 'multiselect',
       required: true,
-      categoryId: 'mindset',
       options: [
         'Time Management',
         'Stress',
         'Social Pressure',
         'Lack of Motivation',
-        'Other',
+        'Other'
       ],
-      helpText: 'Select all that apply',
+      helpText: 'Select all that apply'
     },
     {
       id: 'mindset-3',
       text: 'How confident are you in reaching your goals?',
       type: 'rating',
       required: true,
-      categoryId: 'mindset',
-      helpText: 'Rate your confidence level from 1-5',
+      helpText: 'Rate your confidence level from 1-5'
     },
-
-    // Recovery Questions
     {
       id: 'recovery-1',
       text: 'How many hours of sleep did you get on average?',
       type: 'number',
       required: true,
-      categoryId: 'recovery',
       min: 0,
       max: 12,
-      helpText: 'Enter the average hours of sleep per night',
+      helpText: 'Enter the average hours of sleep per night'
     },
     {
       id: 'recovery-2',
       text: 'How would you rate your sleep quality?',
       type: 'rating',
       required: true,
-      categoryId: 'recovery',
-      helpText: 'Consider how well you slept and how rested you felt',
+      helpText: 'Consider how well you slept and how rested you felt'
     },
     {
       id: 'recovery-3',
       text: 'Did you practice any recovery techniques?',
       type: 'multiselect',
       required: true,
-      categoryId: 'recovery',
       options: [
         'Stretching',
         'Foam Rolling',
         'Meditation',
         'Ice/Heat Therapy',
         'Massage',
-        'None',
+        'None'
       ],
-      helpText: 'Select all that apply',
-    },
+      helpText: 'Select all that apply'
+    }
   ],
   isActive: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
 }; 

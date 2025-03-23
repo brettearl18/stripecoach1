@@ -14,7 +14,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.12.5",
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
-    "@headlessui/react": "^2.2.0",
+    "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.5.0",
     "@radix-ui/react-checkbox": "^1.1.4",
@@ -49,7 +49,8 @@
     "react-dom": "^19.0.0",
     "react-grid-layout": "^1.5.1",
     "react-hot-toast": "^2.5.2",
-    "recharts": "^2.15.1",
+    "reactflow": "^11.11.4",
+    "recharts": "^2.12.2",
     "stripe": "^17.7.0",
     "tailwind-merge": "^3.0.2"
   },

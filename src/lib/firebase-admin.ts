@@ -14,7 +14,8 @@ if (!getApps().length) {
 
     initializeApp({
       credential: cert(serviceAccount as ServiceAccount),
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
     });
   } catch (error) {
     console.error('Firebase Admin initialization error:', error instanceof Error ? error.message : 'Unknown error');
@@ -36,4 +37,5 @@ export function isFirebaseAdminInitialized() {
   };
 }
 
-export default getAuth(); 
+// Export default auth instance
+export default adminAuth; 
