@@ -12,7 +12,10 @@ import {
   ArrowTrendingUpIcon,
   ClockIcon,
   CheckCircleIcon,
-  ArrowTrendingDownIcon
+  ArrowTrendingDownIcon,
+  TrophyIcon,
+  ExclamationTriangleIcon,
+  HeartIcon
 } from '@heroicons/react/24/outline';
 import { getCoaches, getClientsByCoach } from '@/lib/services/firebaseService';
 import type { Coach } from '@/types/coach';
@@ -68,6 +71,25 @@ interface CoachSummary {
       satisfaction: number;
     };
   };
+}
+
+interface Achievement {
+  clientName: string;
+  coachName: string;
+  achievement: string;
+  date: string;
+  type: 'weight' | 'completion' | 'streak' | 'milestone';
+  metric?: string;
+}
+
+interface AtRiskClient {
+  clientName: string;
+  coachName: string;
+  riskLevel: 'high' | 'medium' | 'low';
+  reason: string;
+  lastActive: string;
+  trend: 'down' | 'up';
+  metric: string;
 }
 
 function CoachSummaries() {
@@ -503,6 +525,71 @@ export default function Analytics() {
     ]
   });
 
+  const [weeklyAchievements, setWeeklyAchievements] = useState<Achievement[]>([
+    {
+      clientName: "Emma Thompson",
+      coachName: "Michael Chen",
+      achievement: "Weight loss goal achieved",
+      date: "2 days ago",
+      type: "weight",
+      metric: "-5kg"
+    },
+    {
+      clientName: "Alexander Kim",
+      coachName: "Sarah Johnson",
+      achievement: "30-day workout streak",
+      date: "3 days ago",
+      type: "streak",
+      metric: "30 days"
+    },
+    {
+      clientName: "Sofia Patel",
+      coachName: "Coach Silvi",
+      achievement: "100% weekly completion",
+      date: "1 day ago",
+      type: "completion",
+      metric: "100%"
+    },
+    {
+      clientName: "Lucas Martinez",
+      coachName: "Michael Chen",
+      achievement: "First milestone reached",
+      date: "4 days ago",
+      type: "milestone",
+      metric: "Level 2"
+    }
+  ]);
+
+  const [atRiskClients, setAtRiskClients] = useState<AtRiskClient[]>([
+    {
+      clientName: "James Taylor",
+      coachName: "Sarah Johnson",
+      riskLevel: "high",
+      reason: "Missed last 5 check-ins",
+      lastActive: "2 weeks ago",
+      trend: "down",
+      metric: "0% completion"
+    },
+    {
+      clientName: "Amelia White",
+      coachName: "Coach Silvi",
+      riskLevel: "medium",
+      reason: "Decreasing engagement",
+      lastActive: "5 days ago",
+      trend: "down",
+      metric: "40% completion"
+    },
+    {
+      clientName: "Benjamin Moore",
+      coachName: "Michael Chen",
+      riskLevel: "low",
+      reason: "Plateau in progress",
+      lastActive: "3 days ago",
+      trend: "up",
+      metric: "70% completion"
+    }
+  ]);
+
   return (
     <div className="min-h-screen bg-[#13141A] text-white p-8">
       <div className="max-w-7xl mx-auto">
@@ -582,6 +669,109 @@ export default function Analytics() {
               ))}
             </Tab.Panels>
           </Tab.Group>
+        </div>
+
+        {/* Top Achievements Section */}
+        <div className="bg-[#1a1b1e] rounded-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            <TrophyIcon className="h-6 w-6 text-yellow-500 mr-2" />
+            Top Achievements This Week
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {weeklyAchievements.map((achievement, index) => (
+              <div key={index} className="bg-[#13141A] rounded-lg p-4 border border-gray-800">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="h-8 w-8 rounded-full bg-yellow-500/10 flex items-center justify-center mr-3">
+                      {achievement.type === 'weight' && <ArrowTrendingDownIcon className="h-4 w-4 text-green-500" />}
+                      {achievement.type === 'streak' && <ClockIcon className="h-4 w-4 text-blue-500" />}
+                      {achievement.type === 'completion' && <ArrowTrendingUpIcon className="h-4 w-4 text-purple-500" />}
+                      {achievement.type === 'milestone' && <TrophyIcon className="h-4 w-4 text-yellow-500" />}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{achievement.clientName}</p>
+                      <p className="text-xs text-gray-500">{achievement.coachName}</p>
+                    </div>
+                  </div>
+                  {achievement.metric && (
+                    <span className="text-sm font-semibold text-green-500">{achievement.metric}</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-300">{achievement.achievement}</p>
+                <p className="text-xs text-gray-500 mt-2">{achievement.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* At Risk Clients Section */}
+        <div className="bg-[#1a1b1e] rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-6 flex items-center">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-500 mr-2" />
+            Clients Requiring Attention
+          </h2>
+          <div className="space-y-4">
+            {atRiskClients.map((client, index) => (
+              <div key={index} className="bg-[#13141A] rounded-lg p-4 border border-gray-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className={`
+                      h-10 w-10 rounded-full flex items-center justify-center mr-4
+                      ${client.riskLevel === 'high' ? 'bg-red-500/10' : 
+                        client.riskLevel === 'medium' ? 'bg-yellow-500/10' : 
+                        'bg-blue-500/10'}
+                    `}>
+                      <HeartIcon className={`
+                        h-5 w-5
+                        ${client.riskLevel === 'high' ? 'text-red-500' : 
+                          client.riskLevel === 'medium' ? 'text-yellow-500' : 
+                          'text-blue-500'}
+                      `} />
+                    </div>
+                    <div>
+                      <div className="flex items-center">
+                        <h3 className="font-medium">{client.clientName}</h3>
+                        <span className={`
+                          ml-3 px-2 py-1 rounded-full text-xs
+                          ${client.riskLevel === 'high' ? 'bg-red-500/10 text-red-500' : 
+                            client.riskLevel === 'medium' ? 'bg-yellow-500/10 text-yellow-500' : 
+                            'bg-blue-500/10 text-blue-500'}
+                        `}>
+                          {client.riskLevel.toUpperCase()} RISK
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500">Coach: {client.coachName}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center">
+                      {client.trend === 'down' ? (
+                        <ArrowTrendingDownIcon className="h-4 w-4 text-red-500 mr-1" />
+                      ) : (
+                        <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                      )}
+                      <span className="text-sm font-medium">{client.metric}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Last active: {client.lastActive}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center">
+                  <ExclamationTriangleIcon className={`
+                    h-4 w-4 mr-2
+                    ${client.riskLevel === 'high' ? 'text-red-500' : 
+                      client.riskLevel === 'medium' ? 'text-yellow-500' : 
+                      'text-blue-500'}
+                  `} />
+                  <p className="text-sm text-gray-400">{client.reason}</p>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors">
+                    Take Action
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

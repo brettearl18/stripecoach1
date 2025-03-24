@@ -21,6 +21,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import { LastLoginBadge } from '@/components/ui/LastLoginBadge';
 
 interface CoachWithStats extends Coach {
   stats: {
@@ -160,6 +161,7 @@ export default function CoachManagement() {
                   <th className="px-6 py-5 text-left text-sm font-medium text-gray-300">Active Clients</th>
                   <th className="px-6 py-5 text-left text-sm font-medium text-gray-300">Completion Rate</th>
                   <th className="px-6 py-5 text-left text-sm font-medium text-gray-300">Revenue</th>
+                  <th className="px-6 py-5 text-left text-sm font-medium text-gray-300">Last Login</th>
                   <th className="px-6 py-5 text-right text-sm font-medium text-gray-300">Actions</th>
                 </tr>
               </thead>
@@ -202,6 +204,9 @@ export default function CoachManagement() {
                     </td>
                     <td className="px-6 py-5">
                       <div className="text-lg font-semibold">${coach.stats.revenue.toLocaleString()}</div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <LastLoginBadge lastLoginAt={coach.lastLoginAt} />
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center justify-end gap-2">

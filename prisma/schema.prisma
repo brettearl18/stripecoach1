@@ -13,6 +13,7 @@ model Coach {
   name          String
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  lastLoginAt   DateTime?
   clients       Client[]
   stripeConnect StripeConnect?
 }
@@ -27,6 +28,7 @@ model Client {
   subscriptions   Subscription[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  lastLoginAt     DateTime?
 
   @@index([coachId])
 }
