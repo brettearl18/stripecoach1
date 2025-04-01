@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getClients, getFormSubmissions, type Client, type FormSubmission, getClientsByCoach, type Coach } from '@/lib/services/firebaseService';
+import { getClientsByCoach, type Client, type Coach, getCoach, getCoaches } from '@/lib/services/firebaseService';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import Link from 'next/link';
 import {
@@ -39,6 +39,7 @@ export default function CoachDashboard() {
   const [coach, setCoach] = useState<Coach | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({
     activeClients: 0,
     pendingResponses: 0,
@@ -52,52 +53,65 @@ export default function CoachDashboard() {
   });
 
   useEffect(() => {
-    if (coachId) {
-      loadCoachData();
-    }
+    loadCoachData();
   }, [coachId]);
 
   const loadCoachData = async () => {
     try {
       setIsLoading(true);
-      const coachData = await getCoach(coachId!);
-      if (coachData) {
-        setCoach(coachData);
-        const clientsData = await getClientsByCoach(coachId!);
-        setClients(clientsData);
-
-        // Calculate stats based on clients data
-        const pendingResponses = clientsData.reduce((count, client) => {
-          // TODO: Implement actual pending responses count
-          return count + Math.floor(Math.random() * 3); // Temporary random number for demo
-        }, 0);
-
-        const completionRate = clientsData.length > 0 
-          ? Math.round((clientsData.filter(client => client.goals.length > 0).length / clientsData.length) * 100)
-          : 0;
-
-        // Temporary revenue calculation
-        const revenue = clientsData.length * 100; // $100 per client
-
-        // Temporary client progress calculation
-        const improving = Math.floor(clientsData.length * 0.6);
-        const steady = Math.floor(clientsData.length * 0.3);
-        const declining = clientsData.length - improving - steady;
-
-        setStats({
-          activeClients: clientsData.length,
-          pendingResponses,
-          completionRate,
-          revenue,
-          clientProgress: {
-            improving,
-            steady,
-            declining,
-          }
-        });
+      setError(null);
+      
+      let coachData: Coach | null = null;
+      
+      if (coachId) {
+        coachData = await getCoach(coachId);
+      } else {
+        // If no coach ID provided, get the first coach from mock data
+        const coaches = await getCoaches();
+        coachData = coaches[0] || null;
       }
+
+      if (!coachData) {
+        setError('Coach not found');
+        return;
+      }
+
+      setCoach(coachData);
+      const clientsData = await getClientsByCoach(coachData.id!);
+      setClients(clientsData);
+
+      // Calculate stats based on clients data
+      const pendingResponses = clientsData.reduce((count, client) => {
+        // TODO: Implement actual pending responses count
+        return count + Math.floor(Math.random() * 3); // Temporary random number for demo
+      }, 0);
+
+      const completionRate = clientsData.length > 0 
+        ? Math.round((clientsData.filter(client => client.goals?.length > 0).length / clientsData.length) * 100)
+        : 0;
+
+      // Temporary revenue calculation
+      const revenue = clientsData.length * 100; // $100 per client
+
+      // Temporary client progress calculation
+      const improving = Math.floor(clientsData.length * 0.6);
+      const steady = Math.floor(clientsData.length * 0.3);
+      const declining = clientsData.length - improving - steady;
+
+      setStats({
+        activeClients: clientsData.length,
+        pendingResponses,
+        completionRate,
+        revenue,
+        clientProgress: {
+          improving,
+          steady,
+          declining,
+        }
+      });
     } catch (error) {
       console.error('Error loading coach data:', error);
+      setError('Failed to load coach data');
     } finally {
       setIsLoading(false);
     }
@@ -126,11 +140,11 @@ export default function CoachDashboard() {
     );
   }
 
-  if (!coach) {
+  if (error || !coach) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
         <div className="text-gray-600 dark:text-gray-400">
-          Coach not found
+          {error || 'Coach not found'}
         </div>
       </div>
     );
@@ -326,7 +340,7 @@ export default function CoachDashboard() {
                     </div>
                     <div className="mt-2">
                       <div className="flex flex-wrap gap-2">
-                        {client.goals.map((goal, index) => (
+                        {(client.goals || []).map((goal, index) => (
                           <span key={index} className="text-sm bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
                             {goal}
                           </span>

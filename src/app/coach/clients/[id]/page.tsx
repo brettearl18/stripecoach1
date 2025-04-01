@@ -2,240 +2,203 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { Client, getClientById } from '@/lib/services/firebaseService';
 import {
-  getFormSubmissions,
-  getClientAnalytics,
-  getAISuggestions,
-  type FormSubmission,
-  type ClientAnalytics,
-  type AICoachingSuggestion,
-  type Client,
-  getClients
-} from '@/lib/services/firebaseService';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  UserIcon,
+  ChartBarIcon,
+  ClipboardDocumentCheckIcon,
+  ChatBubbleLeftRightIcon,
+  PhotoIcon,
+  CalendarIcon,
+} from '@heroicons/react/24/outline';
 
-export default function ClientDetail() {
+export default function ClientDetailsPage() {
   const params = useParams();
   const clientId = params.id as string;
-  
   const [client, setClient] = useState<Client | null>(null);
-  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-  const [analytics, setAnalytics] = useState<ClientAnalytics | null>(null);
-  const [suggestions, setSuggestions] = useState<AICoachingSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    const loadClientData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Load client details
-        const clients = await getClients();
-        const clientData = clients.find(c => c.id === clientId);
-        if (clientData) {
-          setClient(clientData);
-        }
-
-        // Load submissions
-        const submissionsData = await getFormSubmissions(undefined, clientId);
-        setSubmissions(submissionsData.sort((a, b) => 
-          b.submittedAt.getTime() - a.submittedAt.getTime()
-        ));
-
-        // Load analytics
-        const analyticsData = await getClientAnalytics(clientId);
-        setAnalytics(analyticsData);
-
-        // Load AI suggestions
-        const suggestionsData = await getAISuggestions(clientId);
-        setSuggestions(suggestionsData);
-
-      } catch (error) {
-        console.error('Error loading client data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadClientData();
   }, [clientId]);
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const loadClientData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getClientById(clientId);
+      setClient(data);
+    } catch (error) {
+      console.error('Error loading client:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0F15] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-gray-400">
-          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Loading client data...
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   if (!client) {
     return (
-      <div className="min-h-screen bg-[#0B0F15] flex items-center justify-center text-white">
-        Client not found
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">Client not found</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F15] text-white p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => window.history.back()}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold">{client.name}</h1>
-            <p className="text-gray-400">{client.email}</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Analytics Overview */}
-          <div className="bg-[#1A1F2B] rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Analytics Overview</h2>
-            {analytics ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-400">Total Submissions</div>
-                  <div className="text-2xl font-semibold">{analytics.submissions}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400">Average Completion Time</div>
-                  <div className="text-2xl font-semibold">
-                    {Math.round(analytics.averageCompletionTime / 60)} min
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400">Completion Rate</div>
-                  <div className="text-2xl font-semibold">
-                    {Math.round(analytics.completionRate * 100)}%
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-400">Consistency Score</div>
-                  <div className="text-2xl font-semibold">
-                    {analytics.consistencyScore}%
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-gray-400">No analytics available</div>
-            )}
-          </div>
-
-          {/* Latest AI Suggestions */}
-          <div className="bg-[#1A1F2B] rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Latest AI Suggestions</h2>
-            {suggestions.length > 0 ? (
-              <div className="space-y-4">
-                {suggestions[0].suggestions.map((suggestion, index) => (
-                  <div key={index} className="bg-[#2A303C] rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">{suggestion.category}</span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        suggestion.priority === 'high' ? 'bg-red-500/10 text-red-400' :
-                        suggestion.priority === 'medium' ? 'bg-yellow-500/10 text-yellow-400' :
-                        'bg-green-500/10 text-green-400'
-                      }`}>
-                        {suggestion.priority}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-300">{suggestion.suggestion}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-gray-400">No suggestions available</div>
-            )}
-          </div>
-
-          {/* Goals and Preferences */}
-          <div className="bg-[#1A1F2B] rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Goals & Preferences</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-400 mb-2">Goals</div>
-                <div className="space-y-1">
-                  {Array.isArray(client.goals) ? (
-                    client.goals.map((goal, index) => (
-                      <div key={index} className="bg-[#2A303C] text-sm rounded-lg px-3 py-2">
-                        {goal}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-gray-400">No goals set</div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-400 mb-2">Focus Areas</div>
-                <div className="flex flex-wrap gap-2">
-                  {client.preferences?.focusAreas?.map((area, index) => (
-                    <span key={index} className="bg-blue-500/10 text-blue-400 text-sm rounded-lg px-3 py-1">
-                      {area}
-                    </span>
-                  ))}
-                </div>
-              </div>
+    <div className="container mx-auto px-4 py-8">
+      {/* Client Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
+              <UserIcon className="h-8 w-8 text-gray-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">{client.name}</h1>
+              <p className="text-gray-500">{client.email}</p>
             </div>
           </div>
-        </div>
-
-        {/* Check-in History */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Check-in History</h2>
-          <div className="space-y-4">
-            {submissions.map((submission) => (
-              <div key={submission.id} className="bg-[#1A1F2B] rounded-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-gray-400">{formatDate(submission.submittedAt)}</div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm">
-                      <span className="text-gray-400">Completion Time: </span>
-                      <span className="text-blue-400">{Math.round(submission.metrics.completionTime / 60)} min</span>
-                    </div>
-                    <div className="text-sm">
-                      <span className="text-gray-400">Questions: </span>
-                      <span className="text-blue-400">
-                        {submission.metrics.questionsAnswered} / {submission.metrics.requiredQuestionsAnswered}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {Object.entries(submission.answers).map(([questionId, answer]) => (
-                    <div key={questionId} className="bg-[#2A303C] rounded-lg p-4">
-                      <div className="text-sm text-gray-400 mb-2">Question {questionId}</div>
-                      <div className="text-sm">{answer.toString()}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="flex gap-4">
+            <Button variant="outline">
+              <ChatBubbleLeftRightIcon className="h-4 w-4 mr-2" />
+              Message
+            </Button>
+            <Button>
+              <ClipboardDocumentCheckIcon className="h-4 w-4 mr-2" />
+              New Check-in
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Client Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-8">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="check-ins">Check-ins</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="forms">Forms</TabsTrigger>
+          <TabsTrigger value="photos">Photos</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Goals</CardTitle>
+                <CardDescription>Client's current goals and objectives</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {(client.goals || []).map((goal, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 p-2 rounded-lg bg-gray-50"
+                    >
+                      <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                      <span>{goal}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Latest updates and interactions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <ClipboardDocumentCheckIcon className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Completed weekly check-in</p>
+                      <p className="text-sm text-gray-500">
+                        {client.lastCheckIn
+                          ? new Date(client.lastCheckIn).toLocaleDateString()
+                          : 'No recent check-in'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Progress Overview</CardTitle>
+                <CardDescription>Key metrics and achievements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Add progress metrics here */}
+                <div className="text-center text-gray-500">
+                  Progress tracking coming soon
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Tasks</CardTitle>
+                <CardDescription>Scheduled check-ins and forms</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Add upcoming tasks here */}
+                <div className="text-center text-gray-500">
+                  No upcoming tasks
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="check-ins">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Check-in History</CardTitle>
+                  <CardDescription>View and manage client check-ins</CardDescription>
+                </div>
+                <Button>
+                  <Link href={`/coach/clients/${client.id}/check-ins/new`}>
+                    New Check-in
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Add check-in history here */}
+              <div className="text-center text-gray-500 py-8">
+                No check-ins recorded yet
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Add other tab contents here */}
+      </Tabs>
     </div>
   );
 } 

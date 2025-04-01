@@ -4,7 +4,7 @@ import { resolve } from 'path';
 // Load environment variables from .env.local
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase/config';
 import { collection, getDocs, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { createTestCoach } from '@/lib/services/firebaseService';
 

@@ -1,4 +1,4 @@
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase/config';
 import {
   collection,
   doc,
@@ -7,7 +7,8 @@ import {
   query,
   where,
   Timestamp,
-  writeBatch
+  writeBatch,
+  getDoc
 } from 'firebase/firestore';
 
 // Helper function to check if a value has a toDate method
@@ -60,6 +61,11 @@ export interface Client {
   name: string;
   email: string;
   coachId: string;
+  goals: string[];
+  avatar?: string;
+  lastLoginAt?: Date;
+  lastCheckIn?: Date;
+  isActive: boolean;
 }
 
 // Mock data and functions for development
@@ -95,13 +101,21 @@ let mockClients: Client[] = [
     id: '1',
     name: 'John Doe',
     email: 'john@example.com',
-    coachId: '1'
+    coachId: '1',
+    goals: ['Weight Loss', 'Muscle Gain'],
+    lastLoginAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    lastCheckIn: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    isActive: true
   },
   {
     id: '2',
     name: 'Jane Smith',
     email: 'jane@example.com',
-    coachId: '2'
+    coachId: '2',
+    goals: ['Stress Reduction', 'Work-Life Balance'],
+    lastLoginAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
+    lastCheckIn: new Date(Date.now() - 96 * 60 * 60 * 1000),
+    isActive: true
   }
 ];
 
@@ -111,7 +125,23 @@ export const getCoaches = async (): Promise<Coach[]> => {
 };
 
 export const getCoach = async (id: string): Promise<Coach | null> => {
-  return mockCoaches.find(coach => coach.id === id) || null;
+  try {
+    const coachRef = doc(db, 'coaches', id);
+    const coachDoc = await getDoc(coachRef);
+    
+    if (!coachDoc.exists()) {
+      return null;
+    }
+
+    const coachData = coachDoc.data();
+    return {
+      id: coachDoc.id,
+      ...convertTimestampsToDates(coachData)
+    } as Coach;
+  } catch (error) {
+    console.error('Error getting coach:', error);
+    return null;
+  }
 };
 
 export const createTestCoach = async (coachData: Omit<Coach, 'id'>): Promise<Coach> => {
@@ -141,7 +171,11 @@ export const deleteCoach = async (id: string): Promise<void> => {
 
 // Client functions
 export const getClientsByCoach = async (coachId: string): Promise<Client[]> => {
-  return mockClients.filter(client => client.id === coachId);
+  return mockClients.filter(client => client.coachId === coachId);
+};
+
+export const getClientById = async (clientId: string): Promise<Client | null> => {
+  return mockClients.find(client => client.id === clientId) || null;
 };
 
 export async function createTestData() {
@@ -275,27 +309,6 @@ export async function createTestData() {
     return { success: true };
   } catch (error) {
     console.error('Error creating test data:', error);
-    throw error;
-  }
-}
-
-export async function getCoach(coachId: string): Promise<Coach | null> {
-  try {
-    const coachRef = doc(db, 'coaches', coachId);
-    const coachDoc = await getDocs(coachRef);
-    
-    if (!coachDoc.exists()) {
-      return null;
-    }
-
-    const data = coachDoc.data();
-    return {
-      id: coachDoc.id,
-      ...convertTimestampsToDates(data),
-      specialties: Array.isArray(data.specialties) ? data.specialties : []
-    } as Coach;
-  } catch (error) {
-    console.error('Error getting coach:', error);
     throw error;
   }
 }
