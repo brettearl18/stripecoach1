@@ -126,21 +126,24 @@ export const getCoaches = async (): Promise<Coach[]> => {
 
 export const getCoach = async (id: string): Promise<Coach | null> => {
   try {
-    const coachRef = doc(db, 'coaches', id);
-    const coachDoc = await getDoc(coachRef);
+    const coachesRef = collection(db, 'coaches');
+    const q = query(coachesRef, where('id', '==', id));
+    const querySnapshot = await getDocs(q);
     
-    if (!coachDoc.exists()) {
+    if (querySnapshot.empty) {
       return null;
     }
-
-    const coachData = coachDoc.data();
+    
+    const doc = querySnapshot.docs[0];
+    const data = doc.data();
     return {
-      id: coachDoc.id,
-      ...convertTimestampsToDates(coachData)
+      id: doc.id,
+      ...convertTimestampsToDates(data),
+      specialties: Array.isArray(data.specialties) ? data.specialties : []
     } as Coach;
   } catch (error) {
     console.error('Error getting coach:', error);
-    return null;
+    throw error;
   }
 };
 
