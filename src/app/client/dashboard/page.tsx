@@ -48,6 +48,8 @@ import Link from 'next/link';
 import { DailyCheckInsList } from '@/components/dashboard/DailyCheckInsList';
 import type { CheckInForm } from '@/types/checkIn';
 import ProgressGallery from './components/ProgressGallery';
+import FeedbackResponse from '@/components/feedback/FeedbackResponse';
+import { AudioMessage, FileAttachment } from '@/types/feedback';
 
 // Temporary data - would come from backend in real app
 const timelineHighlights = [
@@ -394,6 +396,76 @@ export default function ClientDashboard() {
   const [checkIns, setCheckIns] = useState<CheckInForm[]>([]);
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<number[]>([]);
   const [reviewStatus, setReviewStatus] = useState('pending'); // 'none' | 'pending' | 'completed'
+  const [activeReviewTab, setActiveReviewTab] = useState('training');
+  const [feedbacks, setFeedbacks] = useState([
+    {
+      id: '1',
+      category: 'training',
+      coachName: 'Coach Alex',
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Training Progress!',
+      content: 'Your form has improved significantly this week. Keep focusing on controlled movements.',
+      status: 'pending',
+      metric: {
+        name: 'Form',
+        change: 0.8,
+        unit: 'points'
+      },
+      hasAudio: true,
+      audioCount: 2,
+      suggestions: [
+        'Focus on eccentric phase of lifts',
+        'Maintain current warm-up routine',
+        'Add mobility work between sets'
+      ]
+    },
+    {
+      id: '2',
+      category: 'nutrition',
+      coachName: 'Coach Alex',
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Protein Goals Met!',
+      content: 'Great job hitting your protein targets consistently this week. Your meal timing has also improved.',
+      status: 'pending',
+      metric: {
+        name: 'Protein',
+        change: 15,
+        unit: 'g'
+      },
+      hasAudio: true,
+      audioCount: 1,
+      suggestions: [
+        'Continue with current protein intake',
+        'Try to add more green vegetables to lunch',
+        'Consider having a small pre-workout snack'
+      ]
+    },
+    {
+      id: '3',
+      category: 'mindset',
+      coachName: 'Coach Alex',
+      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+      title: 'Sleep Improving!',
+      content: 'Your sleep quality has increased by 0.7 hours this week.',
+      status: 'pending',
+      metric: {
+        name: 'Sleep',
+        change: 0.7,
+        unit: 'hrs'
+      },
+      hasAudio: true,
+      audioCount: 2,
+      suggestions: [
+        'Maintain your current bedtime routine of 10:30 PM',
+        'Consider reducing screen time 30 minutes before bed',
+        'Your morning routine is working well - keep it consistent'
+      ]
+    }
+  ]);
+
+  const [isRecordingResponse, setIsRecordingResponse] = useState(false);
+  const [responseAudioURL, setResponseAudioURL] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
@@ -471,6 +543,114 @@ export default function ClientDashboard() {
     });
   };
 
+  const handleReply = (feedbackId: string, content: string, audioUrl?: string) => {
+    setFeedbacks(prevFeedbacks => 
+      prevFeedbacks.map(feedback => {
+        if (feedback.id === feedbackId) {
+          return {
+            ...feedback,
+            replies: [
+              ...(feedback.replies || []),
+              {
+                id: `${feedbackId}-${Date.now()}`,
+                content,
+                date: new Date().toISOString(),
+                isClient: true,
+                hasAudio: !!audioUrl,
+                audioUrl
+              }
+            ]
+          };
+        }
+        return feedback;
+      })
+    );
+  };
+
+  const handleReact = (feedbackId: string, reaction: string) => {
+    // Implement reaction handling logic here
+    console.log(`Reacted to feedback ${feedbackId} with ${reaction}`);
+  };
+
+  const startResponseRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setResponseAudioURL(url);
+      };
+
+      mediaRecorder.start();
+      setIsRecordingResponse(true);
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+    }
+  };
+
+  const stopResponseRecording = () => {
+    if (mediaRecorderRef.current && isRecordingResponse) {
+      mediaRecorderRef.current.stop();
+      setIsRecordingResponse(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      setUploadedFiles(Array.from(event.target.files));
+    }
+  };
+
+  const handleFeedbackResponse = async (feedbackId: string, data: {
+    content?: string;
+    audioMessage?: AudioMessage;
+    attachments?: FileAttachment[];
+    isAgreed: boolean;
+  }) => {
+    try {
+      const response = await fetch(`/api/feedback/${feedbackId}/response`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit response');
+      }
+
+      // Update local state to reflect the response
+      setFeedbacks(prevFeedbacks => 
+        prevFeedbacks.map(feedback => {
+          if (feedback.id === feedbackId) {
+            return {
+              ...feedback,
+              status: data.isAgreed ? 'completed' : 'reviewed'
+            };
+          }
+          return feedback;
+        })
+      );
+
+      // Show success message or update UI as needed
+    } catch (error) {
+      console.error('Error submitting feedback response:', error);
+      // Handle error (show error message, etc.)
+    }
+  };
+
   useEffect(() => {
     // Mock data for upcoming events
     const mockCheckIns: CheckInForm[] = [
@@ -518,14 +698,14 @@ export default function ClientDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
       <DashboardNav />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Left Column */}
           <div className="col-span-12 lg:col-span-3 space-y-6">
             {/* Client Profile */}
-            <div className="bg-gray-800/30 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 text-center">
+            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 text-center shadow-lg">
               <div className="relative mx-auto w-24 h-24 mb-4">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
                 <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-gray-800">
@@ -537,46 +717,46 @@ export default function ClientDashboard() {
               <h2 className="text-xl font-bold text-white mb-1">John Smith</h2>
               <p className="text-gray-400 mb-4">Weight Management</p>
               <div className="flex flex-col space-y-3">
-                <button className="flex items-center justify-center px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-colors">
+                <button className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg text-white font-medium transition-all transform hover:scale-105">
                   <PencilSquareIcon className="w-5 h-5 mr-2" />
                   Check In
                 </button>
-                <button className="flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white font-medium transition-colors">
+                <button className="flex items-center justify-center px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg text-white font-medium transition-all transform hover:scale-105">
                   <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2 2v12a2 2 0 012-2h10a2 2 0 012-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span className="relative">
                     Messages
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">3</span>
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center animate-pulse">3</span>
                   </span>
                 </button>
               </div>
             </div>
 
             {/* Achievements */}
-            <div className="bg-gray-800/30 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50">
+            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-semibold text-white">Achievements</h2>
-                <span className="text-sm text-blue-400">View All</span>
+                <span className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer transition-colors">View All</span>
               </div>
               <div className="space-y-4">
                 {achievements.map((achievement) => (
-                  <div key={achievement.name} className="relative">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${
+                  <div key={achievement.name} className="relative group">
+                    <div className="flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-700/30">
+                      <div className={`p-2 rounded-lg transform transition-transform duration-300 group-hover:scale-110 ${
                         achievement.achieved
-                          ? 'bg-gradient-to-br from-blue-500 to-purple-500'
-                          : 'bg-gray-700'
+                          ? 'bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg shadow-blue-500/20'
+                          : 'bg-gray-700/50'
                       }`}>
-                        <achievement.icon />
+                        <achievement.icon className="w-5 h-5 text-white" />
                       </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-white">{achievement.name}</h3>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{achievement.name}</h3>
                         <p className="text-xs text-gray-400">{achievement.description}</p>
                         {!achievement.achieved && (
                           <div className="mt-1 h-1 w-24 bg-gray-700 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
                               style={{ width: `${achievement.progress}%` }}
                             />
                           </div>
@@ -589,32 +769,38 @@ export default function ClientDashboard() {
             </div>
 
             {/* Upcoming Events */}
-            <div className="bg-gray-800/30 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50">
+            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-semibold text-white">Upcoming Events</h2>
-                <a href="/calendar" className="text-blue-400 hover:text-blue-300 text-sm">View Calendar</a>
+                <a href="/calendar" className="text-blue-400 hover:text-blue-300 text-sm transition-colors">View Calendar</a>
               </div>
               <div className="space-y-4">
                 {checkIns.map((event) => (
-                  <div key={event.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+                  <div key={event.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 group">
                     <div className="flex items-center space-x-3 mb-2">
                       {event.title.includes('Check-in') && (
-                        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
+                        <div className="p-2 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
+                          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                        </div>
                       )}
                       {event.title.includes('Review') && (
-                        <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
+                        <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
+                          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </div>
                       )}
                       {event.title.includes('Photos') && (
-                        <svg className="w-5 h-5 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                        <div className="p-2 rounded-lg bg-pink-500/20 group-hover:bg-pink-500/30 transition-colors">
+                          <svg className="w-5 h-5 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
                       )}
-                      <span className="text-white font-medium">{event.title}</span>
+                      <span className="text-white font-medium group-hover:text-blue-400 transition-colors">{event.title}</span>
                     </div>
                     <div className="flex items-center text-sm text-gray-400">
                       <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -639,14 +825,14 @@ export default function ClientDashboard() {
               </div>
             </div>
 
-            {/* Subscription Status - Moved to left panel */}
-            <div className="bg-gray-800/30 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50">
+            {/* Subscription Status */}
+            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <CreditCardIcon className="h-5 w-5 text-gray-400" />
                   <h2 className="text-lg font-semibold text-white">Subscription</h2>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-500">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">
                   <CheckCircleIcon className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">Active</span>
                 </div>
@@ -674,9 +860,9 @@ export default function ClientDashboard() {
               
               {/* Payment button - shows different states based on payment status */}
               <button
-                className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                   new Date(paymentData.nextPaymentDate) < new Date()
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white cursor-pointer transform hover:scale-105'
                     : 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
                 }`}
                 onClick={() => {
@@ -698,14 +884,14 @@ export default function ClientDashboard() {
           <div className="col-span-12 lg:col-span-9">
             <div className="grid gap-6">
               {/* Weekly Check-in Results */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
                 <button 
                   onClick={() => toggleSection('weeklyResults')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <ChartBarIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Check-in Results</h2>
+                    <h2 className="text-lg font-semibold text-white">Weekly Check-in Results</h2>
                   </div>
                   <ChevronDownIcon 
                     className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
@@ -719,8 +905,8 @@ export default function ClientDashboard() {
                   <div className="p-6 pt-0">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Check-in Results</h2>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Last updated 2 days ago</span>
+                        <h2 className="text-lg font-semibold text-white">Weekly Check-in Results</h2>
+                        <span className="text-sm text-gray-400">Last updated 2 days ago</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -741,7 +927,7 @@ export default function ClientDashboard() {
                           <div 
                             key={metric.name}
                             style={gradientStyle}
-                            className="bg-white dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
+                            className="bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
                           >
                             <div className="relative z-10">
                               <div className="flex items-center justify-between mb-3">
@@ -757,14 +943,14 @@ export default function ClientDashboard() {
                                     <metric.icon className="h-3.5 w-3.5 text-white" />
                                   </div>
                                   <div>
-                                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">{metric.name}</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{metric.description}</p>
+                                    <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{metric.name}</h3>
+                                    <p className="text-xs text-gray-400">{metric.description}</p>
                                   </div>
                                 </div>
                                 <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${
                                   metric.trend === 'up'
-                                    ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10'
-                                    : 'text-rose-500 dark:text-rose-400 bg-rose-500/10'
+                                    ? 'text-emerald-500 bg-emerald-500/10'
+                                    : 'text-rose-500 bg-rose-500/10'
                                 }`}>
                                   <span className="font-medium">
                                     {metric.trend === 'up' ? '+' : ''}
@@ -789,19 +975,19 @@ export default function ClientDashboard() {
                                       metric.current.toFixed(1) 
                                     : metric.current}
                                 </span>
-                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                <span className="text-sm text-gray-400">
                                   {metric.unit}
                                 </span>
                               </div>
 
                               <div className="flex items-center justify-between mt-2 text-xs">
-                                <span className="text-gray-500 dark:text-gray-400">Target: {metric.name === 'Steps' ? 
+                                <span className="text-gray-400">Target: {metric.name === 'Steps' ? 
                                   metric.goal.toLocaleString() : 
                                   metric.goal.toFixed(1)} {metric.unit}</span>
                                 <span className={`font-medium ${
-                                  progress >= 90 ? 'text-emerald-500 dark:text-emerald-400' :
-                                  progress >= 70 ? 'text-amber-500 dark:text-amber-400' :
-                                  'text-gray-500 dark:text-gray-400'
+                                  progress >= 90 ? 'text-emerald-500' :
+                                  progress >= 70 ? 'text-amber-500' :
+                                  'text-gray-400'
                                 }`}>{Math.round(progress)}%</span>
                               </div>
                             </div>
@@ -814,20 +1000,14 @@ export default function ClientDashboard() {
               </section>
 
               {/* Coach's Review Section */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
                 <button 
                   onClick={() => toggleSection('coachReview')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <AcademicCapIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Coach's Review</h2>
-                    {!expandedSections.coachReview && insights.filter(insight => !acceptedResponses.includes(insight.title)).length > 0 && (
-                      <span className="flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                      </span>
-                    )}
+                    <h2 className="text-lg font-semibold text-white">Coach's Review</h2>
                   </div>
                   <ChevronDownIcon 
                     className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
@@ -839,80 +1019,119 @@ export default function ClientDashboard() {
                   expandedSections.coachReview ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
                 }`}>
                   <div className="p-6 pt-0">
-                    {/* Coach's Review Content */}
+                    {/* Review Tabs */}
+                    <div className="flex space-x-1 mb-6 bg-gray-800/50 p-1 rounded-lg">
+                      {['training', 'nutrition', 'mindset'].map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveReviewTab(tab)}
+                          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                            activeReviewTab === tab
+                              ? 'bg-amber-500/20 text-amber-400'
+                              : 'text-gray-400 hover:text-gray-300'
+                          }`}
+                        >
+                          {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Filtered Feedback */}
                     <div className="space-y-6">
-                      {/* Coach's Response */}
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                        <div className="flex items-start gap-4">
-                          <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-                            <AcademicCapIcon className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Coach Alex</h3>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">2 days ago</span>
-                            </div>
-                            <p className="mt-2 text-gray-600 dark:text-gray-300">
-                              Great progress this week! Your consistency in workouts is really showing. I've noticed significant improvements in your form and endurance. Let's focus on maintaining this momentum.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Suggestions */}
-                      <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">Suggestions</h4>
-                        <div className="space-y-3">
-                          {insights
-                            .filter(insight => !acceptedResponses.includes(insight.title))
-                            .map((insight, index) => (
-                              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                <div className="flex-shrink-0">
-                                  <button
-                                    onClick={() => handleAcceptSuggestion(index)}
-                                    className={`p-1 rounded-full ${
-                                      acceptedSuggestions.includes(index)
-                                        ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400'
-                                        : 'bg-gray-100 dark:bg-gray-600 text-gray-400 dark:text-gray-500 hover:bg-amber-100 dark:hover:bg-amber-900 hover:text-amber-600 dark:hover:text-amber-400'
-                                    }`}
-                                  >
-                                    <CheckIcon className="h-4 w-4" />
-                                  </button>
+                      {feedbacks
+                        .filter(feedback => feedback.category === activeReviewTab)
+                        .map(feedback => (
+                          <div key={feedback.id} className="space-y-6">
+                            <div className="bg-gray-800/40 rounded-xl p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
+                                    Pending Review
+                                  </div>
+                                  <div className="text-gray-400 text-sm">
+                                    Generated {new Date(feedback.date).toLocaleDateString('en-US', {
+                                      day: 'numeric',
+                                      month: 'numeric',
+                                      year: 'numeric'
+                                    })}
+                                  </div>
                                 </div>
-                                <p className="text-sm text-gray-600 dark:text-gray-300">{insight.recommendations?.at(0) || 'No suggestions available'}</p>
+                                {feedback.hasAudio && (
+                                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium hover:bg-indigo-500/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                      <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
+                                      <path d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z" />
+                                    </svg>
+                                    Listen
+                                    {feedback.audioCount > 1 && (
+                                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/30 text-xs">
+                                        {feedback.audioCount}
+                                      </span>
+                                    )}
+                                  </button>
+                                )}
                               </div>
-                            ))}
-                        </div>
-                      </div>
 
-                      {/* Voice Message */}
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                        <div className="flex items-center gap-3">
-                          <button className="p-2 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400">
-                            <PlayIcon className="h-4 w-4" />
-                          </button>
-                          <div className="flex-1">
-                            <div className="h-1 bg-gray-200 dark:bg-gray-600 rounded-full">
-                              <div className="h-1 bg-amber-500 rounded-full" style={{ width: '0%' }}></div>
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-600/20 flex items-center justify-center">
+                                  <ArrowTrendingUpIcon className="w-6 h-6 text-amber-500" />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className="text-xl font-semibold text-white mb-2">{feedback.title}</h3>
+                                  <p className="text-gray-300 mb-4">{feedback.content}</p>
+
+                                  <div className="mb-6">
+                                    <h4 className="text-sm font-medium text-white mb-3">Suggested Recommendations:</h4>
+                                    <div className="space-y-2">
+                                      {feedback.suggestions.map((suggestion, index) => (
+                                        <div 
+                                          key={index}
+                                          className="flex items-start gap-3 p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors group"
+                                        >
+                                          <button 
+                                            onClick={() => handleAcceptSuggestion(index)}
+                                            className={`flex-shrink-0 p-1 rounded-full ${
+                                              acceptedSuggestions.includes(index)
+                                                ? 'bg-emerald-500/20 text-emerald-400'
+                                                : 'bg-gray-600/50 text-gray-400 hover:bg-amber-500/20 hover:text-amber-400'
+                                            } transition-colors`}
+                                          >
+                                            <CheckIcon className="w-4 h-4" />
+                                          </button>
+                                          <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                                            {suggestion}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    <h4 className="text-sm font-medium text-white">Your Response:</h4>
+                                    <FeedbackResponse
+                                      feedbackId={feedback.id}
+                                      onSubmit={(data) => handleFeedbackResponse(feedback.id, data)}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">1:30</span>
-                        </div>
-                      </div>
+                        ))}
                     </div>
                   </div>
                 </div>
               </section>
 
               {/* Tracking Tools */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
                 <button 
                   onClick={() => toggleSection('trackingTools')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <ClipboardDocumentCheckIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Tracking Tools</h2>
+                    <h2 className="text-lg font-semibold text-white">Tracking Tools</h2>
                   </div>
                   <ChevronDownIcon 
                     className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
@@ -929,26 +1148,26 @@ export default function ClientDashboard() {
                         <a
                           key={tool.name}
                           href={tool.href}
-                          className="group relative bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow overflow-hidden"
+                          className="group relative bg-gray-800/50 rounded-xl shadow-sm border border-gray-700/50 p-6 hover:border-gray-600/50 hover:shadow-md transition-all duration-300 overflow-hidden"
                         >
                           <div className="flex items-center gap-4">
-                            <div className={`rounded-lg p-3 bg-gradient-to-br ${tool.gradient}`}>
+                            <div className={`rounded-lg p-3 bg-gradient-to-br ${tool.gradient} transform transition-transform duration-300 group-hover:scale-110`}>
                               <tool.icon className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                              <h3 className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors">
                                 {tool.name}
                               </h3>
-                              <p className="text-sm text-gray-500">{tool.description}</p>
+                              <p className="text-sm text-gray-400">{tool.description}</p>
                             </div>
                           </div>
                           {tool.count && (
-                            <div className="absolute top-6 right-6 bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full text-sm font-medium">
+                            <div className="absolute top-6 right-6 bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-sm font-medium">
                               {tool.count} photos
                             </div>
                           )}
                           {tool.lastUpdate && (
-                            <div className="absolute top-6 right-6 flex items-center gap-1 text-sm text-gray-500">
+                            <div className="absolute top-6 right-6 flex items-center gap-1 text-sm text-gray-400">
                               <CalendarIcon className="h-4 w-4" />
                               <span>Updated {new Date(tool.lastUpdate).toLocaleDateString()}</span>
                             </div>
@@ -960,15 +1179,15 @@ export default function ClientDashboard() {
                 </div>
               </section>
 
-              {/* Goals Roadmap */}
-              <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+              {/* Progress Gallery */}
+              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
                 <button 
                   onClick={() => toggleSection('progressPhotos')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <TrophyIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Progress Gallery</h2>
+                    <h2 className="text-lg font-semibold text-white">Progress Gallery</h2>
                   </div>
                   <ChevronDownIcon 
                     className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
@@ -985,7 +1204,7 @@ export default function ClientDashboard() {
                         <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 p-1.5 rounded-lg">
                           <PhotoIcon className="h-4 w-4 text-white" />
                         </div>
-                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        <h2 className="text-lg font-semibold text-white">
                           Progress Gallery
                         </h2>
                       </div>
@@ -1035,7 +1254,7 @@ export default function ClientDashboard() {
                     </div>
 
                     <div className="mt-6 flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Showing last 3 months of progress</span>
+                      <span className="text-sm text-gray-400">Showing last 3 months of progress</span>
                       <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
                         Upload New Photo
                       </button>
@@ -1049,17 +1268,17 @@ export default function ClientDashboard() {
                 {timelineHighlights.map((highlight) => (
                   <div 
                     key={highlight.title}
-                    className="bg-white dark:bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-100 dark:border-gray-700/50 hover:border-gray-200 dark:hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
+                    className="bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
                   >
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${highlight.gradient}`}>
+                          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${highlight.gradient} transform transition-transform duration-300 group-hover:scale-110`}>
                             <highlight.icon className="h-3.5 w-3.5 text-white" />
                           </div>
                           <div>
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">{highlight.title}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{highlight.description}</p>
+                            <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{highlight.title}</h3>
+                            <p className="text-xs text-gray-400">{highlight.description}</p>
                           </div>
                         </div>
                       </div>
@@ -1073,4 +1292,4 @@ export default function ClientDashboard() {
       </div>
     </div>
   );
-} 
+}
