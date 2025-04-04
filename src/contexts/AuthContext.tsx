@@ -11,13 +11,17 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signIn: async () => {},
-  signOut: async () => {}
+  signOut: async () => {},
+  signUpWithEmail: async () => {},
+  signInWithGoogle: async () => {}
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -64,6 +68,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = '/login';
   };
 
+  const signUpWithEmail = async (email: string, password: string) => {
+    try {
+      // For development, we'll just set the user directly
+      const newUser = {
+        id: email, // Using email as ID for development
+        email,
+        name: email.split('@')[0],
+        role: 'client' as UserRole,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      console.log('Setting new user:', newUser);
+      setUser(newUser);
+      
+      // Store user in both localStorage and cookies for middleware access
+      const userStr = JSON.stringify(newUser);
+      localStorage.setItem('user', userStr);
+      
+      // Set cookie with proper attributes
+      document.cookie = `user=${userStr}; path=/; max-age=86400; samesite=lax`;
+    } catch (error) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      // For development, we'll just set the user directly
+      const newUser = {
+        id: 'google-test@example.com',
+        email: 'google-test@example.com',
+        name: 'Google Test User',
+        role: 'client' as UserRole,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      console.log('Setting Google user:', newUser);
+      setUser(newUser);
+      
+      // Store user in both localStorage and cookies for middleware access
+      const userStr = JSON.stringify(newUser);
+      localStorage.setItem('user', userStr);
+      
+      // Set cookie with proper attributes
+      document.cookie = `user=${userStr}; path=/; max-age=86400; samesite=lax`;
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     // Try to restore user from localStorage
     const storedUser = localStorage.getItem('user');
@@ -107,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut, signUpWithEmail, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

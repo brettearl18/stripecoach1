@@ -121,6 +121,7 @@ export function ClientProfileModal({ isOpen, onClose, onProfileComplete }: Clien
     if (step < steps.length) {
       setStep(step + 1);
     } else {
+      console.log('Profile modal: All steps completed, calling onProfileComplete');
       onProfileComplete(profile);
     }
   };
