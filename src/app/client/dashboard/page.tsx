@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { MainNav } from '@/components/MainNav';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DashboardNav } from '@/components/DashboardNav';
 import {
   CalendarIcon,
   ChartBarIcon,
@@ -517,8 +518,9 @@ export default function ClientDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <DashboardNav />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Left Column */}
           <div className="col-span-12 lg:col-span-3 space-y-6">

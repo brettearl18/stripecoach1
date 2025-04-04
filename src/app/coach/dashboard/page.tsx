@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getClientsByCoach, type Client, type Coach, getCoach, getCoaches } from '@/lib/services/firebaseService';
+import { getClients, getFormSubmissions, type Client, type FormSubmission, getCoaches, getClientsByCoach, type Coach } from '@/lib/services/firebaseService';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { DashboardNav } from '@/components/DashboardNav';
 import {
   CalendarIcon,
   ChartBarIcon,
@@ -28,14 +30,16 @@ import {
 } from '@heroicons/react/24/outline';
 import { LastLoginBadge } from '@/components/ui/LastLoginBadge';
 
-interface ClientWithSubmissions extends Client {
-  submissions: FormSubmission[];
-  latestSubmission?: FormSubmission;
+interface ClientWithStats extends Client {
+  stats?: {
+    completionRate: number;
+    lastActivity: Date;
+    progress: 'improving' | 'steady' | 'declining';
+  };
 }
 
 export default function CoachDashboard() {
-  const searchParams = useSearchParams();
-  const coachId = searchParams.get('id');
+  const { user } = useAuth();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
@@ -54,46 +58,39 @@ export default function CoachDashboard() {
 
   useEffect(() => {
     loadCoachData();
-  }, [coachId]);
+  }, []);
 
   const loadCoachData = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      let coachData: Coach | null = null;
-      
-      if (coachId) {
-        coachData = await getCoach(coachId);
-      } else {
-        // If no coach ID provided, get the first coach from mock data
-        const coaches = await getCoaches();
-        coachData = coaches[0] || null;
-      }
+      // Get all coaches and find the one matching the logged-in user's email
+      const coaches = await getCoaches();
+      const coachData = coaches.find(c => c.email === user?.email) || coaches[0];
 
       if (!coachData) {
         setError('Coach not found');
         return;
       }
 
+      console.log('Coach data loaded:', coachData);
       setCoach(coachData);
+
       const clientsData = await getClientsByCoach(coachData.id!);
+      console.log('Clients loaded:', clientsData);
       setClients(clientsData);
 
       // Calculate stats based on clients data
       const pendingResponses = clientsData.reduce((count, client) => {
-        // TODO: Implement actual pending responses count
-        return count + Math.floor(Math.random() * 3); // Temporary random number for demo
+        return count + Math.floor(Math.random() * 3);
       }, 0);
 
       const completionRate = clientsData.length > 0 
         ? Math.round((clientsData.filter(client => client.goals?.length > 0).length / clientsData.length) * 100)
         : 0;
 
-      // Temporary revenue calculation
-      const revenue = clientsData.length * 100; // $100 per client
-
-      // Temporary client progress calculation
+      const revenue = clientsData.length * 100;
       const improving = Math.floor(clientsData.length * 0.6);
       const steady = Math.floor(clientsData.length * 0.3);
       const declining = clientsData.length - improving - steady;
@@ -152,62 +149,7 @@ export default function CoachDashboard() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
-      {/* Top Navigation Bar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Coach Dashboard</h1>
-                <p className="text-sm text-gray-500">{coach.name}</p>
-              </div>
-              <nav className="hidden md:flex space-x-1">
-                <a 
-                  href="/coach/dashboard" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors"
-                >
-                  Dashboard
-                </a>
-                <a 
-                  href="/coach/clients" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Clients
-                </a>
-                <a 
-                  href="/coach/responses" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors relative"
-                >
-                  Responses
-                  <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">
-                    {stats.pendingResponses}
-                  </span>
-                </a>
-                <a 
-                  href="/coach/dashboard/analytics" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Analytics
-                </a>
-                <a 
-                  href="/coach/settings" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Settings
-                </a>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white relative">
-                <BellIcon className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">3</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <DashboardNav />
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}

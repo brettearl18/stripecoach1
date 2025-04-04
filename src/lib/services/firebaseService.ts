@@ -68,6 +68,17 @@ export interface Client {
   isActive: boolean;
 }
 
+// Check-in functions
+export interface CheckIn {
+  id: string;
+  clientId: string;
+  coachId: string;
+  date: string;
+  status: 'pending' | 'completed' | 'reviewed';
+  type: 'weekly' | 'monthly' | 'custom';
+  data: Record<string, any>;
+}
+
 // Mock data and functions for development
 let mockCoaches: Coach[] = [
   {
@@ -124,26 +135,32 @@ export const getCoaches = async (): Promise<Coach[]> => {
   return mockCoaches;
 };
 
-export const getCoach = async (id: string): Promise<Coach | null> => {
+export const getCoach = async (coachId: string): Promise<Coach | null> => {
   try {
-    const coachesRef = collection(db, 'coaches');
-    const q = query(coachesRef, where('id', '==', id));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
+    // First check mock data
+    const mockCoach = mockCoaches.find(c => c.id === coachId);
+    if (mockCoach) {
+      return mockCoach;
+    }
+
+    // If not in mock data, query Firestore
+    const coachDoc = await getDoc(doc(db, 'coaches', coachId));
+    if (!coachDoc.exists()) {
       return null;
     }
-    
-    const doc = querySnapshot.docs[0];
-    const data = doc.data();
+
+    const coachData = coachDoc.data();
     return {
-      id: doc.id,
-      ...convertTimestampsToDates(data),
-      specialties: Array.isArray(data.specialties) ? data.specialties : []
-    } as Coach;
+      id: coachDoc.id,
+      name: coachData.name,
+      email: coachData.email,
+      specialties: coachData.specialties || [],
+      experience: coachData.experience || '',
+      lastLoginAt: coachData.lastLoginAt?.toDate() || null
+    };
   } catch (error) {
     console.error('Error getting coach:', error);
-    throw error;
+    return null;
   }
 };
 
@@ -179,6 +196,31 @@ export const getClientsByCoach = async (coachId: string): Promise<Client[]> => {
 
 export const getClientById = async (clientId: string): Promise<Client | null> => {
   return mockClients.find(client => client.id === clientId) || null;
+};
+
+export const getClients = async (): Promise<Client[]> => {
+  try {
+    // First try to get from mock data for development
+    if (mockClients.length > 0) {
+      return mockClients;
+    }
+
+    // If no mock data, try Firestore
+    const clientsRef = collection(db, 'clients');
+    const querySnapshot = await getDocs(clientsRef);
+    
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...convertTimestampsToDates(data),
+        goals: Array.isArray(data.goals) ? data.goals : []
+      } as Client;
+    });
+  } catch (error) {
+    console.error('Error getting clients:', error);
+    throw error;
+  }
 };
 
 export async function createTestData() {
@@ -313,5 +355,115 @@ export async function createTestData() {
   } catch (error) {
     console.error('Error creating test data:', error);
     throw error;
+  }
+}
+
+// Check-in functions
+export const getCheckIns = async (): Promise<CheckIn[]> => {
+  try {
+    // For development, return mock data
+    const mockCheckIns: CheckIn[] = [
+      {
+        id: '1',
+        clientId: '1',
+        coachId: '1',
+        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'completed',
+        type: 'weekly',
+        data: {
+          nutrition: 4,
+          training: 5,
+          recovery: 3,
+          notes: 'Feeling good this week!'
+        }
+      },
+      {
+        id: '2',
+        clientId: '2',
+        coachId: '2',
+        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'reviewed',
+        type: 'weekly',
+        data: {
+          nutrition: 3,
+          training: 4,
+          recovery: 4,
+          notes: 'Struggling with meal prep this week.'
+        }
+      }
+    ];
+    
+    return mockCheckIns;
+    
+    // In production, this would query Firestore
+    // const checkInsRef = collection(db, 'checkIns');
+    // const querySnapshot = await getDocs(checkInsRef);
+    // return querySnapshot.docs.map(doc => ({
+    //   id: doc.id,
+    //   ...convertTimestampsToDates(doc.data())
+    // })) as CheckIn[];
+  } catch (error) {
+    console.error('Error getting check-ins:', error);
+    throw error;
+  }
+};
+
+// Add these new functions for role-based data access
+export async function getUserData(userId: string): Promise<User | null> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) return null;
+    
+    const userData = userDoc.data();
+    return {
+      ...userData,
+      id: userDoc.id,
+      createdAt: userData.createdAt?.toDate(),
+      updatedAt: userData.updatedAt?.toDate(),
+    } as User;
+  } catch (error) {
+    console.error('Error getting user data:', error);
+    return null;
+  }
+}
+
+export async function getCoachClients(coachId: string): Promise<ClientUser[]> {
+  try {
+    const clientsQuery = query(
+      collection(db, 'users'),
+      where('role', '==', 'client'),
+      where('coachId', '==', coachId)
+    );
+    
+    const snapshot = await getDocs(clientsQuery);
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+    })) as ClientUser[];
+  } catch (error) {
+    console.error('Error getting coach clients:', error);
+    return [];
+  }
+}
+
+export async function getClientCheckIns(clientId: string, coachId?: string): Promise<CheckIn[]> {
+  try {
+    const checkInsQuery = query(
+      collection(db, 'checkins'),
+      where('clientId', '==', clientId),
+      ...(coachId ? [where('coachId', '==', coachId)] : [])
+    );
+    
+    const snapshot = await getDocs(checkInsQuery);
+    return snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+      date: doc.data().date?.toDate(),
+    })) as CheckIn[];
+  } catch (error) {
+    console.error('Error getting client check-ins:', error);
+    return [];
   }
 }
