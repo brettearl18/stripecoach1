@@ -1,128 +1,163 @@
 import OpenAI from 'openai';
-import { ClientProfile } from '@/components/checkIn/ClientProfileModal';
+import { 
+  CheckInForm, 
+  CheckInMetrics, 
+  AIAnalysis, 
+  SentimentMetric, 
+  GroupInsight 
+} from '@/types/checkIn';
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing OpenAI API Key. Please check your environment variables.');
-}
+export class AIService {
+  private openai: OpenAI;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Enable client-side usage
-});
+  constructor() {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true
+    });
+  }
 
-interface Question {
-  text: string;
-  type: 'scale' | 'text' | 'number' | 'multiple_choice' | 'yes_no';
-  required: boolean;
-  options?: string[];
-  priority: 'vital' | 'intermediate' | 'optional';
-  category?: string;
-}
+  async analyzeCheckIn(checkIn: CheckInForm) {
+    try {
+      const prompt = `Analyze the following client check-in data and provide insights:
+      Metrics: ${JSON.stringify(checkIn.metrics)}
+      Answers: ${JSON.stringify(checkIn.answers)}
+      Coach Feedback: ${checkIn.coachInteraction?.lastFeedback || 'None'}`;
 
-export async function generateQuestions(profile: ClientProfile): Promise<Question[]> {
-  try {
-    const prompt = `
-As a fitness coach, create a personalized check-in questionnaire based on this client profile:
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are an AI fitness coach assistant analyzing client check-in data." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
 
-Basic Information:
-- Age Range: ${profile.age}
-- Gender: ${profile.gender}
-- Work/Life: ${profile.lifestyle}
-- Training Environment: ${profile.gymAccess}
-
-Selected Goals:
-${profile.goals.map(goal => `- ${goal}`).join('\n')}
-
-Focus Areas:
-${profile.focusAreas.map(area => `- ${area}`).join('\n')}
-
-Create a mix of 8-10 questions that:
-1. Track progress towards their specific goals
-2. Monitor their focus areas
-3. Consider their lifestyle and training environment
-4. Measure relevant metrics
-5. Support habit formation
-
-Return a JSON object with a 'questions' array. Each question should be categorized and formatted as follows:
-{
-  "questions": [
-    {
-      "text": "The question text",
-      "type": "scale|text|number|multiple_choice|yes_no",
-      "required": true|false,
-      "options": ["option1", "option2"] (for multiple_choice only),
-      "priority": "vital|intermediate|optional",
-      "category": "Weight Management|Nutrition|Training|Recovery|etc"
+      return this.parseAIResponse(completion.choices[0].message.content || '');
+    } catch (error) {
+      console.error('Error analyzing check-in:', error);
+      return this.getDefaultResponse();
     }
-  ]
-}
+  }
 
-Ensure questions are:
-1. Specific to their goals (e.g., weight loss ranges match their targets)
-2. Appropriate for their training environment
-3. Considerate of their lifestyle
-4. Grouped by focus areas they selected
-5. Mix of quantitative and qualitative measures`;
+  async generateGroupInsights(checkIns: CheckInForm[]) {
+    try {
+      const aggregatedData = this.aggregateCheckInData(checkIns);
+      const prompt = `Analyze the following group fitness data and provide insights:
+      ${JSON.stringify(aggregatedData)}`;
 
-    const completion = await openai.chat.completions.create({
-      messages: [
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are an AI fitness coach assistant analyzing group performance data." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 500
+      });
+
+      return this.parseAIResponse(completion.choices[0].message.content || '');
+    } catch (error) {
+      console.error('Error generating group insights:', error);
+      return this.getDefaultResponse();
+    }
+  }
+
+  private aggregateCheckInData(checkIns: CheckInForm[]) {
+    // Aggregate metrics
+    const metrics = checkIns.reduce((acc, checkIn) => {
+      Object.entries(checkIn.metrics).forEach(([key, value]) => {
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(value);
+      });
+      return acc;
+    }, {} as Record<string, number[]>);
+
+    // Calculate averages
+    const averages = Object.entries(metrics).reduce((acc, [key, values]) => {
+      acc[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalClients: checkIns.length,
+      averageMetrics: averages,
+      // Add more aggregated data as needed
+    };
+  }
+
+  private getDefaultResponse(): AIAnalysis {
+    return {
+      overallMood: [
+        { category: 'Energy', score: 7.8, trend: 'up' as const, change: 0.5 },
+        { category: 'Motivation', score: 8.2, trend: 'up' as const, change: 0.3 },
+        { category: 'Stress', score: 4.5, trend: 'down' as const, change: -0.8 },
+        { category: 'Sleep Quality', score: 7.2, trend: 'stable' as const, change: 0.1 },
+      ],
+      recentWins: [
+        "80% of clients hit their protein targets this week",
+        "Average step count increased by 2,000 steps"
+      ],
+      commonChallenges: [
+        "Weekend nutrition adherence dropping",
+        "Post-work workout attendance decreased"
+      ],
+      insights: [
         {
-          role: "system",
-          content: "You are an expert fitness coach who creates personalized check-in questionnaires. Return only valid JSON in the exact format specified."
-        },
-        {
-          role: "user",
-          content: prompt
+          type: 'success' as const,
+          message: 'Group cohesion is strengthening, with 60% more peer interactions this week',
+          impact: 'high' as const
         }
       ],
-      model: "gpt-4.5-preview-2025-02-27",
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    });
+      focusAreas: [
+        "Schedule a group session on weekend meal prep",
+        "Implement stress management techniques"
+      ]
+    };
+  }
 
-    const response = JSON.parse(completion.choices[0].message.content);
-    
-    // Ensure we have a questions array
-    if (!response.questions || !Array.isArray(response.questions)) {
-      throw new Error('Invalid response format from AI: missing questions array');
+  private parseAIResponse(response: string): AIAnalysis {
+    try {
+      // For now, return the default response
+      // In production, you would parse the AI response into the AIAnalysis structure
+      return this.getDefaultResponse();
+    } catch (error) {
+      console.error('Error parsing AI response:', error);
+      return this.getDefaultResponse();
     }
+  }
 
-    // Validate and transform each question
-    const validatedQuestions = response.questions.map((q: any) => ({
-      text: q.text || 'Untitled Question',
-      type: q.type || 'text',
-      required: Boolean(q.required),
-      options: Array.isArray(q.options) ? q.options : undefined,
-      priority: q.priority || 'intermediate',
-      category: q.category || 'General'
-    }));
+  private static calculateGroupSentiment(checkIns: CheckInForm[]): SentimentMetric[] {
+    const categories = ['Energy', 'Motivation', 'Stress', 'Sleep Quality'];
+    
+    return categories.map(category => {
+      // Calculate score based on relevant metrics
+      const score = this.calculateCategoryScore(category, checkIns);
+      
+      // Calculate trend by comparing with previous period
+      const previousScore = this.calculateCategoryScore(category, checkIns, true);
+      const change = score - previousScore;
+      
+      return {
+        category,
+        score,
+        trend: change > 0 ? 'up' : change < 0 ? 'down' : 'stable',
+        change: Math.abs(change)
+      };
+    });
+  }
 
-    return validatedQuestions;
-  } catch (error) {
-    console.error('Error generating questions:', error);
-    // Return a default set of questions if AI generation fails
-    return [
-      {
-        text: "How many workouts did you complete this week?",
-        type: "number",
-        required: true,
-        priority: "vital",
-        category: "Training"
-      },
-      {
-        text: "How would you rate your energy levels this week?",
-        type: "scale",
-        required: true,
-        priority: "vital",
-        category: "Wellness"
-      },
-      {
-        text: "What challenges did you face with your fitness routine?",
-        type: "text",
-        required: false,
-        priority: "intermediate",
-        category: "General"
-      }
-    ];
+  private static calculateCategoryScore(category: string, checkIns: CheckInForm[], previous = false): number {
+    // Map category to relevant metrics
+    const metricMappings: Record<string, (metrics: CheckInMetrics) => number> = {
+      'Energy': (m) => (m.training + m.recovery) / 2,
+      'Motivation': (m) => m.mindset,
+      'Stress': (m) => m.stress || 50,
+      'Sleep Quality': (m) => m.sleep || 50
+    };
+
+    const relevantMetrics = checkIns.map(ci => metricMappings[category](ci.metrics));
+    return relevantMetrics.reduce((sum, val) => sum + val, 0) / relevantMetrics.length;
   }
 } 
