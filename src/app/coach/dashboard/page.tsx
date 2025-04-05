@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getClients, getFormSubmissions, type Client, type FormSubmission, getCoaches, getClientsByCoach, type Coach } from '@/lib/services/firebaseService';
+import { getCoaches, getClientsByCoach, type Client, type Coach } from '@/lib/services/firebaseService';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
@@ -27,8 +27,16 @@ import {
   CheckCircleIcon,
   ChatBubbleOvalLeftEllipsisIcon,
   UserIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  MinusIcon,
+  SparklesIcon,
+  LightBulbIcon,
+  UserCircleIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import { LastLoginBadge } from '@/components/ui/LastLoginBadge';
+import type { ReactElement } from 'react';
 
 interface ClientWithStats extends Client {
   stats?: {
@@ -38,7 +46,121 @@ interface ClientWithStats extends Client {
   };
 }
 
-export default function CoachDashboard() {
+interface ClientUpdate {
+  id: string;
+  name: string;
+  goals: string[];
+  status: 'Active Client' | 'On Hold' | 'Completed';
+}
+
+interface AIInsight {
+  title: string;
+  description: string;
+  trend: 'up' | 'down' | 'neutral';
+  percentage?: number;
+  metric?: string;
+}
+
+const mockClients: ClientUpdate[] = [
+  {
+    id: '1',
+    name: 'Sarah Wilson',
+    goals: ['Weight Loss', 'Muscle Tone', 'Better Energy'],
+    status: 'Active Client'
+  },
+  {
+    id: '2',
+    name: 'Mike Johnson',
+    goals: ['Strength Training', 'Nutrition Planning'],
+    status: 'Active Client'
+  },
+  {
+    id: '3',
+    name: 'Emma Davis',
+    goals: ['Stress Management', 'Flexibility'],
+    status: 'Active Client'
+  }
+];
+
+const mockIndividualInsights: { [key: string]: AIInsight[] } = {
+  '1': [
+    {
+      title: 'Consistency Improvement',
+      description: 'Sarah has maintained a 90% check-in rate over the last month, showing strong commitment to her goals.',
+      trend: 'up',
+      percentage: 90
+    },
+    {
+      title: 'Weight Loss Progress',
+      description: 'Steady progress with 1.5kg loss in the last 2 weeks while maintaining muscle mass.',
+      trend: 'up',
+      metric: '-1.5kg'
+    },
+    {
+      title: 'Energy Levels',
+      description: 'Morning energy scores have improved by 40% since implementing the new sleep routine.',
+      trend: 'up',
+      percentage: 40
+    }
+  ],
+  '2': [
+    {
+      title: 'Strength Gains',
+      description: 'Mike has increased his compound lift numbers by 15% in the past month.',
+      trend: 'up',
+      percentage: 15
+    },
+    {
+      title: 'Nutrition Adherence',
+      description: 'Protein intake goals met 85% of days, slight decrease from last week.',
+      trend: 'down',
+      percentage: 85
+    }
+  ],
+  '3': [
+    {
+      title: 'Stress Management',
+      description: "Emma's stress scores have decreased by 30% since starting meditation practice.",
+      trend: 'down',
+      percentage: 30
+    },
+    {
+      title: 'Flexibility Progress',
+      description: 'Mobility assessments show 25% improvement in hip flexor range.',
+      trend: 'up',
+      percentage: 25
+    }
+  ]
+};
+
+const mockGroupInsights: AIInsight[] = [
+  {
+    title: 'Overall Engagement',
+    description: 'Group check-in completion rate is at 85%, up 10% from last month.',
+    trend: 'up',
+    percentage: 85
+  },
+  {
+    title: 'Common Challenge',
+    description: '60% of clients report difficulty maintaining evening routines. Consider group workshop on night-time habits.',
+    trend: 'down',
+    percentage: 60
+  },
+  {
+    title: 'Success Pattern',
+    description: 'Clients using the morning check-in reminder are 40% more likely to stay consistent.',
+    trend: 'up',
+    percentage: 40
+  },
+  {
+    title: 'Nutrition Trend',
+    description: 'Group averaging 80% adherence to meal plans, stable from previous week.',
+    trend: 'neutral',
+    percentage: 80
+  }
+];
+
+export default function Dashboard(): ReactElement {
   const { user } = useAuth();
   const [coach, setCoach] = useState<Coach | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +177,7 @@ export default function CoachDashboard() {
       declining: 0,
     }
   });
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
 
   useEffect(() => {
     loadCoachData();
@@ -123,6 +246,17 @@ export default function CoachDashboard() {
     });
   };
 
+  const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
+    switch (trend) {
+      case 'up':
+        return <ArrowUpIcon className="w-4 h-4 text-green-500" />;
+      case 'down':
+        return <ArrowDownIcon className="w-4 h-4 text-red-500" />;
+      case 'neutral':
+        return <MinusIcon className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
@@ -152,6 +286,23 @@ export default function CoachDashboard() {
       <DashboardNav />
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Coach Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/coach/templates"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <PencilSquareIcon className="w-4 h-4 mr-2" />
+              Manage Check-in Templates
+            </Link>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {new Date().toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
@@ -262,50 +413,128 @@ export default function CoachDashboard() {
           </div>
         </div>
 
-        {/* Recent Client Updates */}
-        <div className="mt-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
+        {/* Group AI Insights */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Client Updates</h2>
-              <button className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">View All</button>
+              <div className="flex items-center gap-3">
+                <SparklesIcon className="w-6 h-6 text-indigo-500" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Group AI Insights
+                </h2>
+              </div>
             </div>
-            <div className="space-y-4">
-              {clients.slice(0, 5).map((client) => (
-                <div key={client.id} className="flex items-start gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <UserIcon className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{client.name}</h3>
-                      <span className="text-sm text-gray-500">Active Client</span>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex flex-wrap gap-2">
-                        {(client.goals || []).map((goal, index) => (
-                          <span key={index} className="text-sm bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
-                            {goal}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <Link 
-                        href={`/coach/clients/${client.id}`}
-                        className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500"
-                      >
-                        View Details
-                      </Link>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {mockGroupInsights.map((insight, index) => (
+                <div 
+                  key={index}
+                  className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      {insight.title}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      {insight.percentage && (
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {insight.percentage}%
+                        </span>
+                      )}
+                      {getTrendIcon(insight.trend)}
                     </div>
                   </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {insight.description}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* ... existing stats cards ... */}
+        {/* Recent Client Updates with AI Insights */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Recent Client Updates
+              </h2>
+              <button className="text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:text-indigo-500">
+                View All
+              </button>
+            </div>
+            <div className="space-y-6">
+              {mockClients.map((client) => (
+                <div key={client.id} className="space-y-4">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setSelectedClient(selectedClient === client.id ? null : client.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                        <UserCircleIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {client.name}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {client.goals.map((goal, index) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-md"
+                            >
+                              {goal}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {client.status}
+                    </span>
+                  </div>
+
+                  {/* Individual AI Insights */}
+                  {selectedClient === client.id && mockIndividualInsights[client.id] && (
+                    <div className="ml-14 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {mockIndividualInsights[client.id].map((insight, index) => (
+                        <div 
+                          key={index}
+                          className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <LightBulbIcon className="w-4 h-4 text-yellow-500" />
+                              <h4 className="font-medium text-gray-900 dark:text-white">
+                                {insight.title}
+                              </h4>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {insight.percentage && (
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {insight.percentage}%
+                                </span>
+                              )}
+                              {insight.metric && (
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {insight.metric}
+                                </span>
+                              )}
+                              {getTrendIcon(insight.trend)}
+                            </div>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {insight.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
@@ -356,10 +585,10 @@ export default function CoachDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <LastLoginBadge lastLoginAt={client.lastLoginAt} />
+                      <LastLoginBadge lastLoginAt={client.lastLoginAt || null} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <LastLoginBadge lastLoginAt={client.lastCheckIn} />
+                      <LastLoginBadge lastLoginAt={client.lastCheckIn || null} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

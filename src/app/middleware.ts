@@ -6,19 +6,41 @@ export default function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // Define public paths that don't require authentication
-  const isPublicPath = path === '/login' || path === '/signup' || path === '/reset-password';
+  const isPublicPath = path === '/login' || path === '/signup' || path === '/reset-password' || path === '/';
 
-  // Get the token from the cookies
-  const token = request.cookies.get('session')?.value;
+  // Get the user from cookies
+  const userCookie = request.cookies.get('user')?.value;
+  let user = null;
+  
+  try {
+    if (userCookie) {
+      user = JSON.parse(userCookie);
+    }
+  } catch (error) {
+    console.error('Error parsing user cookie:', error);
+  }
 
   // Redirect logic for authenticated users trying to access public paths
-  if (isPublicPath && token) {
-    return NextResponse.redirect(new URL('/admin', request.url));
+  if (isPublicPath && user) {
+    const redirectPath = `/${user.role}/dashboard`;
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   // Redirect logic for unauthenticated users trying to access protected paths
-  if (!isPublicPath && !token && !path.startsWith('/api')) {
+  if (!isPublicPath && !user && !path.startsWith('/api')) {
     return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Role-based access control
+  if (user && !isPublicPath && !path.startsWith('/api')) {
+    const userRole = user.role;
+    const isAccessingOwnRole = path.startsWith(`/${userRole}`);
+    const isAdmin = userRole === 'admin';
+
+    // Admin can access everything, others can only access their own role paths
+    if (!isAdmin && !isAccessingOwnRole) {
+      return NextResponse.redirect(new URL(`/${userRole}/dashboard`, request.url));
+    }
   }
 
   return NextResponse.next();

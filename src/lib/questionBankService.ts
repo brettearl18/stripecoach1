@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { db } from '@/lib/firebase/config';
 import { collection, doc, getDocs, addDoc, query, where } from 'firebase/firestore';
 import type { Question } from '@/types/checkIn';
 

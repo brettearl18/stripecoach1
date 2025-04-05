@@ -43,14 +43,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       console.log('Setting user:', newUser);
-      setUser(newUser);
       
       // Store user in both localStorage and cookies for middleware access
       const userStr = JSON.stringify(newUser);
       localStorage.setItem('user', userStr);
+      document.cookie = `user=${encodeURIComponent(userStr)}; path=/; max-age=86400; samesite=lax`;
       
-      // Set cookie with proper attributes
-      document.cookie = `user=${userStr}; path=/; max-age=86400; samesite=lax`;
+      // Set user state after storage is updated
+      setUser(newUser);
       
       // Redirect based on role
       const redirectPath = `/${userRole}/dashboard`;
@@ -62,17 +62,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    setUser(null);
+    // Clear storage first
     localStorage.removeItem('user');
     document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    
+    // Then update state
+    setUser(null);
+    
+    // Finally redirect
     window.location.href = '/login';
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
-      // For development, we'll just set the user directly
       const newUser = {
-        id: email, // Using email as ID for development
+        id: email,
         email,
         name: email.split('@')[0],
         role: 'client' as UserRole,
@@ -81,14 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       console.log('Setting new user:', newUser);
-      setUser(newUser);
       
-      // Store user in both localStorage and cookies for middleware access
+      // Store user in both localStorage and cookies
       const userStr = JSON.stringify(newUser);
       localStorage.setItem('user', userStr);
-      
-      // Set cookie with proper attributes
       document.cookie = `user=${userStr}; path=/; max-age=86400; samesite=lax`;
+      
+      // Set user state after storage is updated
+      setUser(newUser);
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -97,7 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // For development, we'll just set the user directly
       const newUser = {
         id: 'google-test@example.com',
         email: 'google-test@example.com',
@@ -108,14 +111,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       
       console.log('Setting Google user:', newUser);
-      setUser(newUser);
       
-      // Store user in both localStorage and cookies for middleware access
+      // Store user in both localStorage and cookies
       const userStr = JSON.stringify(newUser);
       localStorage.setItem('user', userStr);
-      
-      // Set cookie with proper attributes
       document.cookie = `user=${userStr}; path=/; max-age=86400; samesite=lax`;
+      
+      // Set user state after storage is updated
+      setUser(newUser);
     } catch (error) {
       console.error('Error signing in with Google:', error);
       throw error;
@@ -123,45 +126,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Try to restore user from localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const initializeAuth = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        // Also set the cookie with proper attributes
-        document.cookie = `user=${storedUser}; path=/; max-age=86400; samesite=lax`;
+        // First check localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          
+          // Ensure cookie is also set
+          document.cookie = `user=${encodeURIComponent(storedUser)}; path=/; max-age=86400; samesite=lax`;
+        } else {
+          // If no localStorage, check cookies
+          const cookies = document.cookie.split(';');
+          const userCookie = cookies.find(cookie => cookie.trim().startsWith('user='));
+          
+          if (userCookie) {
+            const userStr = decodeURIComponent(userCookie.split('=')[1]);
+            try {
+              const parsedUser = JSON.parse(userStr);
+              setUser(parsedUser);
+              
+              // Sync with localStorage
+              localStorage.setItem('user', userStr);
+            } catch (e) {
+              console.error('Error parsing user cookie:', e);
+              // Clear invalid cookie
+              document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+              setUser(null);
+            }
+          } else {
+            // No auth state found
+            setUser(null);
+          }
+        }
       } catch (error) {
-        console.error('Error parsing stored user:', error);
+        console.error('Error initializing auth:', error);
+        // Clear potentially corrupted auth state
         localStorage.removeItem('user');
         document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      }
-    }
-    
-    setLoading(false);
-
-    // In production, uncomment this:
-    /*
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Get user role from Firestore
-        const userRole = await getUserRole(firebaseUser.uid);
-        setUser({
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          name: firebaseUser.displayName || '',
-          role: userRole || 'client',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-      } else {
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-    */
+    initializeAuth();
   }, []);
 
   return (

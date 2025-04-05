@@ -1,57 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { 
   ChartBarIcon, 
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
   UserGroupIcon,
   ClockIcon,
-  BanknotesIcon,
-  ArrowPathIcon,
-  CreditCardIcon,
   UserCircleIcon,
-  PlusIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import { getCheckIns, getCoach, getClientById, type CheckIn, type Coach, type Client } from '@/lib/services/firebaseService';
+import { getCheckIns, getClientById, type CheckIn, type Client } from '@/lib/services/firebaseService';
 import { DataTable } from '@/components/admin/DataTable';
+import { useAuth } from '@/hooks/useAuth';
 
-interface CheckInWithDetails extends CheckIn {
-  coach?: Coach | null;
+interface CheckInWithClient extends CheckIn {
   client?: Client | null;
 }
 
-export default function FormCheckIns() {
-  const [checkIns, setCheckIns] = useState<CheckInWithDetails[]>([]);
+export default function CoachCheckIns() {
+  const { user } = useAuth();
+  const [checkIns, setCheckIns] = useState<CheckInWithClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState({ field: 'date', direction: 'desc' });
 
   useEffect(() => {
-    loadCheckIns();
-  }, []);
+    if (user) {
+      loadCheckIns();
+    }
+  }, [user]);
 
   const loadCheckIns = async () => {
+    if (!user?.uid) return;
+    
     try {
       setIsLoading(true);
-      const checkInsData = await getCheckIns();
+      const checkInsData = await getCheckIns(user.uid); // Only get check-ins for this coach
       
-      // Fetch coach and client data for each check-in
-      const checkInsWithDetails = await Promise.all(
+      // Fetch client data for each check-in
+      const checkInsWithClients = await Promise.all(
         checkInsData.map(async (checkIn) => {
-          let coach = null;
           let client = null;
-          
-          if (checkIn.coachId) {
-            try {
-              coach = await getCoach(checkIn.coachId);
-            } catch (error) {
-              console.error(`Error fetching coach for check-in ${checkIn.id}:`, error);
-            }
-          }
-          
           if (checkIn.clientId) {
             try {
               client = await getClientById(checkIn.clientId);
@@ -59,16 +48,14 @@ export default function FormCheckIns() {
               console.error(`Error fetching client for check-in ${checkIn.id}:`, error);
             }
           }
-          
           return {
             ...checkIn,
-            coach,
             client
           };
         })
       );
 
-      setCheckIns(checkInsWithDetails);
+      setCheckIns(checkInsWithClients);
     } catch (error) {
       console.error('Error loading check-ins:', error);
     } finally {
@@ -110,8 +97,8 @@ export default function FormCheckIns() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Form Check-Ins</h1>
-            <p className="text-gray-400">Monitor and review client form submissions</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Client Check-Ins</h1>
+            <p className="text-gray-400">Monitor and review your client check-ins</p>
           </div>
           <div className="flex gap-4">
             <input
@@ -139,7 +126,9 @@ export default function FormCheckIns() {
               <div>
                 <p className="text-gray-400 text-sm">Total Check-Ins</p>
                 <h3 className="text-2xl font-bold text-white mt-1">{checkIns.length}</h3>
-                <p className="text-green-500 text-sm mt-1">+24 today</p>
+                <p className="text-green-500 text-sm mt-1">
+                  +{checkIns.filter(c => new Date(c.date).toDateString() === new Date().toDateString()).length} today
+                </p>
               </div>
               <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
                 <UserGroupIcon className="h-6 w-6 text-blue-500" />
@@ -195,13 +184,6 @@ export default function FormCheckIns() {
                 )
               },
               {
-                header: 'Coach',
-                key: 'coach',
-                render: (coach) => (
-                  <span className="text-gray-300">{coach?.name || 'Unassigned'}</span>
-                )
-              },
-              {
                 header: 'Date',
                 key: 'date',
                 render: (date) => (
@@ -225,11 +207,17 @@ export default function FormCheckIns() {
             data={filteredCheckIns}
             actions={(checkIn) => (
               <div className="flex space-x-2">
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                <button 
+                  onClick={() => window.location.href = `/coach/check-ins/${checkIn.id}`}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+                >
                   View Details
                 </button>
                 {checkIn.status === 'pending' && (
-                  <button className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
+                  <button 
+                    onClick={() => {/* TODO: Implement mark as reviewed */}}
+                    className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700"
+                  >
                     Mark as Reviewed
                   </button>
                 )}

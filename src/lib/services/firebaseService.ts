@@ -110,23 +110,204 @@ let mockCoaches: Coach[] = [
 let mockClients: Client[] = [
   {
     id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
+    name: 'Sarah Wilson',
+    email: 'sarah.w@example.com',
     coachId: '1',
-    goals: ['Weight Loss', 'Muscle Gain'],
-    lastLoginAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    lastCheckIn: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    goals: ['Weight Loss', 'Muscle Tone', 'Better Energy'],
+    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    lastCheckIn: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
     isActive: true
   },
   {
     id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    coachId: '2',
-    goals: ['Stress Reduction', 'Work-Life Balance'],
-    lastLoginAt: new Date(Date.now() - 72 * 60 * 60 * 1000),
-    lastCheckIn: new Date(Date.now() - 96 * 60 * 60 * 1000),
+    name: 'Mike Johnson',
+    email: 'mike.j@example.com',
+    coachId: '1',
+    goals: ['Strength Training', 'Nutrition Planning'],
+    lastLoginAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    lastCheckIn: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago (overdue)
     isActive: true
+  },
+  {
+    id: '3',
+    name: 'Emma Davis',
+    email: 'emma.d@example.com',
+    coachId: '1',
+    goals: ['Stress Management', 'Flexibility'],
+    lastLoginAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    lastCheckIn: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    isActive: true
+  }
+];
+
+// Mock check-ins data
+let mockCheckIns = [
+  // Sarah Wilson's check-ins
+  {
+    id: 'ci1',
+    clientId: '1',
+    coachId: '1',
+    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'pending',
+    type: 'weekly',
+    responses: {
+      "How many training sessions did you complete this week?": "4 out of 5 planned sessions",
+      "Rate your overall energy levels (1-10)": "7",
+      "How is your sleep quality (1-10)?": "8",
+      "Are you experiencing any pain or discomfort?": "Slight soreness from yesterday's workout",
+      "What's your current body weight?": "68kg",
+      "How many steps are you averaging daily?": "8,500",
+      "Rate your stress levels (1-10)": "6",
+      "Are you following the nutrition plan?": "Yes, about 90% adherence",
+      "What challenges did you face this week?": "Had a busy work schedule but managed to fit in most workouts",
+      "What wins would you like to celebrate?": "Increased my water intake and hit my protein goals every day"
+    },
+    metrics: {
+      bodyweight: {
+        current: 68,
+        previous: 68.5,
+        change: -0.5,
+        trend: "down"
+      },
+      energyLevel: {
+        current: 7,
+        previous: 6,
+        change: 1,
+        trend: "up"
+      },
+      sleepQuality: {
+        current: 8,
+        previous: 7,
+        change: 1,
+        trend: "up"
+      }
+    }
+  },
+  // Mike Johnson's check-ins (overdue)
+  {
+    id: 'ci2',
+    clientId: '2',
+    coachId: '1',
+    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'completed',
+    type: 'weekly',
+    responses: {
+      "How many training sessions did you complete this week?": "3 out of 5 planned sessions",
+      "Rate your overall energy levels (1-10)": "5",
+      "How is your sleep quality (1-10)?": "6",
+      "Are you experiencing any pain or discomfort?": "No pain",
+      "What's your current body weight?": "82kg",
+      "How many steps are you averaging daily?": "6,000",
+      "Rate your stress levels (1-10)": "7",
+      "Are you following the nutrition plan?": "Struggling with consistency",
+      "What challenges did you face this week?": "Work travel made it hard to stick to routine",
+      "What wins would you like to celebrate?": "Still managed to get in three workouts despite travel"
+    },
+    metrics: {
+      bodyweight: {
+        current: 82,
+        previous: 81.5,
+        change: 0.5,
+        trend: "up"
+      },
+      energyLevel: {
+        current: 5,
+        previous: 7,
+        change: -2,
+        trend: "down"
+      },
+      sleepQuality: {
+        current: 6,
+        previous: 7,
+        change: -1,
+        trend: "down"
+      }
+    }
+  },
+  // Emma Davis's check-ins
+  {
+    id: 'ci3',
+    clientId: '3',
+    coachId: '1',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    status: 'completed',
+    type: 'weekly',
+    responses: {
+      "How many training sessions did you complete this week?": "5 out of 5 planned sessions",
+      "Rate your overall energy levels (1-10)": "9",
+      "How is your sleep quality (1-10)?": "8",
+      "Are you experiencing any pain or discomfort?": "None",
+      "What's your current body weight?": "63kg",
+      "How many steps are you averaging daily?": "12,000",
+      "Rate your stress levels (1-10)": "4",
+      "Are you following the nutrition plan?": "100% adherence this week",
+      "What challenges did you face this week?": "None major",
+      "What wins would you like to celebrate?": "Perfect week of training and nutrition!"
+    },
+    metrics: {
+      bodyweight: {
+        current: 63,
+        previous: 63.5,
+        change: -0.5,
+        trend: "down"
+      },
+      energyLevel: {
+        current: 9,
+        previous: 8,
+        change: 1,
+        trend: "up"
+      },
+      sleepQuality: {
+        current: 8,
+        previous: 8,
+        change: 0,
+        trend: "stable"
+      }
+    }
+  },
+  // Add this new mock check-in to the mockCheckIns array
+  {
+    id: 'ci4',
+    clientId: '1', // Sarah Wilson's check-in
+    coachId: '1',
+    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    status: 'pending',
+    type: 'weekly',
+    responses: {
+      "How would you rate your meal preparation this week?": "8",
+      "How many meals did you eat out this week?": "3",
+      "Which areas of nutrition need improvement?": ["Portion Control", "Water Intake"],
+      "How many workouts did you complete this week?": "5",
+      "How would you rate your workout intensity?": "9",
+      "Did you experience any injuries or pain?": false,
+      "How would you rate your overall motivation this week?": "8",
+      "What were your biggest challenges this week?": "Work was very busy, making it hard to stick to meal prep schedule",
+      "What are you most proud of this week?": "Completed all my planned workouts despite the busy schedule",
+      "How many hours of sleep did you average this week?": "7",
+      "How would you rate your stress levels this week?": "6",
+      "Do you have any notes or requests for your coach?": "Could we adjust my meal plan to include more quick-prep options?",
+      "What is the biggest win you have had since last check in?": "Hit a new personal record on my deadlift!"
+    },
+    metrics: {
+      bodyweight: {
+        current: 67.5,
+        previous: 68,
+        change: -0.5,
+        trend: "down"
+      },
+      energyLevel: {
+        current: 8,
+        previous: 7,
+        change: 1,
+        trend: "up"
+      },
+      sleepQuality: {
+        current: 7,
+        previous: 7,
+        change: 0,
+        trend: "stable"
+      }
+    }
   }
 ];
 
@@ -359,53 +540,18 @@ export async function createTestData() {
 }
 
 // Check-in functions
-export const getCheckIns = async (): Promise<CheckIn[]> => {
-  try {
-    // For development, return mock data
-    const mockCheckIns: CheckIn[] = [
-      {
-        id: '1',
-        clientId: '1',
-        coachId: '1',
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'completed',
-        type: 'weekly',
-        data: {
-          nutrition: 4,
-          training: 5,
-          recovery: 3,
-          notes: 'Feeling good this week!'
-        }
-      },
-      {
-        id: '2',
-        clientId: '2',
-        coachId: '2',
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'reviewed',
-        type: 'weekly',
-        data: {
-          nutrition: 3,
-          training: 4,
-          recovery: 4,
-          notes: 'Struggling with meal prep this week.'
-        }
-      }
-    ];
-    
-    return mockCheckIns;
-    
-    // In production, this would query Firestore
-    // const checkInsRef = collection(db, 'checkIns');
-    // const querySnapshot = await getDocs(checkInsRef);
-    // return querySnapshot.docs.map(doc => ({
-    //   id: doc.id,
-    //   ...convertTimestampsToDates(doc.data())
-    // })) as CheckIn[];
-  } catch (error) {
-    console.error('Error getting check-ins:', error);
-    throw error;
+export const getCheckIns = async (clientId?: string, limit?: number): Promise<any[]> => {
+  let filteredCheckIns = [...mockCheckIns];
+  
+  if (clientId) {
+    filteredCheckIns = filteredCheckIns.filter(checkIn => checkIn.clientId === clientId);
   }
+  
+  if (limit) {
+    filteredCheckIns = filteredCheckIns.slice(0, limit);
+  }
+  
+  return filteredCheckIns;
 };
 
 // Add these new functions for role-based data access
@@ -467,3 +613,8 @@ export async function getClientCheckIns(clientId: string, coachId?: string): Pro
     return [];
   }
 }
+
+// Update getAllClients to use the mock data
+export const getAllClients = async (): Promise<Client[]> => {
+  return mockClients;
+};
