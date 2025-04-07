@@ -1,295 +1,351 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   PaperAirplaneIcon,
   PaperClipIcon,
-  MicrophoneIcon,
-  XMarkIcon,
-  PlayIcon,
-  PauseIcon,
-  StopIcon
+  FaceSmileIcon,
+  MagnifyingGlassIcon,
+  EllipsisVerticalIcon,
+  PhoneIcon,
+  VideoCameraIcon,
+  GifIcon,
+  PlusIcon,
+  Cog8ToothIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import { Avatar } from '@/components/ui/avatar';
+import { ChatSettings } from '@/components/ChatSettings';
 
-// Temporary test data
-const messages = [
-  {
-    id: 1,
-    content: 'Hi Sarah, I have a question about my meal plan.',
-    type: 'text',
-    from: 'client',
-    timestamp: '2024-03-16T10:30:00Z'
-  },
-  {
-    id: 2,
-    content: 'Of course! What would you like to know?',
-    type: 'text',
-    from: 'coach',
-    timestamp: '2024-03-16T10:32:00Z'
-  },
-  {
-    id: 3,
-    content: 'meal-plan-question.mp3',
-    type: 'audio',
-    duration: '0:45',
-    from: 'client',
-    timestamp: '2024-03-16T10:35:00Z'
-  },
-  {
-    id: 4,
-    content: 'Here\'s a detailed explanation of how to adjust your portions.',
-    type: 'text',
-    from: 'coach',
-    timestamp: '2024-03-16T10:40:00Z'
-  },
-  {
-    id: 5,
-    content: 'meal-plan-adjustments.pdf',
-    type: 'file',
-    from: 'coach',
-    timestamp: '2024-03-16T10:41:00Z'
+interface Message {
+  id: string;
+  content: string;
+  senderId: string;
+  timestamp: Date;
+  type: 'text' | 'audio' | 'file';
+  status: 'sent' | 'delivered' | 'read';
+  attachments?: {
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  }[];
+}
+
+interface Conversation {
+  id: string;
+  coachName: string;
+  avatar?: string;
+  lastMessage: string;
+  timestamp: Date;
+  unreadCount: number;
+  status: 'online' | 'offline' | 'away';
+  lastSeen?: Date;
+}
+
+export default function ClientMessagesPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    // Redirect if user is not a client
+    if (user && user.role !== 'client') {
+      router.push('/coach/messages');
+    }
+  }, [user, router]);
+
+  // If no user or loading, show loading state
+  if (!user) {
+    return <div>Loading...</div>;
   }
-];
 
-export default function MessagesPage() {
+  const [conversations, setConversations] = useState<Conversation[]>([
+    {
+      id: '1',
+      coachName: 'John Smith',
+      lastMessage: 'Great progress this week!',
+      timestamp: new Date('2024-04-07T18:45:00'),
+      unreadCount: 0,
+      status: 'online'
+    },
+    {
+      id: '2',
+      coachName: 'Sarah Wilson',
+      lastMessage: 'Let\'s review your goals',
+      timestamp: new Date('2024-04-07T18:30:00'),
+      unreadCount: 1,
+      status: 'offline',
+      lastSeen: new Date('2024-04-07T17:30:00')
+    }
+  ]);
+
+  const [selectedConversation, setSelectedConversation] = useState<string | null>('1');
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: 'Great progress this week!',
+      senderId: 'coach1',
+      timestamp: new Date('2024-04-07T18:30:00'),
+      type: 'text',
+      status: 'read'
+    },
+    {
+      id: '2',
+      content: 'Thank you! I\'ve been working hard',
+      senderId: 'client1',
+      timestamp: new Date('2024-04-07T18:32:00'),
+      type: 'text',
+      status: 'read'
+    }
+  ]);
+
   const [newMessage, setNewMessage] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [playingAudioId, setPlayingAudioId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTimestamp = (timestamp: Date) => {
+    return format(timestamp, 'HH:mm');
   };
 
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim() || selectedFile) {
-      // TODO: Implement message sending
+  const handleSend = () => {
+    if (newMessage.trim()) {
+      const message: Message = {
+        id: Date.now().toString(),
+        content: newMessage,
+        senderId: 'client1',
+        timestamp: new Date(),
+        type: 'text',
+        status: 'sent'
+      };
+      setMessages([...messages, message]);
       setNewMessage('');
-      setSelectedFile(null);
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-    } catch (error) {
-      console.error('Error starting recording:', error);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      
-      // Create audio blob and handle upload
-      mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-        // TODO: Handle audio upload
-        audioChunksRef.current = [];
-      };
-    }
-  };
-
-  const toggleAudioPlay = (messageId: number) => {
-    if (playingAudioId === messageId) {
-      setPlayingAudioId(null);
-      // TODO: Pause audio playback
-    } else {
-      setPlayingAudioId(messageId);
-      // TODO: Start audio playback
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        {/* Messages Container */}
-        <div className="h-[calc(100vh-180px)] bg-white shadow-sm rounded-lg overflow-hidden flex flex-col">
-          {/* Messages Header */}
-          <div className="p-4 border-b border-gray-200">
-            <h1 className="text-lg font-medium text-gray-900">Messages with Coach Sarah</h1>
-          </div>
+    <div className="flex h-screen bg-[#1E1F22]">
+      {/* Quick Access Sidebar */}
+      <div className="w-[72px] bg-[#1E1F22] flex flex-col items-center py-4 gap-2">
+        {conversations.map((conv) => (
+          <button
+            key={conv.id}
+            onClick={() => setSelectedConversation(conv.id)}
+            className={`relative group w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+              selectedConversation === conv.id 
+                ? 'bg-blue-500 rounded-[16px]' 
+                : 'hover:bg-blue-500 hover:rounded-[16px]'
+            }`}
+          >
+            <Avatar
+              src={conv.avatar}
+              fallback={conv.coachName}
+              status={conv.status}
+              size="md"
+            />
+            {conv.unreadCount > 0 && (
+              <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                {conv.unreadCount}
+              </div>
+            )}
+          </button>
+        ))}
 
-          {/* Messages List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.from === 'client' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div className={`max-w-[70%] ${
-                  message.from === 'client' ? 'bg-indigo-100' : 'bg-gray-100'
-                } rounded-lg p-3`}>
-                  {message.type === 'text' ? (
-                    <p className="text-sm text-gray-900">{message.content}</p>
-                  ) : message.type === 'audio' ? (
-                    <div className="flex items-center space-x-3">
-                      <button
-                        onClick={() => toggleAudioPlay(message.id)}
-                        className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-50"
-                      >
-                        {playingAudioId === message.id ? (
-                          <PauseIcon className="h-5 w-5 text-gray-600" />
-                        ) : (
-                          <PlayIcon className="h-5 w-5 text-gray-600" />
-                        )}
-                      </button>
-                      <span className="text-sm text-gray-600">{message.duration}</span>
-                    </div>
-                  ) : message.type === 'file' ? (
-                    <div className="flex items-center space-x-2">
-                      <PaperClipIcon className="h-5 w-5 text-gray-400" />
-                      <span className="text-sm text-indigo-600 hover:text-indigo-500">
-                        {message.content}
-                      </span>
-                    </div>
-                  ) : null}
-                  <p className="text-xs text-gray-500 mt-1">
-                    {formatTimestamp(message.timestamp)}
+        {/* Settings Button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="w-12 h-12 rounded-full flex items-center justify-center hover:bg-blue-500 hover:rounded-[16px] transition-all mt-auto mb-4"
+        >
+          <Cog8ToothIcon className="w-6 h-6 text-gray-400 hover:text-white" />
+        </button>
+      </div>
+
+      {/* Conversations List */}
+      <div className="w-60 bg-[#2B2D31] flex flex-col">
+        <div className="p-4">
+          <h1 className="text-white font-semibold mb-4">Chats</h1>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search messages"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-4 py-1 bg-[#1E1F22] rounded text-sm text-gray-200 placeholder-gray-400 focus:outline-none"
+            />
+            <MagnifyingGlassIcon className="absolute left-2 top-1.5 h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto">
+          {conversations.map((conv) => (
+            <button
+              key={conv.id}
+              onClick={() => setSelectedConversation(conv.id)}
+              className={`w-full p-2 flex items-center gap-3 hover:bg-[#35373C] ${
+                selectedConversation === conv.id ? 'bg-[#35373C]' : ''
+              }`}
+            >
+              <Avatar
+                src={conv.avatar}
+                fallback={conv.coachName}
+                status={conv.status}
+                size="sm"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-gray-200 truncate">
+                    {conv.coachName}
+                  </p>
+                  <span className="text-xs text-gray-400">
+                    {formatTimestamp(conv.timestamp)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 truncate">
+                  {conv.lastMessage}
+                </p>
+              </div>
+              {conv.unreadCount > 0 && (
+                <div className="h-5 w-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">
+                  {conv.unreadCount}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 bg-[#313338] flex flex-col">
+        {selectedConversation && (
+          <>
+            {/* Chat Header */}
+            <div className="h-14 border-b border-gray-700 flex items-center justify-between px-4">
+              <div className="flex items-center gap-3">
+                <Avatar
+                  src={conversations.find(c => c.id === selectedConversation)?.avatar}
+                  fallback={conversations.find(c => c.id === selectedConversation)?.coachName || ''}
+                  status={conversations.find(c => c.id === selectedConversation)?.status}
+                  size="sm"
+                />
+                <div>
+                  <h2 className="text-white font-medium">
+                    {conversations.find(c => c.id === selectedConversation)?.coachName}
+                  </h2>
+                  <p className="text-xs text-gray-400">
+                    {conversations.find(c => c.id === selectedConversation)?.status === 'online'
+                      ? 'Online'
+                      : 'Offline'}
                   </p>
                 </div>
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Message Input */}
-          <div className="border-t border-gray-200 p-4">
-            <form onSubmit={handleSendMessage} className="space-y-4">
-              {selectedFile && (
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                  <div className="flex items-center">
-                    <PaperClipIcon className="h-5 w-5 text-gray-400" />
-                    <span className="ml-2 text-sm text-gray-600">{selectedFile.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFile(null)}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-              
-              {isRecording && (
-                <div className="flex items-center justify-between bg-red-50 p-2 rounded-md">
-                  <div className="flex items-center">
-                    <div className="animate-pulse h-2 w-2 bg-red-600 rounded-full" />
-                    <span className="ml-2 text-sm text-red-600">
-                      Recording... {formatDuration(recordingTime)}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={stopRecording}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <StopIcon className="h-5 w-5" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-2">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  />
-                </div>
-                
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <PaperClipIcon className="h-5 w-5" />
+              <div className="flex items-center gap-4">
+                <button className="text-gray-400 hover:text-white">
+                  <PhoneIcon className="w-5 h-5" />
                 </button>
-                
-                <button
-                  type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  className={`inline-flex items-center p-2 border rounded-md ${
-                    isRecording
-                      ? 'border-red-300 text-red-700 bg-red-50 hover:bg-red-100'
-                      : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-                  }`}
-                >
-                  <MicrophoneIcon className="h-5 w-5" />
+                <button className="text-gray-400 hover:text-white">
+                  <VideoCameraIcon className="w-5 h-5" />
                 </button>
-                
-                <button
-                  type="submit"
-                  disabled={!newMessage.trim() && !selectedFile && !isRecording}
-                  className="inline-flex items-center p-2 border border-transparent rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <PaperAirplaneIcon className="h-5 w-5" />
+                <button className="text-gray-400 hover:text-white">
+                  <EllipsisVerticalIcon className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-            
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    message.senderId === 'client1' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  <div
+                    className={`max-w-[70%] rounded-lg p-3 ${
+                      message.senderId === 'client1'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-700 text-gray-100'
+                    }`}
+                  >
+                    <p>{message.content}</p>
+                    <p className="text-xs mt-1 opacity-70">
+                      {formatTimestamp(message.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Message Input */}
+            <div className="h-16 border-t border-gray-700 p-2">
+              <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-4 py-2">
+                <button className="text-gray-400 hover:text-white">
+                  <PlusIcon className="w-5 h-5" />
+                </button>
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Type a message..."
+                  className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none"
+                />
+                <button className="text-gray-400 hover:text-white">
+                  <GifIcon className="w-5 h-5" />
+                </button>
+                <button className="text-gray-400 hover:text-white">
+                  <PaperClipIcon className="w-5 h-5" />
+                </button>
+                <button className="text-gray-400 hover:text-white">
+                  <FaceSmileIcon className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleSend}
+                  className="text-blue-500 hover:text-blue-400"
+                >
+                  <PaperAirplaneIcon className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(false)}
+              className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-700 transition-colors z-10"
+            >
+              <XMarkIcon className="w-6 h-6 text-gray-400 hover:text-white" />
+            </button>
+            <ChatSettings
+              user={{
+                name: user?.name || 'Client',
+                role: user?.role || 'client',
+                avatar: user?.image,
+                status: 'online'
+              }}
+              onClose={() => setShowSettings(false)}
             />
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 } 

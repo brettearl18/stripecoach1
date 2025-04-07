@@ -462,143 +462,175 @@ export const defaultTemplates: FormTemplate[] = [
   },
   {
     id: 'weekly-check-in',
-    name: 'Weekly Check-in Template',
-    description: 'Comprehensive weekly check-in form covering all aspects of client progress',
-    categories: ['nutrition', 'training', 'mindset', 'sleep', 'measurements'],
+    name: 'Weekly Check-in',
+    description: 'Comprehensive weekly check-in aligned with coach review categories',
+    categories: ['training', 'nutrition', 'mindset'],
     questions: [
-      // Nutrition Questions
-      {
-        id: 'nutrition-adherence',
-        type: 'rating_scale',
-        category: 'nutrition',
-        text: 'How well did you stick to your nutrition plan this week?',
-        required: true,
-        scoreEnabled: true,
-        trackProgress: true,
-        minValue: 1,
-        maxValue: 10
-      },
-      {
-        id: 'nutrition-challenges',
-        type: 'text',
-        category: 'nutrition',
-        text: 'What were your biggest nutrition challenges this week?',
-        required: true,
-        scoreEnabled: false,
-        trackProgress: false
-      },
-      {
-        id: 'meal-prep',
-        type: 'checkbox',
-        category: 'nutrition',
-        text: 'Which meals did you prepare in advance?',
-        required: true,
-        scoreEnabled: true,
-        trackProgress: true,
-        options: ['Breakfast', 'Lunch', 'Dinner', 'Snacks']
-      },
-
       // Training Questions
       {
-        id: 'workouts-completed',
+        id: 'training-workouts-completed',
         type: 'number',
         category: 'training',
+        subcategories: ['form', 'consistency'],
         text: 'How many workouts did you complete this week?',
         required: true,
         scoreEnabled: true,
         trackProgress: true,
         minValue: 0,
-        maxValue: 7
+        maxValue: 7,
+        helpText: 'Include all planned training sessions'
       },
       {
-        id: 'training-intensity',
+        id: 'training-form-quality',
         type: 'rating_scale',
         category: 'training',
-        text: 'Rate your overall training intensity this week',
+        subcategories: ['form'],
+        text: 'How would you rate your form and technique during workouts?',
         required: true,
         scoreEnabled: true,
         trackProgress: true,
         minValue: 1,
-        maxValue: 10
+        maxValue: 5,
+        helpText: 'Consider your attention to proper form and movement patterns'
       },
       {
-        id: 'progress-photos',
-        type: 'photo',
+        id: 'training-eccentric-focus',
+        type: 'rating_scale',
         category: 'training',
-        text: 'Upload your progress photos',
+        subcategories: ['form'],
+        text: 'Rate your focus on the eccentric (lowering) phase of exercises',
         required: true,
-        scoreEnabled: false,
+        scoreEnabled: true,
+        trackProgress: true,
+        minValue: 1,
+        maxValue: 5
+      },
+      {
+        id: 'training-warmup',
+        type: 'checkbox',
+        category: 'training',
+        subcategories: ['form'],
+        text: 'Did you complete your warm-up routine before workouts?',
+        required: true,
+        scoreEnabled: true,
+        trackProgress: true
+      },
+      {
+        id: 'training-mobility',
+        type: 'checkbox',
+        category: 'training',
+        subcategories: ['form'],
+        text: 'Did you include mobility work between sets?',
+        required: true,
+        scoreEnabled: true,
         trackProgress: true
       },
 
-      // Mindset Questions
+      // Nutrition Questions
       {
-        id: 'stress-level',
+        id: 'nutrition-adherence',
         type: 'rating_scale',
-        category: 'mindset',
-        text: 'Rate your stress level this week',
+        category: 'nutrition',
+        text: 'How well did you follow your nutrition plan this week?',
         required: true,
         scoreEnabled: true,
         trackProgress: true,
         minValue: 1,
-        maxValue: 10
+        maxValue: 5,
+        helpText: 'Consider your overall adherence to your meal plan'
       },
       {
-        id: 'motivation',
+        id: 'nutrition-protein',
         type: 'rating_scale',
-        category: 'mindset',
-        text: 'How motivated do you feel about your progress?',
+        category: 'nutrition',
+        text: 'How consistently did you hit your protein targets?',
         required: true,
         scoreEnabled: true,
         trackProgress: true,
         minValue: 1,
-        maxValue: 10
-      },
-
-      // Sleep Questions
-      {
-        id: 'sleep-quality',
-        type: 'rating_scale',
-        category: 'sleep',
-        text: 'Rate your overall sleep quality this week',
-        required: true,
-        scoreEnabled: true,
-        trackProgress: true,
-        minValue: 1,
-        maxValue: 10
+        maxValue: 5
       },
       {
-        id: 'sleep-hours',
+        id: 'nutrition-water',
         type: 'number',
-        category: 'sleep',
-        text: 'Average hours of sleep per night',
+        category: 'nutrition',
+        text: 'Average daily water intake (liters)',
         required: true,
         scoreEnabled: true,
         trackProgress: true,
         minValue: 0,
-        maxValue: 12
+        maxValue: 10
+      },
+      {
+        id: 'nutrition-meal-prep',
+        type: 'checkbox',
+        category: 'nutrition',
+        text: 'Did you prepare your meals in advance?',
+        required: true,
+        scoreEnabled: true,
+        trackProgress: true
+      },
+      {
+        id: 'nutrition-challenges',
+        type: 'text',
+        category: 'nutrition',
+        text: 'What were your main nutrition challenges this week?',
+        required: true,
+        scoreEnabled: false,
+        trackProgress: false
       },
 
-      // Measurements
+      // Mindset Questions
       {
-        id: 'weight',
-        type: 'number',
-        category: 'measurements',
-        text: 'Current weight',
+        id: 'mindset-motivation',
+        type: 'rating_scale',
+        category: 'mindset',
+        text: 'Rate your overall motivation this week',
         required: true,
-        scoreEnabled: false,
+        scoreEnabled: true,
         trackProgress: true,
-        unit: 'kg'
+        minValue: 1,
+        maxValue: 5
       },
       {
-        id: 'waist',
-        type: 'number',
-        category: 'measurements',
-        text: 'Waist measurement',
+        id: 'mindset-stress',
+        type: 'rating_scale',
+        category: 'mindset',
+        text: 'How would you rate your stress levels?',
+        required: true,
+        scoreEnabled: true,
+        trackProgress: true,
+        minValue: 1,
+        maxValue: 5
+      },
+      {
+        id: 'mindset-sleep-quality',
+        type: 'rating_scale',
+        category: 'mindset',
+        text: 'Rate your overall sleep quality',
+        required: true,
+        scoreEnabled: true,
+        trackProgress: true,
+        minValue: 1,
+        maxValue: 5
+      },
+      {
+        id: 'mindset-wins',
+        type: 'text',
+        category: 'mindset',
+        text: 'What were your biggest wins this week?',
         required: true,
         scoreEnabled: false,
-        trackProgress: true,
-        unit: 'cm'
+        trackProgress: false
+      },
+      {
+        id: 'mindset-challenges',
+        type: 'text',
+        category: 'mindset',
+        text: 'What challenges did you face and how did you overcome them?',
+        required: true,
+        scoreEnabled: false,
+        trackProgress: false
       }
     ],
     createdAt: new Date(),
@@ -735,4 +767,5 @@ export const defaultCheckInTemplate: FormTemplate = {
   isActive: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString()
+}; 
 }; 

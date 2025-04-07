@@ -12,13 +12,18 @@ const protectedRoutes = {
   '/admin/billing': ['admin'],
   '/admin/programs': ['admin'],
   '/admin/reports': ['admin'],
+  '/admin/messages': ['admin'],
   
   '/coach': ['coach', 'admin'],
   '/coach/dashboard': ['coach', 'admin'],
+  '/coach/dashboard2': ['coach', 'admin'],
   '/coach/clients': ['coach', 'admin'],
   '/coach/programs': ['coach', 'admin'],
   '/coach/templates': ['coach', 'admin'],
   '/coach/settings': ['coach', 'admin'],
+  '/coach/messages': ['coach', 'admin'],
+  '/coach/responses': ['coach', 'admin'],
+  '/coach/analytics': ['coach', 'admin'],
   
   '/client': ['client', 'coach', 'admin'],
   '/client/dashboard': ['client', 'coach', 'admin'],
@@ -26,13 +31,15 @@ const protectedRoutes = {
   '/client/nutrition': ['client', 'coach', 'admin'],
   '/client/progress': ['client', 'coach', 'admin'],
   '/client/settings': ['client', 'coach', 'admin'],
+  '/client/messages': ['client', 'coach', 'admin'],
+  '/client/check-ins': ['client', 'coach', 'admin'],
 };
 
 export function middleware(request: NextRequest) {
   // Get the pathname from the URL
   const path = request.nextUrl.pathname;
 
-  // Get user data from cookies - using 'user' instead of 'userData'
+  // Get user data from cookies
   const userDataStr = request.cookies.get('user')?.value;
   
   // Check if this is a protected route
@@ -53,7 +60,11 @@ export function middleware(request: NextRequest) {
   try {
     // Parse user data
     const userData = JSON.parse(userDataStr);
-    const userRole = userData.role;
+    const userRole = userData.role?.toLowerCase();
+
+    if (!userRole) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
 
     // Check if user's role is allowed for this route
     const allowedRoles = protectedRoutes[matchingRoute];

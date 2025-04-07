@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { 
+import { DashboardNav } from '@/components/DashboardNav';
+import {
   UserCircleIcon,
   EnvelopeIcon,
   ChatBubbleLeftRightIcon,
+  ChatBubbleLeftIcon,
   ChartBarIcon,
   ClipboardDocumentListIcon,
   CalendarIcon,
@@ -20,11 +22,23 @@ import {
   PauseIcon,
   StopIcon,
   TrashIcon,
-  PaperAirplaneIcon
+  PaperAirplaneIcon,
+  AcademicCapIcon,
+  ArrowTrendingUpIcon,
+  PlusIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  FireIcon,
+  HeartIcon,
+  BoltIcon,
+  ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Image from 'next/image';
+import Link from 'next/link';
+import { format } from 'date-fns';
 
 interface TabContentProps {
   client: any;
@@ -80,18 +94,147 @@ const mockCheckInForm: CheckInForm = {
   ]
 };
 
-interface CoachReply {
+interface TaskItem {
+  id: string;
+  text: string;
+  category: 'training' | 'nutrition' | 'mindset';
+  status: 'pending' | 'approved' | 'completed';
+  points: number;
+  dueDate?: string;
+}
+
+interface CoachResponse {
+  id: string;
   type: 'text' | 'audio';
   content: string;
   timestamp: string;
   audioUrl?: string;
+  tasks?: TaskItem[];
 }
 
 interface QuestionResponse {
   id: string;
   question: string;
   answer: string;
-  coachReply?: CoachReply;
+  coachReply?: CoachResponse;
+}
+
+interface CategoryReview {
+  score: number;
+  recommendations: string[];
+  improvements: string[];
+}
+
+interface CoachReview {
+  training: CategoryReview;
+  nutrition: CategoryReview;
+  mindset: CategoryReview;
+  lastUpdated: string;
+}
+
+function processCheckInResponses(checkIns: any[]): CoachReview {
+  const review: CoachReview = {
+    training: {
+      score: 0,
+      recommendations: [],
+      improvements: []
+    },
+    nutrition: {
+      score: 0,
+      recommendations: [],
+      improvements: []
+    },
+    mindset: {
+      score: 0,
+      recommendations: [],
+      improvements: []
+    },
+    lastUpdated: new Date().toISOString()
+  };
+
+  // Process the most recent check-in
+  const latestCheckIn = checkIns[0];
+  if (!latestCheckIn) return review;
+
+  // Training Review
+  const trainingScore = calculateTrainingScore(latestCheckIn);
+  review.training.score = trainingScore;
+  
+  if (latestCheckIn.responses['training-form-quality']?.value < 4) {
+    review.training.improvements.push('Focus on eccentric phase of lifts');
+  }
+  
+  if (!latestCheckIn.responses['training-warmup']?.value) {
+    review.training.improvements.push('Maintain current warm-up routine');
+  }
+  
+  if (!latestCheckIn.responses['training-mobility']?.value) {
+    review.training.recommendations.push('Add mobility work between sets');
+  }
+
+  // Nutrition Review
+  const nutritionScore = calculateNutritionScore(latestCheckIn);
+  review.nutrition.score = nutritionScore;
+  
+  if (latestCheckIn.responses['nutrition-protein']?.value < 4) {
+    review.nutrition.improvements.push('Increase protein intake consistency');
+  }
+  
+  if (!latestCheckIn.responses['nutrition-meal-prep']?.value) {
+    review.nutrition.recommendations.push('Implement meal preparation routine');
+  }
+
+  const waterIntake = latestCheckIn.responses['nutrition-water']?.value;
+  if (waterIntake < 2.5) {
+    review.nutrition.improvements.push('Increase daily water intake');
+  }
+
+  // Mindset Review
+  const mindsetScore = calculateMindsetScore(latestCheckIn);
+  review.mindset.score = mindsetScore;
+  
+  if (latestCheckIn.responses['mindset-stress']?.value > 3) {
+    review.mindset.recommendations.push('Consider implementing stress management techniques');
+  }
+  
+  if (latestCheckIn.responses['mindset-sleep-quality']?.value < 3) {
+    review.mindset.improvements.push('Focus on sleep quality improvement');
+  }
+
+  return review;
+}
+
+function calculateTrainingScore(checkIn: any): number {
+  const scores = [
+    checkIn.responses['training-workouts-completed']?.value / 7 * 5 || 0,
+    checkIn.responses['training-form-quality']?.value || 0,
+    checkIn.responses['training-eccentric-focus']?.value || 0,
+    checkIn.responses['training-warmup']?.value ? 5 : 0,
+    checkIn.responses['training-mobility']?.value ? 5 : 0
+  ];
+  
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
+function calculateNutritionScore(checkIn: any): number {
+  const scores = [
+    checkIn.responses['nutrition-adherence']?.value || 0,
+    checkIn.responses['nutrition-protein']?.value || 0,
+    checkIn.responses['nutrition-water']?.value / 2 || 0,
+    checkIn.responses['nutrition-meal-prep']?.value ? 5 : 0
+  ];
+  
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+}
+
+function calculateMindsetScore(checkIn: any): number {
+  const scores = [
+    checkIn.responses['mindset-motivation']?.value || 0,
+    5 - (checkIn.responses['mindset-stress']?.value || 0), // Invert stress score
+    checkIn.responses['mindset-sleep-quality']?.value || 0
+  ];
+  
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 }
 
 // Add this component for the audio recorder
@@ -169,7 +312,7 @@ const AudioRecorder = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
+    return (
     <div className="flex items-center space-x-4 bg-[#13141A] rounded-lg p-3">
       {isRecording ? (
         <>
@@ -198,8 +341,147 @@ const AudioRecorder = ({
           <MicrophoneIcon className="h-5 w-5 text-blue-500" />
         </button>
       )}
-    </div>
-  );
+      </div>
+    );
+};
+
+// Add this component for task allocation
+const TaskAllocation = ({ 
+  onAddTask,
+  existingTasks = []
+}: { 
+  onAddTask: (task: TaskItem) => void;
+  existingTasks: TaskItem[];
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTask, setNewTask] = useState<Partial<TaskItem>>({
+    category: 'training',
+    points: 1
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTask.text) return;
+
+    onAddTask({
+      id: `task-${Date.now()}`,
+      text: newTask.text!,
+      category: newTask.category!,
+      status: 'pending',
+      points: newTask.points!,
+      dueDate: newTask.dueDate
+    });
+
+    setIsAdding(false);
+    setNewTask({ category: 'training', points: 1 });
+  };
+
+    return (
+    <div className="mt-4">
+      {isAdding ? (
+        <form onSubmit={handleSubmit} className="space-y-4 bg-[#1E2128] p-4 rounded-lg border border-gray-800">
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">Task Description</label>
+            <input
+              type="text"
+              value={newTask.text || ''}
+              onChange={(e) => setNewTask({ ...newTask, text: e.target.value })}
+              className="w-full bg-[#13141A] border border-gray-800 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter task description..."
+            />
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
+              <select
+                value={newTask.category}
+                onChange={(e) => setNewTask({ ...newTask, category: e.target.value as TaskItem['category'] })}
+                className="w-full bg-[#13141A] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="training">Training</option>
+                <option value="nutrition">Nutrition</option>
+                <option value="mindset">Mindset</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Points</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={newTask.points}
+                onChange={(e) => setNewTask({ ...newTask, points: parseInt(e.target.value) })}
+                className="w-full bg-[#13141A] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Due Date</label>
+              <input
+                type="date"
+                value={newTask.dueDate || ''}
+                onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                className="w-full bg-[#13141A] border border-gray-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={() => setIsAdding(false)}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Add Task
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setIsAdding(true)}
+          className="flex items-center space-x-2 text-blue-500 hover:text-blue-400"
+        >
+          <PlusIcon className="h-5 w-5" />
+          <span>Add Task</span>
+        </button>
+      )}
+
+      {existingTasks.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {existingTasks.map((task) => (
+            <div 
+              key={task.id}
+              className="flex items-center justify-between p-3 bg-[#1E2128] rounded-lg border border-gray-800"
+            >
+              <div className="flex items-center space-x-3">
+                <div className={`w-2 h-2 rounded-full ${
+                  task.status === 'completed' ? 'bg-green-500' :
+                  task.status === 'approved' ? 'bg-blue-500' : 'bg-yellow-500'
+                }`} />
+                <span className="text-sm text-white">{task.text}</span>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-400">{task.points} pts</span>
+                {task.status === 'pending' && (
+                  <button className="p-1 hover:bg-gray-700 rounded">
+                    <CheckIcon className="h-5 w-5 text-green-500" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      </div>
+    );
 };
 
 // Update the CheckInDetails component
@@ -212,18 +494,39 @@ const CheckInDetails = ({
   onClose: () => void; 
   checkIn: any; 
 }) => {
-  const [responses, setResponses] = useState<QuestionResponse[]>(
-    mockCheckInForm.questions.map(q => ({
+  const [responses, setResponses] = useState<QuestionResponse[]>(() => {
+    if (!checkIn) return [];
+    return mockCheckInForm.questions.map(q => ({
       id: q.id,
       question: q.text,
-      answer: checkIn.responses?.[q.id] || "No response provided",
+      answer: checkIn.responses?.[q.id]?.text || "No response provided",
       coachReply: undefined
-    }))
-  );
+    }));
+  });
+
+  // If checkIn changes, update responses
+  useEffect(() => {
+    if (checkIn) {
+      setResponses(mockCheckInForm.questions.map(q => ({
+        id: q.id,
+        question: q.text,
+        answer: checkIn.responses?.[q.id]?.text || "No response provided",
+        coachReply: undefined
+      })));
+    }
+  }, [checkIn]);
 
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+
+  // Don't render dialog if no checkIn is selected
+  if (!checkIn) return null;
+
+  const handleAddTask = (task: TaskItem) => {
+    setTasks([...tasks, task]);
+  };
 
   const handleTextReply = (responseId: string) => {
     if (!replyText.trim()) return;
@@ -235,7 +538,8 @@ const CheckInDetails = ({
           coachReply: {
             type: 'text',
             content: replyText,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            tasks: tasks
           }
         };
       }
@@ -244,6 +548,7 @@ const CheckInDetails = ({
 
     setReplyText('');
     setActiveReplyId(null);
+    setTasks([]);
   };
 
   const handleAudioReply = (responseId: string, audioUrl: string) => {
@@ -289,8 +594,8 @@ const CheckInDetails = ({
             <div>
               <div className="text-sm text-gray-400">Sleep</div>
               <div className="text-lg font-medium">{checkIn.metrics.sleep} hrs</div>
-            </div>
-          </div>
+        </div>
+      </div>
 
           {/* Check-in Responses with Coach Replies */}
           <div className="space-y-6">
@@ -311,7 +616,31 @@ const CheckInDetails = ({
                       <div className="flex-1">
                         <div className="text-sm text-gray-400">Coach Reply</div>
                         {response.coachReply.type === 'text' ? (
-                          <p className="mt-1 text-white">{response.coachReply.content}</p>
+                          <>
+                            <p className="mt-1 text-white">{response.coachReply.content}</p>
+                            {response.coachReply.tasks && response.coachReply.tasks.length > 0 && (
+                              <div className="mt-3">
+                                <h4 className="text-sm font-medium text-gray-400 mb-2">Assigned Tasks</h4>
+                <div className="space-y-2">
+                                  {response.coachReply.tasks.map((task) => (
+                                    <div 
+                                      key={task.id}
+                                      className="flex items-center justify-between p-2 bg-[#1E2128] rounded border border-gray-800"
+                                    >
+                                      <div className="flex items-center space-x-2">
+                                        <div className={`w-2 h-2 rounded-full ${
+                                          task.status === 'completed' ? 'bg-green-500' :
+                                          task.status === 'approved' ? 'bg-blue-500' : 'bg-yellow-500'
+                                        }`} />
+                                        <span className="text-sm">{task.text}</span>
+                                      </div>
+                                      <span className="text-sm text-gray-400">{task.points} pts</span>
+                    </div>
+                  ))}
+                </div>
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <audio 
                             className="mt-2" 
@@ -338,27 +667,34 @@ const CheckInDetails = ({
                             }}
                           />
                         ) : (
-                          <div className="flex space-x-2">
-                            <input
-                              type="text"
-                              value={replyText}
-                              onChange={(e) => setReplyText(e.target.value)}
-                              placeholder="Type your reply..."
-                              className="flex-1 bg-[#1a1b1e] border border-gray-800 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          <>
+                            <div className="flex space-x-2">
+                              <input
+                                type="text"
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="Type your reply..."
+                                className="flex-1 bg-[#1a1b1e] border border-gray-800 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <button
+                                onClick={() => handleTextReply(response.id)}
+                                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                              >
+                                <PaperAirplaneIcon className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={() => setIsRecording(true)}
+                                className="p-2 bg-gray-800 text-blue-500 rounded-lg hover:bg-gray-700"
+                              >
+                                <MicrophoneIcon className="h-5 w-5" />
+                              </button>
+                            </div>
+                            
+                            <TaskAllocation
+                              onAddTask={handleAddTask}
+                              existingTasks={tasks}
                             />
-                            <button
-                              onClick={() => handleTextReply(response.id)}
-                              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                            >
-                              <PaperAirplaneIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => setIsRecording(true)}
-                              className="p-2 bg-gray-800 text-blue-500 rounded-lg hover:bg-gray-700"
-                            >
-                              <MicrophoneIcon className="h-5 w-5" />
-                            </button>
-                          </div>
+                          </>
                         )}
                       </div>
                     ) : (
@@ -382,144 +718,167 @@ const CheckInDetails = ({
 
 // Tab content components
 const OverviewTab = ({ client }: TabContentProps) => (
-  <div className="space-y-8">
-    {/* Goals Card */}
-    <div className="grid grid-cols-3 gap-8">
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Goals</h2>
-        <div className="space-y-4">
-          {client.goals.map((goal: any) => (
-            <div key={goal.id}>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-300">{goal.title}</span>
-                <span className="text-gray-400">{goal.progress}%</span>
+  <div className="grid grid-cols-3 gap-6">
+    {/* Left Column - Progress & Metrics */}
+    <div className="col-span-2 space-y-6">
+      {/* Progress Overview */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Progress Overview</h2>
+          <div className="grid grid-cols-3 gap-4">
+            {Object.entries(client.weeklyProgress || {}).map(([area, progress]) => (
+              <div key={area} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">{area}</div>
+                <div className="mt-2">
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full">
+                        <div
+                          className="h-2 bg-blue-500 rounded-full"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
+                    <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                      {progress}%
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="h-2 bg-gray-700 rounded-full">
-                <div
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${goal.progress}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Latest Metrics */}
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Latest Metrics</h2>
-        <div className="space-y-6">
-          <div>
-            <div className="flex justify-between text-sm text-gray-400 mb-1">
-              <span>Weight</span>
-              <span>{client.metrics.weight[client.metrics.weight.length - 1].value} kg</span>
-            </div>
-            <div className="h-2 bg-gray-700 rounded-full">
-              <div className="h-full bg-green-500 rounded-full" style={{ width: '75%' }} />
-            </div>
+      {/* Recent Check-ins */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Check-ins</h2>
+          <div className="space-y-4">
+            {client.checkIns?.slice(0, 3).map((checkIn: any) => (
+              <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center">
+                      <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {new Date(checkIn.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    checkIn.status === 'completed'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
+                  }`}>
+                    {checkIn.status}
+                  </span>
+                </div>
+                {checkIn.metrics && (
+                  <div className="mt-3 grid grid-cols-3 gap-4">
+                    {Object.entries(checkIn.metrics).map(([key, value]) => (
+                      <div key={key} className="text-sm">
+                        <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
+                        <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-          <div>
-            <div className="flex justify-between text-sm text-gray-400 mb-1">
-              <span>Energy Level</span>
-              <span>{client.metrics.energy[client.metrics.energy.length - 1].value}%</span>
-            </div>
-            <div className="h-2 bg-gray-700 rounded-full">
-              <div className="h-full bg-yellow-500 rounded-full" style={{ width: '85%' }} />
-            </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Right Column - AI Insights & Actions */}
+    <div className="space-y-6">
+      {/* AI Summary */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Insights</h2>
+            <SparklesIcon className="h-5 w-5 text-blue-500" />
           </div>
-          <div>
-            <div className="flex justify-between text-sm text-gray-400 mb-1">
-              <span>Sleep Quality</span>
-              <span>{client.metrics.sleep[client.metrics.sleep.length - 1].value} hrs</span>
+          <div className="prose prose-sm dark:prose-invert">
+            <p className="text-gray-600 dark:text-gray-300">{client.aiSummary?.overview}</p>
+            
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                <TrophyIcon className="h-4 w-4 text-green-500 mr-2" />
+                Recent Wins
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {client.aiSummary?.wins.map((win: string, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{win}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="h-2 bg-gray-700 rounded-full">
-              <div className="h-full bg-purple-500 rounded-full" style={{ width: '65%' }} />
+
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-2" />
+                Areas for Attention
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {client.aiSummary?.challenges.map((challenge: string, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <ClockIcon className="h-4 w-4 text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{challenge}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                <SparklesIcon className="h-4 w-4 text-blue-500 mr-2" />
+                Recommendations
+              </h3>
+              <ul className="mt-2 space-y-2">
+                {client.aiSummary?.recommendations.map((rec: string, index: number) => (
+                  <li key={index} className="flex items-start">
+                    <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-2 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">{rec}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <button className="p-4 bg-[#13141A] rounded-lg text-gray-300 hover:bg-gray-800 transition-colors">
-            <ChartBarIcon className="h-6 w-6 mb-2" />
-            <span className="text-sm">View Progress</span>
-          </button>
-          <button className="p-4 bg-[#13141A] rounded-lg text-gray-300 hover:bg-gray-800 transition-colors">
-            <ClipboardDocumentListIcon className="h-6 w-6 mb-2" />
-            <span className="text-sm">New Check-in</span>
-          </button>
-          <button className="p-4 bg-[#13141A] rounded-lg text-gray-300 hover:bg-gray-800 transition-colors">
-            <CalendarIcon className="h-6 w-6 mb-2" />
-            <span className="text-sm">Schedule</span>
-          </button>
-          <button className="p-4 bg-[#13141A] rounded-lg text-gray-300 hover:bg-gray-800 transition-colors">
-            <PhotoIcon className="h-6 w-6 mb-2" />
-            <span className="text-sm">Progress Pics</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    {/* AI Summary */}
-    <div className="bg-[#1a1b1e] rounded-lg p-6">
-      <div className="flex items-center space-x-2 mb-6">
-        <SparklesIcon className="h-6 w-6 text-blue-500" />
-        <h2 className="text-lg font-semibold">AI Progress Summary</h2>
-      </div>
-      
-      <div className="space-y-6">
-        <div className="bg-[#13141A] rounded-lg p-4">
-          <p className="text-gray-300 leading-relaxed">
-            {client.aiSummary.overview}
-          </p>
-        </div>
-
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <TrophyIcon className="h-5 w-5 text-green-500" />
-            <h3 className="font-medium text-green-500">Recent Wins</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+          <div className="space-y-3">
+            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <div className="flex items-center">
+                <ClipboardDocumentListIcon className="h-5 w-5 text-gray-400 mr-3" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Schedule Check-in</span>
+              </div>
+              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+            </button>
+            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <div className="flex items-center">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-3" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Send Message</span>
+              </div>
+              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+            </button>
+            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <div className="flex items-center">
+                <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">Update Goals</span>
+              </div>
+              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+            </button>
           </div>
-          <ul className="space-y-2">
-            {client.aiSummary.wins.map((win: string, index: number) => (
-              <li key={index} className="flex items-start space-x-2 text-gray-300">
-                <span className="text-green-500 mt-1">•</span>
-                <span>{win}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />
-            <h3 className="font-medium text-yellow-500">Areas for Improvement</h3>
-          </div>
-          <ul className="space-y-2">
-            {client.aiSummary.challenges.map((challenge: string, index: number) => (
-              <li key={index} className="flex items-start space-x-2 text-gray-300">
-                <span className="text-yellow-500 mt-1">•</span>
-                <span>{challenge}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <div className="flex items-center space-x-2 mb-3">
-            <SparklesIcon className="h-5 w-5 text-blue-500" />
-            <h3 className="font-medium text-blue-500">AI Recommendations</h3>
-          </div>
-          <ul className="space-y-2">
-            {client.aiSummary.recommendations.map((recommendation: string, index: number) => (
-              <li key={index} className="flex items-start space-x-2 text-gray-300">
-                <span className="text-blue-500 mt-1">•</span>
-                <span>{recommendation}</span>
-              </li>
-            ))}
-          </ul>
         </div>
       </div>
     </div>
@@ -528,500 +887,640 @@ const OverviewTab = ({ client }: TabContentProps) => (
 
 const CheckInsTab = ({ client }: TabContentProps) => {
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
-
-  // Enhanced mock check-in data
-  const enhancedCheckIns = client.checkIns.map((checkIn: any) => ({
-    ...checkIn,
-    formTitle: 'Weekly Progress Check-in',
-    responses: {
-      q1: '8/10',
-      q2: 'Had some difficulty with late-night snacking, but otherwise stayed on track.',
-      q3: 'Partially',
-      q4: 'Would like to discuss modifying the workout schedule.'
-    }
-  }));
+  const [showDetails, setShowDetails] = useState(false);
 
   return (
     <div className="space-y-6">
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold">Recent Check-ins</h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2">
-            <ClipboardDocumentListIcon className="h-5 w-5" />
-            <span>New Check-in</span>
-          </button>
-        </div>
+      {/* Check-ins List */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Check-in History</h2>
+            <button
+              onClick={() => {/* TODO: Implement new check-in */}}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              New Check-in
+            </button>
+          </div>
 
-        <div className="space-y-4">
-          {enhancedCheckIns.map((checkIn: any) => (
-            <div key={checkIn.id} className="bg-[#13141A] rounded-lg p-4">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-medium text-white mb-1">{checkIn.formTitle}</h3>
-                  <div className="flex items-center space-x-2">
-                    <CalendarIcon className="h-5 w-5 text-gray-400" />
-                    <span className="text-gray-300">{checkIn.date}</span>
-                    <span className="text-gray-500">•</span>
-                    <ClockIcon className="h-4 w-4 text-gray-500" />
-                    <span className="text-gray-500">{checkIn.time}</span>
+          <div className="space-y-4">
+            {client.checkIns?.map((checkIn: any) => (
+              <div
+                key={checkIn.id}
+                className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                onClick={() => {
+                  setSelectedCheckIn(checkIn);
+                  setShowDetails(true);
+                }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center">
+                      <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        {new Date(checkIn.date).toLocaleDateString()} at {checkIn.time}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
                   </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className={`px-2 py-1 rounded text-sm ${
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     checkIn.status === 'completed'
-                      ? 'bg-green-500/10 text-green-500'
-                      : 'bg-yellow-500/10 text-yellow-500'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
                   }`}>
                     {checkIn.status}
                   </span>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-4">
+                  {Object.entries(checkIn.metrics).map(([key, value]) => (
+                    <div key={key} className="text-sm">
+                      <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
+                      <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-center justify-end">
                   <button
-                    onClick={() => setSelectedCheckIn(checkIn)}
-                    className="text-blue-500 hover:text-blue-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCheckIn(checkIn);
+                      setShowDetails(true);
+                    }}
+                    className="inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                   >
                     View Details
+                    <ChevronRightIcon className="h-5 w-5 ml-1" />
                   </button>
                 </div>
               </div>
-
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="bg-[#1a1b1e] rounded p-3">
-                  <div className="text-sm text-gray-400 mb-1">Weight</div>
-                  <div className="text-lg">{checkIn.metrics.weight} kg</div>
-                </div>
-                <div className="bg-[#1a1b1e] rounded p-3">
-                  <div className="text-sm text-gray-400 mb-1">Energy</div>
-                  <div className="text-lg">{checkIn.metrics.energy}%</div>
-                </div>
-                <div className="bg-[#1a1b1e] rounded p-3">
-                  <div className="text-sm text-gray-400 mb-1">Sleep</div>
-                  <div className="text-lg">{checkIn.metrics.sleep} hrs</div>
-                </div>
-              </div>
-
-              <div className="text-sm text-gray-400">
-                <strong>Preview:</strong>
-                <p className="mt-1 text-gray-300 line-clamp-2">{checkIn.notes}</p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Check-in Details Modal */}
-      {selectedCheckIn && (
-        <CheckInDetails
-          isOpen={!!selectedCheckIn}
-          onClose={() => setSelectedCheckIn(null)}
-          checkIn={selectedCheckIn}
-        />
-      )}
+      {/* Check-in Details Dialog */}
+      <CheckInDetails
+        isOpen={showDetails}
+        onClose={() => {
+          setShowDetails(false);
+          setSelectedCheckIn(null);
+        }}
+        checkIn={selectedCheckIn}
+      />
     </div>
   );
 };
 
-const ProgressTab = ({ client }: TabContentProps) => (
-  <div className="space-y-6">
-    {/* Progress Charts */}
-    <div className="grid grid-cols-2 gap-6">
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Weight Progress</h2>
-        <div className="h-64 bg-[#13141A] rounded-lg"></div>
-      </div>
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <h2 className="text-lg font-semibold mb-4">Energy Levels</h2>
-        <div className="h-64 bg-[#13141A] rounded-lg"></div>
-      </div>
-    </div>
+const ProgressTab = ({ client }: TabContentProps) => {
+  // Filter out metrics we don't want to show in the progress view
+  const relevantMetrics = Object.entries(client.metrics || {}).filter(
+    ([key]) => !['streak', 'completionRate', 'lastCheckIn'].includes(key)
+  );
 
-    {/* Progress Photos */}
-    <div className="bg-[#1a1b1e] rounded-lg p-6">
-      <h2 className="text-lg font-semibold mb-4">Progress Photos</h2>
-      <div className="grid grid-cols-4 gap-4">
-        {client.progressPhotos.map((photo: any) => (
-          <div key={photo.id} className="aspect-square bg-[#13141A] rounded-lg"></div>
-        ))}
+  return (
+    <div className="grid grid-cols-3 gap-6">
+      {/* Left Column - Progress Charts */}
+      <div className="col-span-2 space-y-6">
+        {/* Goals Progress */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Goals Progress</h2>
+            <div className="space-y-6">
+              {client.goals?.map((goal: any) => (
+                <div key={goal.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{goal.title}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{goal.progress}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                    <div
+                      className="h-2 bg-blue-500 rounded-full transition-all duration-500"
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Metrics Progress */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Progress Overview</h2>
+            <div className="space-y-8">
+              {relevantMetrics.map(([metric, value]) => (
+                <div key={metric} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">{metric}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {value}
+                        {metric === 'weight' ? ' kg' : metric === 'sleep' ? ' hrs' : '%'}
+                      </span>
+                      <ArrowTrendingUpIcon className="h-4 w-4 text-green-500" />
+                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        metric === 'weight' ? 'bg-green-500' :
+                        metric === 'energy' ? 'bg-yellow-500' :
+                        'bg-purple-500'
+                      }`}
+                      style={{
+                        width: `${value}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column - Progress Photos & Achievements */}
+      <div className="space-y-6">
+        {/* Progress Photos */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Progress Photos</h2>
+              <button
+                onClick={() => {/* TODO: Implement photo upload */}}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                <PhotoIcon className="h-5 w-5 mr-2" />
+                Upload New Photos
+              </button>
+            </div>
+
+            {/* Upload Area */}
+            <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-6 py-10">
+              <div className="text-center">
+                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-4 flex text-sm leading-6 text-gray-600 dark:text-gray-400">
+                  <label
+                    htmlFor="file-upload"
+                    className="relative cursor-pointer rounded-md font-semibold text-blue-600 dark:text-blue-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 hover:text-blue-500"
+                  >
+                    <span>Upload a file</span>
+                    <input id="file-upload" name="file-upload" type="file" className="sr-only" />
+                  </label>
+                  <p className="pl-1">or drag and drop</p>
+                </div>
+                <p className="text-xs leading-5 text-gray-600 dark:text-gray-400">PNG, JPG, GIF up to 10MB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Achievements */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Achievements</h2>
+            <div className="space-y-4">
+              {[
+                { icon: TrophyIcon, color: 'text-yellow-500', text: 'Completed 4-week program' },
+                { icon: FireIcon, color: 'text-red-500', text: '7-day streak maintained' },
+                { icon: SparklesIcon, color: 'text-blue-500', text: 'Hit weight goal milestone' }
+              ].map((achievement, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <achievement.icon className={`h-5 w-5 ${achievement.color}`} />
+                  <span className="text-sm text-gray-900 dark:text-white">{achievement.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const FormsTab = ({ client }: TabContentProps) => (
   <div className="space-y-6">
-    <div className="bg-[#1a1b1e] rounded-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold">Forms & Documents</h2>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2">
-          <DocumentTextIcon className="h-5 w-5" />
-          <span>New Form</span>
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {client.forms.map((form: any) => (
-          <div key={form.id} className="flex items-center justify-between bg-[#13141A] rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <DocumentTextIcon className="h-6 w-6 text-gray-400" />
-              <div>
-                <div className="font-medium">{form.title}</div>
-                <div className="text-sm text-gray-500">{form.date}</div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <span className={`px-2 py-1 rounded text-sm ${
-                form.status === 'completed' 
-                  ? 'bg-green-500/10 text-green-500' 
-                  : 'bg-yellow-500/10 text-yellow-500'
-              }`}>
-                {form.status}
-              </span>
-              <button className="text-blue-500 hover:text-blue-400">
-                View
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-const PhotosTab = ({ client }: TabContentProps) => (
-  <div className="space-y-6">
-    <div className="bg-[#1a1b1e] rounded-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold">Progress Photos</h2>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2">
-          <PhotoIcon className="h-5 w-5" />
-          <span>Upload Photos</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-4 gap-6">
-        {client.photos.map((photo: any) => (
-          <div key={photo.id} className="space-y-2">
-            <div className="aspect-square bg-[#13141A] rounded-lg"></div>
-            <div className="text-sm text-gray-400">{photo.date}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-const CalendarTab = ({ client }: TabContentProps) => {
-  // Group all events by month
-  const allEvents = [
-    {
-      id: 'start',
-      type: 'milestone',
-      title: 'Started Coaching Program',
-      date: '2024-01-15',
-      time: '09:00 AM',
-      status: 'completed',
-      icon: 'star'
-    },
-    ...client.checkIns.map((checkIn: any) => ({
-      id: checkIn.id,
-      type: 'check-in',
-      title: 'Check-in Session',
-      date: checkIn.date,
-      time: checkIn.time,
-      status: checkIn.status,
-      metrics: checkIn.metrics,
-      notes: checkIn.notes
-    })),
-    ...client.photos.map((photo: any) => ({
-      id: photo.id,
-      type: 'photo',
-      title: 'Progress Photos',
-      date: photo.date,
-      status: 'completed'
-    })),
-    ...client.schedule.map((session: any) => ({
-      id: session.id,
-      type: 'session',
-      title: session.title,
-      date: session.date,
-      time: session.time,
-      status: session.status
-    }))
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  const getEventIcon = (type: string) => {
-    switch (type) {
-      case 'milestone':
-        return <SparklesIcon className="h-6 w-6 text-yellow-500" />;
-      case 'check-in':
-        return <ClipboardDocumentListIcon className="h-6 w-6 text-blue-500" />;
-      case 'photo':
-        return <PhotoIcon className="h-6 w-6 text-purple-500" />;
-      case 'session':
-        return <CalendarIcon className="h-6 w-6 text-green-500" />;
-      default:
-        return <CalendarIcon className="h-6 w-6 text-gray-400" />;
-    }
-  };
-
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'milestone':
-        return 'text-yellow-500 bg-yellow-500/10';
-      case 'check-in':
-        return 'text-blue-500 bg-blue-500/10';
-      case 'photo':
-        return 'text-purple-500 bg-purple-500/10';
-      case 'session':
-        return 'text-green-500 bg-green-500/10';
-      default:
-        return 'text-gray-400 bg-gray-500/10';
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-[#1a1b1e] rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold">Timeline</h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2">
-            <CalendarIcon className="h-5 w-5" />
-            <span>Schedule Session</span>
+    {/* Active Forms */}
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Active Forms</h2>
+          <button
+            onClick={() => {/* TODO: Implement new form */}}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Assign New Form
           </button>
         </div>
-
-        <div className="space-y-8">
-          {allEvents.map((event, index) => (
-            <div key={event.id} className="relative">
-              {/* Timeline connector */}
-              {index < allEvents.length - 1 && (
-                <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-gray-800" />
-              )}
-              
-              <div className="flex items-start space-x-4">
-                {/* Event icon */}
-                <div className={`relative z-10 p-2 rounded-full ${getEventColor(event.type)}`}>
-                  {getEventIcon(event.type)}
-                </div>
-
-                {/* Event content */}
-                <div className="flex-1 bg-[#13141A] rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-medium text-white">{event.title}</h3>
-                      <div className="flex items-center space-x-3 text-sm text-gray-400">
-                        <span>{event.date}</span>
-                        {event.time && (
-                          <>
-                            <span>•</span>
-                            <span>{event.time}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        event.status === 'completed' || event.status === 'confirmed'
-                          ? 'bg-green-500/10 text-green-500'
-                          : 'bg-yellow-500/10 text-yellow-500'
-                      }`}>
-                        {event.status}
-                      </span>
-                      <button className="text-blue-500 hover:text-blue-400">
-                        Details
-                      </button>
-                    </div>
+        <div className="space-y-4">
+          {client.forms?.filter((form: any) => form.status === 'pending').map((form: any) => (
+            <div key={form.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">{form.title}</h3>
+                  <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <CalendarIcon className="h-4 w-4 mr-1.5" />
+                    Due by {new Date(form.date).toLocaleDateString()}
                   </div>
-
-                  {/* Event-specific content */}
-                  {event.type === 'check-in' && event.metrics && (
-                    <div className="grid grid-cols-3 gap-4 mt-4 bg-[#1a1b1e] rounded-lg p-3">
-                      <div>
-                        <div className="text-sm text-gray-400">Weight</div>
-                        <div className="font-medium">{event.metrics.weight} kg</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-400">Energy</div>
-                        <div className="font-medium">{event.metrics.energy}%</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-gray-400">Sleep</div>
-                        <div className="font-medium">{event.metrics.sleep} hrs</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {event.type === 'check-in' && event.notes && (
-                    <div className="mt-3 text-sm text-gray-400">
-                      <p>{event.notes}</p>
-                    </div>
-                  )}
-
-                  {event.type === 'photo' && (
-                    <div className="mt-3 grid grid-cols-4 gap-4">
-                      <div className="aspect-square bg-[#1a1b1e] rounded-lg"></div>
-                      <div className="aspect-square bg-[#1a1b1e] rounded-lg"></div>
-                      <div className="aspect-square bg-[#1a1b1e] rounded-lg"></div>
-                      <div className="aspect-square bg-[#1a1b1e] rounded-lg"></div>
-                    </div>
-                  )}
                 </div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400">
+                  Pending
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-end space-x-4">
+                <button className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                  View Form
+                </button>
+                <button className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                  Remove
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
+    </div>
+
+    {/* Completed Forms */}
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Completed Forms</h2>
+        <div className="space-y-4">
+          {client.forms?.filter((form: any) => form.status === 'completed').map((form: any) => (
+            <div key={form.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">{form.title}</h3>
+                  <div className="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <CalendarIcon className="h-4 w-4 mr-1.5" />
+                    Completed on {new Date(form.date).toLocaleDateString()}
+                  </div>
+                </div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400">
+                  Completed
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-end">
+                <button className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                  View Responses
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    {/* Form Templates */}
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Available Templates</h2>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { title: 'Initial Assessment', icon: ClipboardDocumentListIcon },
+            { title: 'Monthly Progress Review', icon: ChartBarIcon },
+            { title: 'Nutrition Questionnaire', icon: HeartIcon },
+            { title: 'Workout Feedback', icon: BoltIcon },
+            { title: 'Goal Setting', icon: TrophyIcon },
+            { title: 'Mindset Check-in', icon: BrainIcon }
+          ].map((template, index) => (
+            <button
+              key={index}
+              className="flex flex-col items-center justify-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <template.icon className="h-6 w-6 text-gray-400 mb-2" />
+              <span className="text-sm font-medium text-gray-900 dark:text-white text-center">
+                {template.title}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const CalendarTab = ({ client }: TabContentProps) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Schedule</h2>
+        <button
+          onClick={() => {/* TODO: Implement new event */}}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+        >
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Add Event
+        </button>
+      </div>
+
+      {/* Calendar Grid */}
+      <div className="mt-4">
+        <div className="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+          {/* Calendar Header */}
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+            <div key={day} className="bg-gray-50 dark:bg-gray-800 p-2 text-center">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{day}</span>
+            </div>
+          ))}
+          
+          {/* Calendar Days */}
+          {Array.from({ length: 35 }).map((_, index) => (
+            <div
+              key={index}
+              className="bg-white dark:bg-gray-800 p-4 min-h-[100px] relative"
+            >
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {index + 1}
+              </span>
+              {/* Example Event */}
+              {index === 15 && (
+                <div className="mt-2">
+                  <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs p-1 rounded">
+                    Check-in
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Upcoming Events */}
+      <div className="mt-6">
+        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Upcoming Events</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Weekly Check-in</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Tomorrow at 10:00 AM</p>
+              </div>
+            </div>
+            <button className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+              View
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const PhotosTab = () => {
+  // Add state for tracking if there are photos
+  const [hasPhotos, setHasPhotos] = useState(true);
+
+  // Mock photo data
+  const mockPhotos = [
+    {
+      id: 1,
+      type: 'progress',
+      date: '2024-03-10',
+      url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&h=500&fit=crop',
+      category: 'Progress Photos'
+    },
+    {
+      id: 2,
+      type: 'form',
+      date: '2024-03-08',
+      url: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=500&fit=crop',
+      category: 'Form Check'
+    },
+    {
+      id: 3,
+      type: 'progress',
+      date: '2024-03-05',
+      url: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=500&h=500&fit=crop',
+      category: 'Progress Photos'
+    },
+    {
+      id: 4,
+      type: 'before-after',
+      date: '2024-03-01',
+      url: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&h=500&fit=crop',
+      category: 'Before/After'
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-white">Progress Photos</h2>
+        <div className="flex items-center space-x-2">
+          <select className="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+            <option>All Photos</option>
+            <option>Progress Photos</option>
+            <option>Form Check</option>
+            <option>Before/After</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Photo Categories */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white font-medium">Progress Photos</span>
+            <span className="text-gray-400 text-sm">12 photos</span>
+          </div>
+          <p className="text-gray-400 text-sm">Weekly progress tracking photos</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white font-medium">Form Check</span>
+            <span className="text-gray-400 text-sm">5 photos</span>
+          </div>
+          <p className="text-gray-400 text-sm">Exercise form verification photos</p>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white font-medium">Before/After</span>
+            <span className="text-gray-400 text-sm">2 sets</span>
+          </div>
+          <p className="text-gray-400 text-sm">Transformation comparison photos</p>
+        </div>
+      </div>
+
+      {/* Photo Grid */}
+      <div className="grid grid-cols-4 gap-4">
+        {mockPhotos.map((photo) => (
+          <div key={photo.id} className="group relative aspect-square bg-gray-800 rounded-lg overflow-hidden">
+            <Image
+              src={photo.url}
+              alt={`${photo.category} - ${photo.date}`}
+              fill
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition-all duration-200">
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <button className="p-2 bg-blue-500 rounded-full mx-1" title="View photo">
+                  <ArrowsPointingOutIcon className="h-4 w-4 text-white" />
+                </button>
+                <button className="p-2 bg-gray-600 rounded-full mx-1" title="Add comment">
+                  <ChatBubbleLeftIcon className="h-4 w-4 text-white" />
+                </button>
+              </div>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3">
+              <p className="text-white text-sm">{new Date(photo.date).toLocaleDateString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CoachReviewSection = () => {
+  const [activeTab, setActiveTab] = useState('training');
+  const [review, setReview] = useState<CoachReview | null>(null);
+
+  useEffect(() => {
+    // In a real app, fetch check-ins from API
+    const mockCheckIns = [/* ... mock data ... */];
+    const processedReview = processCheckInResponses(mockCheckIns);
+    setReview(processedReview);
+  }, []);
+
+  if (!review) return null;
+
+  const renderCategoryContent = (category: keyof CoachReview) => {
+    const categoryData = review[category];
+    if (!categoryData || typeof categoryData === 'string') return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-2">
+          <div className="text-2xl font-semibold">{categoryData.score}/5</div>
+          <div className="text-gray-400">Overall Score</div>
+        </div>
+
+        {categoryData.improvements.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-400 mb-2">Areas for Improvement</h4>
+            <ul className="space-y-2">
+              {categoryData.improvements.map((item, i) => (
+                <li key={i} className="flex items-center space-x-2 text-sm">
+                  <CheckCircleIcon className="h-5 w-5 text-yellow-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {categoryData.recommendations.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-400 mb-2">Recommendations</h4>
+            <ul className="space-y-2">
+              {categoryData.recommendations.map((item, i) => (
+                <li key={i} className="flex items-center space-x-2 text-sm">
+                  <ArrowTrendingUpIcon className="h-5 w-5 text-emerald-500" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-[#1a1b1e] border border-gray-800 rounded-xl p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <AcademicCapIcon className="h-5 w-5 text-blue-500" />
+          Coach's Review
+        </h3>
+        <div className="text-sm text-gray-400">
+          Updated {new Date(review.lastUpdated).toLocaleDateString()}
+        </div>
+      </div>
+
+      <div className="flex space-x-1 mb-6">
+        {['training', 'nutrition', 'mindset'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {renderCategoryContent(activeTab as keyof CoachReview)}
     </div>
   );
 };
 
 export default function ClientDetailsPage() {
-  const { id } = useParams();
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const params = useParams();
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const loadClient = async () => {
-      try {
-        // Mock client data for development
-        const mockClient = {
-          id: '2',
-          name: 'Sarah Wilson',
-          email: 'sarah.w@example.com',
-          goals: [
-            { id: '1', title: 'Weight Loss', progress: 65 },
-            { id: '2', title: 'Muscle Tone', progress: 45 },
-            { id: '3', title: 'Better Energy', progress: 80 }
-          ],
-          metrics: {
-            weight: [
-              { date: '2024-01', value: 75 },
-              { date: '2024-02', value: 73 },
-              { date: '2024-03', value: 71 }
-            ],
-            energy: [
-              { date: '2024-01', value: 60 },
-              { date: '2024-02', value: 75 },
-              { date: '2024-03', value: 85 }
-            ],
-            sleep: [
-              { date: '2024-01', value: 6.5 },
-              { date: '2024-02', value: 7.2 },
-              { date: '2024-03', value: 7.8 }
-            ]
-          },
-          aiSummary: {
-            overview: "Based on Sarah's recent check-ins and progress data, she's showing consistent improvement in most areas, particularly in energy levels and sleep quality. Her commitment to the program is evident in her regular check-ins and goal progression.",
-            wins: [
-              "Achieved a steady weight loss trend, down 4kg over the past 3 months",
-              "Significant improvement in energy levels, up from 60% to 85%",
-              "Sleep quality has improved by 1.3 hours on average"
-            ],
-            challenges: [
-              "Muscle tone progress is slightly behind schedule at 45%",
-              "Weekend workout consistency could be improved"
-            ],
-            recommendations: [
-              "Consider adjusting the strength training program to accelerate muscle tone development",
-              "Schedule check-ins earlier in the day when energy levels are highest",
-              "Maintain the current sleep hygiene practices as they're showing positive results"
-            ]
-          },
-          checkIns: [
-            {
-              id: '1',
-              date: 'March 10, 2024',
-              time: '9:30 AM',
-              status: 'completed',
-              metrics: {
-                weight: 71,
-                energy: 85,
-                sleep: 7.8
-              },
-              notes: "Great progress this week! Energy levels are consistently high and sleep quality has improved significantly."
-            },
-            {
-              id: '2',
-              date: 'March 3, 2024',
-              time: '10:00 AM',
-              status: 'completed',
-              metrics: {
-                weight: 72,
-                energy: 80,
-                sleep: 7.5
-              },
-              notes: "Feeling stronger but had some challenges with weekend workouts."
-            }
-          ],
-          forms: [
-            {
-              id: '1',
-              title: 'Initial Assessment',
-              date: 'January 15, 2024',
-              status: 'completed'
-            },
-            {
-              id: '2',
-              title: 'Monthly Progress Review',
-              date: 'March 1, 2024',
-              status: 'pending'
-            }
-          ],
-          photos: [
-            { id: '1', date: 'March 1, 2024' },
-            { id: '2', date: 'February 1, 2024' },
-            { id: '3', date: 'January 1, 2024' }
-          ],
-          schedule: [
-            {
-              id: '1',
-              title: 'Progress Review Session',
-              date: 'March 15, 2024',
-              time: '10:00 AM',
-              status: 'confirmed'
-            },
-            {
-              id: '2',
-              title: 'Training Session',
-              date: 'March 18, 2024',
-              time: '2:00 PM',
-              status: 'pending'
-            }
-          ],
-          progressPhotos: [
-            { id: '1' },
-            { id: '2' },
-            { id: '3' },
-            { id: '4' }
-          ]
-        };
-        
-        setClient(mockClient);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading client:', error);
-      }
-    };
-
     loadClient();
-  }, [id]);
+  }, [params.id]);
+
+  const loadClient = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      // TODO: Replace with actual API call
+      const response = await fetch(`/api/clients/${params.id}`);
+      if (!response.ok) throw new Error('Failed to load client data');
+      const data = await response.json();
+      setClient(data);
+    } catch (err) {
+      setError('Failed to load client data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#13141A]">
-        <LoadingSpinner />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <DashboardNav />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <LoadingSpinner />
+          </div>
+        </div>
       </div>
     );
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'check-ins', label: 'Check-ins' },
-    { id: 'progress', label: 'Progress' },
-    { id: 'forms', label: 'Forms' },
-    { id: 'photos', label: 'Photos' },
-    { id: 'calendar', label: 'Calendar' },
-  ];
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <DashboardNav />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <p className="text-red-500 dark:text-red-400">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -1034,66 +1533,131 @@ export default function ClientDetailsPage() {
       case 'forms':
         return <FormsTab client={client} />;
       case 'photos':
-        return <PhotosTab client={client} />;
+        return <PhotosTab />;
       case 'calendar':
         return <CalendarTab client={client} />;
       default:
-        return <OverviewTab client={client} />;
+        return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#13141A] text-white">
-      {/* Header */}
-      <div className="border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                <UserCircleIcon className="h-8 w-8" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-                <div className="flex items-center text-gray-400 mt-1">
-                  <EnvelopeIcon className="h-4 w-4 mr-2" />
-                  {client.email}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <DashboardNav />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Client Header */}
+        <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+                  {client.avatar ? (
+                    <Image
+                      src={client.avatar}
+                      alt={client.name}
+                      width={64}
+                      height={64}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-12 w-12 text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                    {client.name}
+                  </h1>
+                  <div className="flex items-center space-x-4 mt-1">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Member since {new Date(client.joinedAt).toLocaleDateString()}
+                    </span>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      client.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400' :
+                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
+                    }`}>
+                      {client.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center space-x-4">
+                <Link
+                  href={`/coach/messages?client=${client.id}`}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                  Message
+                </Link>
+                <button
+                  onClick={() => {/* TODO: Implement quick check-in */}}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                >
+                  <ClipboardDocumentListIcon className="h-5 w-5 mr-2" />
+                  Quick Check-in
+                </button>
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-md hover:bg-gray-700 flex items-center">
-                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                Message
-              </button>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center">
-                <ClipboardDocumentListIcon className="h-5 w-5 mr-2" />
-                New Check-in
-              </button>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-4 gap-4 mt-6">
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Check-in Streak</div>
+                <div className="mt-1 flex items-baseline">
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.streak || 0}</div>
+                  <div className="ml-2 text-sm text-green-600 dark:text-green-400">weeks</div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Rate</div>
+                <div className="mt-1 flex items-baseline">
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.completionRate || 0}%</div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Check-in</div>
+                <div className="mt-1 flex items-baseline">
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                    {client.metrics?.lastCheckIn ? format(new Date(client.metrics.lastCheckIn), 'MMM d') : 'Never'}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Overall Progress</div>
+                <div className="mt-1 flex items-baseline">
+                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.progress || 0}%</div>
+                  <div className="ml-2 flex items-center text-sm text-green-600 dark:text-green-400">
+                    <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
+                    <span>+5%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex space-x-8 mt-8">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`pb-4 px-2 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-500'
-                    : 'border-transparent text-gray-400 hover:text-gray-300'
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+              {['overview', 'check-ins', 'progress', 'forms', 'photos', 'calendar'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`${
+                    activeTab === tab
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        {renderTabContent()}
+        {/* Tab Content */}
+        <div className="space-y-6">
+          {renderTabContent()}
+        </div>
       </div>
     </div>
   );

@@ -28,7 +28,9 @@ const navItems: Record<string, NavItem[]> = {
   ],
   coach: [
     { name: 'Dashboard', href: '/coach/dashboard' },
+    { name: 'Dashboard 2', href: '/coach/dashboard2' },
     { name: 'Clients', href: '/coach/clients' },
+    { name: 'Messages', href: '/coach/messages', badge: 2 },
     { name: 'Responses', href: '/coach/responses' },
     { name: 'Analytics', href: '/coach/analytics' },
     { name: 'Settings', href: '/coach/settings' },

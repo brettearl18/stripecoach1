@@ -16,6 +16,8 @@ model Coach {
   lastLoginAt   DateTime?
   clients       Client[]
   stripeConnect StripeConnect?
+  sentMessages  Message[]      @relation("CoachSentMessages")
+  receivedMessages Message[]   @relation("CoachReceivedMessages")
 }
 
 model Client {
@@ -29,8 +31,52 @@ model Client {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   lastLoginAt     DateTime?
+  sentMessages    Message[]        @relation("ClientSentMessages")
+  receivedMessages Message[]       @relation("ClientReceivedMessages")
 
   @@index([coachId])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  content     String
+  senderId    String
+  receiverId  String
+  senderType  UserType
+  receiverType UserType
+  coachSender      Coach?  @relation("CoachSentMessages", fields: [senderId], references: [id], map: "Message_coachSender_fkey")
+  coachReceiver    Coach?  @relation("CoachReceivedMessages", fields: [receiverId], references: [id], map: "Message_coachReceiver_fkey")
+  clientSender     Client? @relation("ClientSentMessages", fields: [senderId], references: [id], map: "Message_clientSender_fkey")
+  clientReceiver   Client? @relation("ClientReceivedMessages", fields: [receiverId], references: [id], map: "Message_clientReceiver_fkey")
+  type        MessageType
+  status      MessageStatus @default(SENT)
+  metadata    Json?
+  attachments Attachment[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@index([status])
+  @@index([type])
+  @@index([senderId, senderType])
+  @@index([receiverId, receiverType])
+  @@index([receiverId, status])
+  @@index([receiverId, type])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id])
+  type      AttachmentType
+  url       String
+  name      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
 }
 
 model Subscription {
@@ -59,6 +105,11 @@ model StripeConnect {
   updatedAt     DateTime @updatedAt
 }
 
+enum UserType {
+  COACH
+  CLIENT
+}
+
 enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
@@ -67,4 +118,26 @@ enum SubscriptionStatus {
   INCOMPLETE
   INCOMPLETE_EXPIRED
   TRIALING
+}
+
+enum MessageType {
+  TEXT
+  AUDIO
+  FILE
+  CHECK_IN
+  URGENT
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum AttachmentType {
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
 } 
