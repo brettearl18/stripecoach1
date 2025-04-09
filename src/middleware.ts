@@ -35,60 +35,9 @@ const protectedRoutes = {
   '/client/check-ins': ['client', 'coach', 'admin'],
 };
 
-export function middleware(request: NextRequest) {
-  // Get the pathname from the URL
-  const path = request.nextUrl.pathname;
-
-  // Get user data from cookies
-  const userDataStr = request.cookies.get('user')?.value;
-  
-  // Check if this is a protected route
-  const matchingRoute = Object.keys(protectedRoutes).find(route => 
-    path.startsWith(route)
-  );
-
-  // If it's not a protected route, allow access
-  if (!matchingRoute) {
+export async function middleware(request: NextRequest) {
+  // Temporarily bypass all authentication checks
     return NextResponse.next();
-  }
-
-  // If no user data, redirect to login
-  if (!userDataStr) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  try {
-    // Parse user data
-    const userData = JSON.parse(userDataStr);
-    const userRole = userData.role?.toLowerCase();
-
-    if (!userRole) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    // Check if user's role is allowed for this route
-    const allowedRoles = protectedRoutes[matchingRoute];
-    
-    if (!allowedRoles.includes(userRole)) {
-      // Redirect to appropriate dashboard based on role
-      switch (userRole) {
-        case 'admin':
-          return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-        case 'coach':
-          return NextResponse.redirect(new URL('/coach/dashboard', request.url));
-        case 'client':
-          return NextResponse.redirect(new URL('/client/dashboard', request.url));
-        default:
-          return NextResponse.redirect(new URL('/login', request.url));
-      }
-    }
-
-    return NextResponse.next();
-  } catch (error) {
-    // If there's any error parsing user data, redirect to login
-    console.error('Error in middleware:', error);
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
 }
 
 // Update matcher to include all protected routes

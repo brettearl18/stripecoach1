@@ -16,6 +16,7 @@ import {
   BellIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 
 interface ClientData {
   id: string;
@@ -214,9 +215,12 @@ export default function ClientOverview() {
             <h1 className="text-2xl font-bold text-white">Client Overview</h1>
             <p className="text-sm text-gray-400">Track and manage your clients' progress</p>
           </div>
-          <button className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          <Link
+            href="/coach/clients/new"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
             + Add New Client
-          </button>
+          </Link>
         </div>
 
         {/* Search and Filters */}

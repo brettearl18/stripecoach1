@@ -1,9 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MainNav } from '@/components/MainNav';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { DashboardNav } from '@/components/DashboardNav';
 import {
   CalendarIcon,
   ChartBarIcon,
@@ -42,6 +40,7 @@ import {
   FaceSmileIcon,
   AcademicCapIcon,
   PlayIcon,
+  UserCircleIcon,
 } from '@heroicons/react/24/outline';
 import ClientProfileCard from './components/ClientProfileCard';
 import Link from 'next/link';
@@ -50,6 +49,9 @@ import type { CheckInForm } from '@/types/checkIn';
 import ProgressGallery from './components/ProgressGallery';
 import FeedbackResponse from '@/components/feedback/FeedbackResponse';
 import { AudioMessage, FileAttachment } from '@/types/feedback';
+import { useRouter } from 'next/navigation';
+import { getAuth } from 'firebase/auth';
+import { getClientProfile } from '@/lib/services/clientProfileService';
 
 // Temporary data - would come from backend in real app
 const timelineHighlights = [
@@ -102,65 +104,65 @@ const progressData = {
     { name: 'Sun', completed: false },
   ],
   metrics: [
-    { 
-      name: 'Nutrition', 
-      current: 85, 
-      previous: 75, 
-      unit: '%',
+    {
+      name: 'Nutrition',
+      description: 'Daily Calories',
+      current: 2200,
+      previous: 2000,
+      goal: 2500,
+      unit: 'kcal',
       trend: 'up',
-      goal: 100,
-      icon: FireIcon,
-      description: 'Weekly meal plan compliance'
+      icon: LightBulbIcon
     },
-    { 
-      name: 'Training', 
-      current: 90, 
-      previous: 85, 
-      unit: '%',
-      trend: 'up',
-      goal: 100,
-      icon: BoltIcon,
-      description: 'Workout completion rate'
-    },
-    { 
-      name: 'Sleep', 
-      current: 8.5, 
-      previous: 7.8, 
-      unit: 'hrs',
-      trend: 'up',
-      goal: 9,
-      icon: HeartIcon,
-      description: 'Average sleep duration'
-    },
-    { 
-      name: 'Water', 
-      current: 2.8, 
-      previous: 2.5, 
-      unit: 'L',
-      trend: 'up',
-      goal: 3,
-      icon: ClipboardDocumentCheckIcon,
-      description: 'Daily water intake'
-    },
-    { 
-      name: 'Steps', 
-      current: 8500, 
-      previous: 7200, 
+    {
+      name: 'Training',
+      description: 'Weekly Sessions',
+      current: 4,
+      previous: 3,
+      goal: 5,
       unit: '',
       trend: 'up',
-      goal: 10000,
-      icon: ArrowTrendingUpIcon,
-      description: 'Daily step count'
+      icon: ClipboardDocumentCheckIcon
     },
-    { 
-      name: 'Overall', 
-      current: 88, 
-      previous: 82, 
+    {
+      name: 'Sleep',
+      description: 'Average Hours',
+      current: 7,
+      previous: 6.5,
+      goal: 8,
+      unit: 'hrs',
+      trend: 'up',
+      icon: MicrophoneIcon
+    },
+    {
+      name: 'Water',
+      description: 'Daily Intake',
+      current: 2.5,
+      previous: 2,
+      goal: 3,
+      unit: 'L',
+      trend: 'up',
+      icon: CheckIcon
+    },
+    {
+      name: 'Steps',
+      description: 'Daily Average',
+      current: 8000,
+      previous: 7500,
+      goal: 10000,
+      unit: '',
+      trend: 'up',
+      icon: ArrowTrendingUpIcon
+    },
+    {
+      name: 'Overall',
+      description: 'Progress Score',
+      current: 85,
+      previous: 75,
+      goal: 100,
       unit: '%',
       trend: 'up',
-      goal: 100,
-      icon: ChartBarIcon,
-      description: 'Total weekly compliance'
+      icon: ChatBubbleLeftRightIcon
     }
   ],
 };
@@ -207,50 +209,28 @@ const achievements = [
 
 const insights = [
   {
-    title: 'Sleep Improving!',
-    description: 'Your sleep quality has increased by 0.7 hours this week.',
-    type: 'success',
-    metric: 'Sleep',
-    change: 0.7,
+    title: 'Nutrition Progress',
+    description: 'Your protein intake has improved significantly this week.',
     trend: 'up',
     recommendations: [
-      'Maintain your current bedtime routine of 10:30 PM',
-      'Consider reducing screen time 30 minutes before bed',
-      'Your morning routine is working well - keep it consistent'
+      'Keep maintaining high protein meals',
+      'Consider adding a post-workout shake',
+      'Track your macros consistently'
     ],
     hasAudio: true,
-    audioCount: 2,
+    audioCount: 2
   },
   {
-    title: 'Stress Management',
-    description: 'Your stress levels are trending down. Keep up the good work!',
-    type: 'info',
-    metric: 'Stress',
-    change: -1,
-    trend: 'down',
-    recommendations: [
-      'Continue your daily meditation practice',
-      'Schedule regular breaks during work hours',
-      'Consider adding an evening walk to your routine'
-    ],
-    hasAudio: true,
-    audioCount: 3,
-  },
-  {
-    title: 'Energy Boost',
-    description: 'Your energy levels are up 10% this week!',
-    type: 'success',
-    metric: 'Energy',
-    change: 10,
+    title: 'Training Adaptation',
+    description: 'Your strength gains are showing steady progress.',
     trend: 'up',
     recommendations: [
-      'Your pre-workout nutrition is working well',
-      'Try to maintain consistent meal timing',
-      'Consider adding a mid-afternoon protein snack'
+      'Increase weight on compound lifts',
+      'Maintain current rest periods',
+      'Focus on form during progression'
     ],
-    hasAudio: true,
-    audioCount: 1,
-  },
+    hasAudio: false
+  }
 ];
 
 // Add new goals data structure
@@ -378,6 +358,9 @@ const quickResponses = [
 ];
 
 export default function ClientDashboard() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const [selectedMetric, setSelectedMetric] = useState(progressData.metrics[0]);
   const [showBeforePhoto, setShowBeforePhoto] = useState(false);
   const [responseText, setResponseText] = useState('');
@@ -386,10 +369,9 @@ export default function ClientDashboard() {
   const [audioURLs, setAudioURLs] = useState<string[]>([]);
   const [acceptedResponses, setAcceptedResponses] = useState<string[]>([]);
   const [expandedSections, setExpandedSections] = useState({
-    weeklyResults: true,
-    coachReview: false,
-    trackingTools: false,
-    progressPhotos: false
+    insights: true,
+    progress: true,
+    review: true
   });
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -474,73 +456,38 @@ export default function ClientDashboard() {
     }));
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        setAudioURLs(prev => [...prev, url]);
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
       setIsRecording(false);
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-    }
-  };
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        chunksRef.current = [];
 
-  const removeAudio = (index: number) => {
-    setAudioURLs(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleReplyOption = (option: string) => {
-    if (option === 'text' && responseText.trim().split(/\s+/).length < 10) {
-      // You could show a toast/alert here
-      return;
-    }
-    // Handle reply option selection
-  };
-
-  const handleAcceptResponse = (insightId: string) => {
-    setAcceptedResponses(prev => [...prev, insightId]);
-    // Here you would typically make an API call to update the backend
-  };
-
-  const handleAcceptSuggestion = (index: number) => {
-    setAcceptedSuggestions(prev => {
-      const newAccepted = [...prev, index];
-      // If all suggestions are accepted, update the review status
-      if (newAccepted.length === 3) { // assuming 3 suggestions total
-        setReviewStatus('completed');
-        // Update localStorage
-        const status = {
-          checkInId: 'current-checkin',
-          allSuggestionsAccepted: true,
-          hasNewReview: false
+        mediaRecorder.ondataavailable = (e) => {
+          chunksRef.current.push(e.data);
         };
-        localStorage.setItem('coachReviewStatus', JSON.stringify(status));
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setAudioURLs(prev => [...prev, audioUrl]);
+          chunksRef.current = [];
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (error) {
+        console.error('Error accessing microphone:', error);
       }
-      return newAccepted;
-    });
+    }
+  };
+
+  const handleAcceptResponse = (index: number) => {
+    setAcceptedResponses(prev => [...prev, `response-${index}`]);
   };
 
   const handleReply = (feedbackId: string, content: string, audioUrl?: string) => {
@@ -652,6 +599,18 @@ export default function ClientDashboard() {
   };
 
   useEffect(() => {
+    const loadProfile = async () => {
+      const auth = getAuth();
+      if (auth.currentUser) {
+        const clientProfile = await getClientProfile(auth.currentUser.uid);
+        setProfile(clientProfile);
+      }
+      setLoading(false);
+    };
+    loadProfile();
+  }, []);
+
+  useEffect(() => {
     // Mock data for upcoming events
     const mockCheckIns: CheckInForm[] = [
       {
@@ -697,597 +656,233 @@ export default function ClientDashboard() {
     setCheckIns(mockCheckIns);
   }, []);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center p-6">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <div className="bg-blue-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <UserCircleIcon className="h-12 w-12 text-blue-500" />
+            </div>
+            <h1 className="text-3xl font-bold text-white mb-3">Welcome!</h1>
+            <p className="text-gray-400 text-lg mb-2">Let's set up your profile</p>
+            <p className="text-gray-500 text-sm">Complete your profile to unlock personalized coaching, progress tracking, and nutrition guidance.</p>
+          </div>
+          
+          <div className="space-y-4 mb-8">
+            <div className="bg-gray-800/50 rounded-lg p-4 flex items-start space-x-4">
+              <div className="bg-green-500/10 rounded-lg p-2">
+                <ChartBarIcon className="h-6 w-6 text-green-500" />
+              </div>
+              <div>
+                <h3 className="text-gray-200 font-medium mb-1">Track Your Progress</h3>
+                <p className="text-gray-500 text-sm">Monitor your fitness journey with detailed metrics and insights</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-800/50 rounded-lg p-4 flex items-start space-x-4">
+              <div className="bg-purple-500/10 rounded-lg p-2">
+                <ChatBubbleLeftRightIcon className="h-6 w-6 text-purple-500" />
+              </div>
+              <div>
+                <h3 className="text-gray-200 font-medium mb-1">Personal Coaching</h3>
+                <p className="text-gray-500 text-sm">Get tailored advice and feedback from your dedicated coach</p>
+              </div>
+            </div>
+            
+            <div className="bg-gray-800/50 rounded-lg p-4 flex items-start space-x-4">
+              <div className="bg-orange-500/10 rounded-lg p-2">
+                <ClipboardDocumentCheckIcon className="h-6 w-6 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="text-gray-200 font-medium mb-1">Nutrition Guidance</h3>
+                <p className="text-gray-500 text-sm">Access meal plans and track your nutrition goals</p>
+              </div>
+            </div>
+          </div>
+          
+          <Link
+            href="/client/profile/setup"
+            className="block w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white px-6 py-3 rounded-lg text-center font-medium transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-blue-500/25"
+          >
+            Set Up Your Profile
+          </Link>
+          
+          <p className="text-center text-gray-500 text-sm mt-6">
+            This will only take a few minutes
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-      <DashboardNav />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Column */}
-          <div className="col-span-12 lg:col-span-3 space-y-6">
-            {/* Client Profile */}
-            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 text-center shadow-lg">
-              <div className="relative mx-auto w-24 h-24 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
-                <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-gray-800">
-                  <div className="w-full h-full bg-gray-700 flex items-center justify-center text-2xl text-white font-semibold">
-                    JS
-                  </div>
-                </div>
-              </div>
-              <h2 className="text-xl font-bold text-white mb-1">John Smith</h2>
-              <p className="text-gray-400 mb-4">Weight Management</p>
-              <div className="flex flex-col space-y-3">
-                <button className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 rounded-lg text-white font-medium transition-all transform hover:scale-105">
-                  <PencilSquareIcon className="w-5 h-5 mr-2" />
-                  Check In
-                </button>
-                <button className="flex items-center justify-center px-4 py-2 bg-gray-700/50 hover:bg-gray-600/50 rounded-lg text-white font-medium transition-all transform hover:scale-105">
-                  <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2 2v12a2 2 0 012-2h10a2 2 0 012-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span className="relative">
-                    Messages
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center animate-pulse">3</span>
-                  </span>
-                </button>
-              </div>
+    <div className="min-h-screen bg-gray-900 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <ClientProfileCard />
+        
+        {/* AI Insights Section */}
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+          <button
+            onClick={() => toggleSection('insights')}
+            className="w-full px-6 py-4 flex items-center justify-between text-gray-100 hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <AcademicCapIcon className="h-6 w-6 text-blue-500" />
+              <h2 className="text-xl font-semibold">AI Insights</h2>
             </div>
+            <ChevronDownIcon
+              className={`h-6 w-6 transform transition-transform ${
+                expandedSections.insights ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          
+          {expandedSections.insights && (
+            <div className="p-6 space-y-6">
+              {insights.map((insight, index) => (
+                <div key={index} className="bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-100">{insight.title}</h3>
+                      <p className="text-gray-300 mt-1">{insight.description}</p>
+                    </div>
+                    {insight.hasAudio && (
+                      <div className="flex items-center space-x-2">
+                        <PlayIcon className="h-5 w-5 text-blue-500" />
+                        <span className="text-sm text-gray-300">{insight.audioCount}</span>
+                      </div>
+                    )}
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                    {insight.recommendations.map((rec, idx) => (
+                      <li key={idx} className="flex items-start space-x-2 text-gray-300">
+                        <CheckIcon className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-            {/* Achievements */}
-            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold text-white">Achievements</h2>
-                <span className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer transition-colors">View All</span>
-              </div>
-              <div className="space-y-4">
-                {achievements.map((achievement) => (
-                  <div key={achievement.name} className="relative group">
-                    <div className="flex items-center space-x-3 p-3 rounded-lg transition-all duration-300 hover:bg-gray-700/30">
-                      <div className={`p-2 rounded-lg transform transition-transform duration-300 group-hover:scale-110 ${
-                        achievement.achieved
-                          ? 'bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg shadow-blue-500/20'
-                          : 'bg-gray-700/50'
-                      }`}>
-                        <achievement.icon className="w-5 h-5 text-white" />
+        {/* Weekly Check-in Results */}
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+          <button
+            onClick={() => toggleSection('progress')}
+            className="w-full px-6 py-4 flex items-center justify-between text-gray-100 hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <ClipboardDocumentCheckIcon className="h-6 w-6 text-green-500" />
+              <h2 className="text-xl font-semibold">Weekly Check-in Results</h2>
+            </div>
+            <ChevronDownIcon
+              className={`h-6 w-6 transform transition-transform ${
+                expandedSections.progress ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          
+          {expandedSections.progress && (
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {progressData.metrics.map((metric, index) => (
+                  <div key={index} className="bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <metric.icon className="h-5 w-5 text-blue-500" />
+                        <h3 className="font-medium text-gray-100">{metric.name}</h3>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{achievement.name}</h3>
-                        <p className="text-xs text-gray-400">{achievement.description}</p>
-                        {!achievement.achieved && (
-                          <div className="mt-1 h-1 w-24 bg-gray-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                              style={{ width: `${achievement.progress}%` }}
-                            />
-                          </div>
-                        )}
+                      {metric.trend === 'up' && (
+                        <ArrowTrendingUpIcon className="h-5 w-5 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400">{metric.description}</p>
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-300">Current</span>
+                        <span className="text-gray-100">{metric.current}{metric.unit}</span>
                       </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-300">Goal</span>
+                        <span className="text-gray-100">{metric.goal}{metric.unit}</span>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-2 bg-gray-600 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full"
+                        style={{
+                          width: `${(metric.current / metric.goal) * 100}%`
+                        }}
+                      ></div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          )}
+        </div>
 
-            {/* Upcoming Events */}
-            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold text-white">Upcoming Events</h2>
-                <a href="/calendar" className="text-blue-400 hover:text-blue-300 text-sm transition-colors">View Calendar</a>
-              </div>
-              <div className="space-y-4">
-                {checkIns.map((event) => (
-                  <div key={event.id} className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 group">
-                    <div className="flex items-center space-x-3 mb-2">
-                      {event.title.includes('Check-in') && (
-                        <div className="p-2 rounded-lg bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
-                          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                          </svg>
-                        </div>
-                      )}
-                      {event.title.includes('Review') && (
-                        <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
-                          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                      )}
-                      {event.title.includes('Photos') && (
-                        <div className="p-2 rounded-lg bg-pink-500/20 group-hover:bg-pink-500/30 transition-colors">
-                          <svg className="w-5 h-5 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                        </div>
-                      )}
-                      <span className="text-white font-medium group-hover:text-blue-400 transition-colors">{event.title}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-400">
-                      <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      {new Date(event.dueDate).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                      <svg className="w-4 h-4 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      {event.title.includes('Photos') ? 'Any time' : new Date(event.dueDate).toLocaleTimeString('en-US', {
-                        hour: 'numeric',
-                        minute: 'numeric',
-                        hour12: true,
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* Coach's Review Section */}
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+          <button
+            onClick={() => toggleSection('review')}
+            className="w-full px-6 py-4 flex items-center justify-between text-gray-100 hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <ChatBubbleLeftIcon className="h-6 w-6 text-purple-500" />
+              <h2 className="text-xl font-semibold">Coach's Review</h2>
             </div>
-
-            {/* Subscription Status */}
-            <div className="bg-gray-800/40 rounded-xl p-6 backdrop-blur-sm border border-gray-700/50 shadow-lg">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <CreditCardIcon className="h-5 w-5 text-gray-400" />
-                  <h2 className="text-lg font-semibold text-white">Subscription</h2>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400">
-                  <CheckCircleIcon className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">Active</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg bg-gray-700/50 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-sm">{paymentData.paymentMethod.brand} •••• {paymentData.paymentMethod.last4}</span>
-                </div>
-                <span className="text-xs text-gray-400">Exp. {paymentData.paymentMethod.expiryDate}</span>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Next Payment</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white">${paymentData.amount}</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(paymentData.nextPaymentDate).toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Payment button - shows different states based on payment status */}
-              <button
-                className={`w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-all duration-300 ${
-                  new Date(paymentData.nextPaymentDate) < new Date()
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white cursor-pointer transform hover:scale-105'
-                    : 'bg-gray-700/50 text-gray-400 cursor-not-allowed'
-                }`}
-                onClick={() => {
-                  if (new Date(paymentData.nextPaymentDate) < new Date()) {
-                    /* Payment handler will be implemented */
-                  }
-                }}
-                disabled={new Date(paymentData.nextPaymentDate) >= new Date()}
-              >
-                <CreditCardIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  {new Date(paymentData.nextPaymentDate) < new Date() ? 'Pay Now' : 'Payment Up to Date'}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="col-span-12 lg:col-span-9">
-            <div className="grid gap-6">
-              {/* Weekly Check-in Results */}
-              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('weeklyResults')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <ChartBarIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-white">Weekly Check-in Results</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.weeklyResults ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.weeklyResults ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold text-white">Weekly Check-in Results</h2>
-                        <span className="text-sm text-gray-400">Last updated 2 days ago</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {progressData.metrics.map((metric) => {
-                        const progress = Math.min((metric.current / metric.goal) * 100, 100);
-                        const gradientStyle = {
-                          background: `linear-gradient(to right, 
-                            ${metric.name === 'Nutrition' ? 'rgba(249, 115, 22, 0.1)' :
-                              metric.name === 'Training' ? 'rgba(245, 158, 11, 0.1)' :
-                              metric.name === 'Sleep' ? 'rgba(59, 130, 246, 0.1)' :
-                              metric.name === 'Water' ? 'rgba(6, 182, 212, 0.1)' :
-                              metric.name === 'Steps' ? 'rgba(16, 185, 129, 0.1)' :
-                              'rgba(168, 85, 247, 0.1)'} ${progress}%,
-                              transparent ${progress}%)`
-                        };
-                        
-                        return (
-                          <div 
-                            key={metric.name}
-                            style={gradientStyle}
-                            className="bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
-                          >
-                            <div className="relative z-10">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <div className={`p-1.5 rounded-lg bg-gradient-to-br ${
-                                    metric.name === 'Nutrition' ? 'from-orange-500 to-red-600' :
-                                    metric.name === 'Training' ? 'from-amber-500 to-orange-600' :
-                                    metric.name === 'Sleep' ? 'from-blue-500 to-indigo-600' :
-                                    metric.name === 'Water' ? 'from-cyan-500 to-blue-600' :
-                                    metric.name === 'Steps' ? 'from-emerald-500 to-teal-600' :
-                                    'from-purple-500 to-pink-600'
-                                  }`}>
-                                    <metric.icon className="h-3.5 w-3.5 text-white" />
-                                  </div>
-                                  <div>
-                                    <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{metric.name}</h3>
-                                    <p className="text-xs text-gray-400">{metric.description}</p>
-                                  </div>
-                                </div>
-                                <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs ${
-                                  metric.trend === 'up'
-                                    ? 'text-emerald-500 bg-emerald-500/10'
-                                    : 'text-rose-500 bg-rose-500/10'
-                                }`}>
-                                  <span className="font-medium">
-                                    {metric.trend === 'up' ? '+' : ''}
-                                    {Math.abs(metric.current - metric.previous).toFixed(1)}
-                                  </span>
-                                  <span>{metric.unit}</span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-baseline gap-1">
-                                <span className={`text-2xl font-bold bg-gradient-to-r ${
-                                  metric.name === 'Nutrition' ? 'from-orange-500 to-red-600' :
-                                  metric.name === 'Training' ? 'from-amber-500 to-orange-600' :
-                                  metric.name === 'Sleep' ? 'from-blue-500 to-indigo-600' :
-                                  metric.name === 'Water' ? 'from-cyan-500 to-blue-600' :
-                                  metric.name === 'Steps' ? 'from-emerald-500 to-teal-600' :
-                                  'from-purple-500 to-pink-600'
-                                } bg-clip-text text-transparent`}>
-                                  {typeof metric.current === 'number' ? 
-                                    metric.name === 'Steps' ? 
-                                      metric.current.toLocaleString() : 
-                                      metric.current.toFixed(1) 
-                                    : metric.current}
-                                </span>
-                                <span className="text-sm text-gray-400">
-                                  {metric.unit}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-between mt-2 text-xs">
-                                <span className="text-gray-400">Target: {metric.name === 'Steps' ? 
-                                  metric.goal.toLocaleString() : 
-                                  metric.goal.toFixed(1)} {metric.unit}</span>
-                                <span className={`font-medium ${
-                                  progress >= 90 ? 'text-emerald-500' :
-                                  progress >= 70 ? 'text-amber-500' :
-                                  'text-gray-400'
-                                }`}>{Math.round(progress)}%</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+            <ChevronDownIcon
+              className={`h-6 w-6 transform transition-transform ${
+                expandedSections.review ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+          
+          {expandedSections.review && (
+            <div className="p-6">
+              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="flex items-start space-x-4">
+                  <div className="flex-shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center">
+                      <ChatBubbleLeftRightIcon className="h-6 w-6 text-white" />
                     </div>
                   </div>
-                </div>
-              </section>
-
-              {/* Coach's Review Section */}
-              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('coachReview')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <AcademicCapIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-white">Coach's Review</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.coachReview ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.coachReview ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    {/* Review Tabs */}
-                    <div className="flex space-x-1 mb-6 bg-gray-800/50 p-1 rounded-lg">
-                      {['training', 'nutrition', 'mindset'].map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setActiveReviewTab(tab)}
-                          className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                            activeReviewTab === tab
-                              ? 'bg-amber-500/20 text-amber-400'
-                              : 'text-gray-400 hover:text-gray-300'
-                          }`}
-                        >
-                          {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                        </button>
-                      ))}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-100">Weekly Progress Review</h3>
+                      <span className="text-sm text-gray-400">2 days ago</span>
                     </div>
-
-                    {/* Filtered Feedback */}
-                    <div className="space-y-6">
-                      {feedbacks
-                        .filter(feedback => feedback.category === activeReviewTab)
-                        .map(feedback => (
-                          <div key={feedback.id} className="space-y-6">
-                            <div className="bg-gray-800/40 rounded-xl p-6">
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <div className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
-                                    Pending Review
-                                  </div>
-                                  <div className="text-gray-400 text-sm">
-                                    Generated {new Date(feedback.date).toLocaleDateString('en-US', {
-                                      day: 'numeric',
-                                      month: 'numeric',
-                                      year: 'numeric'
-                                    })}
-                                  </div>
-                                </div>
-                                {feedback.hasAudio && (
-                                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium hover:bg-indigo-500/30 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                      <path d="M7 4a3 3 0 016 0v6a3 3 0 11-6 0V4z" />
-                                      <path d="M5.5 9.643a.75.75 0 00-1.5 0V10c0 3.06 2.29 5.585 5.25 5.954V17.5h-1.5a.75.75 0 000 1.5h4.5a.75.75 0 000-1.5h-1.5v-1.546A6.001 6.001 0 0016 10v-.357a.75.75 0 00-1.5 0V10a4.5 4.5 0 01-9 0v-.357z" />
-                                    </svg>
-                                    Listen
-                                    {feedback.audioCount > 1 && (
-                                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/30 text-xs">
-                                        {feedback.audioCount}
-                                      </span>
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-600/20 flex items-center justify-center">
-                                  <ArrowTrendingUpIcon className="w-6 h-6 text-amber-500" />
-                                </div>
-                                <div className="flex-1">
-                                  <h3 className="text-xl font-semibold text-white mb-2">{feedback.title}</h3>
-                                  <p className="text-gray-300 mb-4">{feedback.content}</p>
-
-                                  <div className="mb-6">
-                                    <h4 className="text-sm font-medium text-white mb-3">Suggested Recommendations:</h4>
-                                    <div className="space-y-2">
-                                      {feedback.suggestions.map((suggestion, index) => (
-                                        <div 
-                                          key={index}
-                                          className="flex items-start gap-3 p-3 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-colors group"
-                                        >
-                                          <button 
-                                            onClick={() => handleAcceptSuggestion(index)}
-                                            className={`flex-shrink-0 p-1 rounded-full ${
-                                              acceptedSuggestions.includes(index)
-                                                ? 'bg-emerald-500/20 text-emerald-400'
-                                                : 'bg-gray-600/50 text-gray-400 hover:bg-amber-500/20 hover:text-amber-400'
-                                            } transition-colors`}
-                                          >
-                                            <CheckIcon className="w-4 h-4" />
-                                          </button>
-                                          <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
-                                            {suggestion}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-3">
-                                    <h4 className="text-sm font-medium text-white">Your Response:</h4>
-                                    <FeedbackResponse
-                                      feedbackId={feedback.id}
-                                      onSubmit={(data) => handleFeedbackResponse(feedback.id, data)}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Tracking Tools */}
-              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('trackingTools')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <ClipboardDocumentCheckIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-white">Tracking Tools</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.trackingTools ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.trackingTools ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {trackingTools.map((tool) => (
-                        <a
-                          key={tool.name}
-                          href={tool.href}
-                          className="group relative bg-gray-800/50 rounded-xl shadow-sm border border-gray-700/50 p-6 hover:border-gray-600/50 hover:shadow-md transition-all duration-300 overflow-hidden"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`rounded-lg p-3 bg-gradient-to-br ${tool.gradient} transform transition-transform duration-300 group-hover:scale-110`}>
-                              <tool.icon className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors">
-                                {tool.name}
-                              </h3>
-                              <p className="text-sm text-gray-400">{tool.description}</p>
-                            </div>
-                          </div>
-                          {tool.count && (
-                            <div className="absolute top-6 right-6 bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full text-sm font-medium">
-                              {tool.count} photos
-                            </div>
-                          )}
-                          {tool.lastUpdate && (
-                            <div className="absolute top-6 right-6 flex items-center gap-1 text-sm text-gray-400">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span>Updated {new Date(tool.lastUpdate).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Progress Gallery */}
-              <section className="bg-gray-800/40 rounded-2xl border border-gray-700/50 shadow-lg overflow-hidden">
-                <button 
-                  onClick={() => toggleSection('progressPhotos')}
-                  className="w-full flex items-center justify-between p-6 hover:bg-gray-700/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <TrophyIcon className="h-5 w-5 text-gray-400" />
-                    <h2 className="text-lg font-semibold text-white">Progress Gallery</h2>
-                  </div>
-                  <ChevronDownIcon 
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      expandedSections.progressPhotos ? 'transform rotate-180' : ''
-                    }`}
-                  />
-                </button>
-                <div className={`transition-all duration-200 ${
-                  expandedSections.progressPhotos ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                }`}>
-                  <div className="p-6 pt-0">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 p-1.5 rounded-lg">
-                          <PhotoIcon className="h-4 w-4 text-white" />
-                        </div>
-                        <h2 className="text-lg font-semibold text-white">
-                          Progress Gallery
-                        </h2>
-                      </div>
-                      <button className="text-sm font-medium bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent hover:opacity-80 transition-opacity">
-                        View All Photos
+                    <p className="mt-2 text-gray-300">
+                      Great progress this week! Your consistency with workouts is showing in your strength gains. 
+                      Keep focusing on protein intake and recovery. Let's work on increasing your daily steps gradually.
+                    </p>
+                    <div className="mt-4 flex items-center space-x-4">
+                      <button className="flex items-center space-x-2 text-sm text-gray-300 hover:text-gray-100">
+                        <PaperClipIcon className="h-5 w-5" />
+                        <span>View Detailed Report</span>
                       </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {/* Latest Photo Card */}
-                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        <div className="absolute inset-0 bg-center bg-cover" style={{ backgroundImage: "url('/images/current-photo.jpg')" }}></div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                          <span className="text-white text-sm font-medium block">Latest</span>
-                          <span className="text-white/80 text-xs">Oct 17, 2023</span>
-                        </div>
-                      </div>
-
-                      {/* Previous Photos */}
-                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        <div className="absolute inset-0 bg-center bg-cover" style={{ backgroundImage: "url('/images/progress-3.jpg')" }}></div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                          <span className="text-white text-sm font-medium block">1 Month Ago</span>
-                          <span className="text-white/80 text-xs">Sep 17, 2023</span>
-                        </div>
-                      </div>
-
-                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        <div className="absolute inset-0 bg-center bg-cover" style={{ backgroundImage: "url('/images/progress-2.jpg')" }}></div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                          <span className="text-white text-sm font-medium block">2 Months Ago</span>
-                          <span className="text-white/80 text-xs">Aug 17, 2023</span>
-                        </div>
-                      </div>
-
-                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        <div className="absolute inset-0 bg-center bg-cover" style={{ backgroundImage: "url('/images/progress-1.jpg')" }}></div>
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                          <span className="text-white text-sm font-medium block">First Photo</span>
-                          <span className="text-white/80 text-xs">Jul 17, 2023</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Showing last 3 months of progress</span>
-                      <button className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
-                        Upload New Photo
+                      <button className="flex items-center space-x-2 text-sm text-gray-300 hover:text-gray-100">
+                        <ChatBubbleLeftIcon className="h-5 w-5" />
+                        <span>Reply to Coach</span>
                       </button>
                     </div>
                   </div>
                 </div>
-              </section>
-
-              {/* Timeline Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {timelineHighlights.map((highlight) => (
-                  <div 
-                    key={highlight.title}
-                    className="bg-gray-800/50 backdrop-blur-xl rounded-xl p-4 flex flex-col justify-between border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300 shadow-sm overflow-hidden relative group"
-                  >
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`p-1.5 rounded-lg bg-gradient-to-br ${highlight.gradient} transform transition-transform duration-300 group-hover:scale-110`}>
-                            <highlight.icon className="h-3.5 w-3.5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">{highlight.title}</h3>
-                            <p className="text-xs text-gray-400">{highlight.description}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

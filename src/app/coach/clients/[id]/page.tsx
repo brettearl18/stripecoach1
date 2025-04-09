@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import clientService from '@/lib/services/clientService';
 
 interface TabContentProps {
   client: any;
@@ -1483,11 +1484,32 @@ export default function ClientDetailsPage() {
     try {
       setLoading(true);
       setError(null);
-      // TODO: Replace with actual API call
-      const response = await fetch(`/api/clients/${params.id}`);
-      if (!response.ok) throw new Error('Failed to load client data');
-      const data = await response.json();
-      setClient(data);
+      
+      // Get client profile from clientService
+      const profile = await clientService.getClientProfile(params.id as string);
+      if (!profile) {
+        throw new Error('Client profile not found');
+      }
+
+      // Transform profile data to match the component's expected format
+      setClient({
+        id: profile.id,
+        name: `${profile.firstName} ${profile.lastName}`,
+        email: profile.email,
+        phone: profile.phone,
+        startDate: profile.startDate,
+        status: profile.status,
+        metrics: {
+          streak: profile.metrics?.daysStreak || 0,
+          completionRate: profile.metrics?.completionRate || 0,
+          lastCheckIn: profile.metrics?.lastCheckIn,
+          progress: profile.metrics?.consistency || 0
+        },
+        program: profile.program,
+        forms: profile.assignedForms || [],
+        notes: profile.notes,
+        goals: profile.goals || []
+      });
     } catch (err) {
       setError('Failed to load client data');
       console.error(err);

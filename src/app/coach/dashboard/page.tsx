@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { DashboardNav } from '@/components/DashboardNav';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -42,6 +41,7 @@ import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DashboardCustomizer } from '@/components/DashboardCustomizer';
+import { CoachNavigation } from '@/components/navigation/CoachNavigation';
 
 interface ClientProgress {
   id: string;
@@ -491,7 +491,7 @@ async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise
   }
 }
 
-export default function Dashboard2() {
+export default function CoachDashboard() {
   const { user } = useAuth();
   const [selectedTimeframe, setSelectedTimeframe] = useState<'today' | 'week' | 'month'>('week');
   const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhoto | null>(null);
@@ -1415,64 +1415,302 @@ export default function Dashboard2() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <DashboardNav />
-      
-      <main className="p-2 sm:p-4 lg:p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Coach Dashboard
-            </h1>
-            <DashboardCustomizer />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-            {renderOrderedSections()}
+    <div className="min-h-screen bg-gray-900">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white">Coach Dashboard</h1>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-4 gap-6 mb-8">
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400 mb-2">Check-ins Today</h3>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{mockMetrics.completedCheckIns}</p>
+              <p className="text-sm text-gray-400">/ {mockMetrics.totalClients}</p>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-1.5 mt-4">
+              <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(mockMetrics.completedCheckIns / mockMetrics.totalClients) * 100}%` }}></div>
+            </div>
           </div>
 
-          {/* Photo Modal */}
-          {selectedPhoto && (
-            <div 
-              className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-              onClick={() => setSelectedPhoto(null)}
-            >
-              <div className="max-w-4xl w-full mx-4 bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-2xl">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                      {selectedPhoto.clientName}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(selectedPhoto.date)}
-                    </p>
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400 mb-2">Needs Attention</h3>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{mockMetrics.clientProgress.needsAttention}</p>
+              <button className="text-sm text-yellow-400 hover:text-yellow-300">View clients</button>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400 mb-2">Weekly Engagement</h3>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{mockMetrics.weeklyEngagement}%</p>
+              <div className="w-24 h-8 bg-green-500/20 rounded">
+                <div className="bg-green-500 h-full rounded" style={{ width: `${mockMetrics.weeklyEngagement}%` }}></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <h3 className="text-sm font-medium text-gray-400 mb-2">Improving Clients</h3>
+            <div className="flex items-end justify-between">
+              <p className="text-2xl font-semibold text-white">{mockMetrics.clientProgress.improving}</p>
+              <button className="text-sm text-purple-400 hover:text-purple-300">View progress</button>
+            </div>
+          </div>
+        </div>
+
+        {/* Client Progress and Actions */}
+        <div className="grid grid-cols-2 gap-8">
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5M8 8v8m8-16l4 4-4 4m-4-4l4-4-4-4m-4 4l4 4-4 4" />
+                </svg>
+                <h2 className="text-lg font-semibold text-white">Client Progress</h2>
+              </div>
+              <div className="flex items-center space-x-2 text-sm text-gray-400">
+                <span>{mockMetrics.totalClients} Active Clients</span>
+                <button className="p-1 hover:bg-gray-700 rounded">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Client Progress Card */}
+            <div className="bg-gray-800/50 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPhoto(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-                  >
-                    <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" />
-                  </button>
+                  <div>
+                    <h3 className="text-white font-medium">Sarah Wilson</h3>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <span className="text-green-400">On track</span>
+                      <span className="text-gray-500">•</span>
+                      <span className="text-gray-400">Updated 21/03/2024</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="relative aspect-square w-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                  {/* Fallback for demo - replace with actual Image component when photos are available */}
-                  <PhotoIcon className="w-16 h-16 text-gray-400" />
-                  {/* Uncomment when you have actual photos
-                  <Image
-                    src={selectedPhoto.photoUrl}
-                    alt={`Progress photo from ${selectedPhoto.clientName}`}
-                    fill
-                    className="object-contain"
-                  />
-                  */}
+                <div className="flex items-center space-x-4">
+                  <div className="relative w-16 h-16">
+                    <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        className="text-gray-700"
+                        strokeWidth="8"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="40"
+                        cx="50"
+                        cy="50"
+                      />
+                      <circle
+                        className="text-blue-500"
+                        strokeWidth="8"
+                        strokeDasharray={78.5 * 3.14}
+                        strokeDashoffset={78.5 * 3.14 * 0.22}
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="40"
+                        cx="50"
+                        cy="50"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-sm font-medium text-white">78%</span>
+                    </div>
+                  </div>
+                  <button className="text-blue-400 hover:text-blue-300">View Check-in</button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+
+          <div>
+            {/* Priority Actions */}
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-white mb-4">Priority Actions</h2>
+              <div className="space-y-4">
+                <div className="bg-yellow-500/10 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <h3 className="text-white font-medium">Pending Check-ins</h3>
+                        <p className="text-sm text-gray-400">5 clients need review</p>
+                      </div>
+                    </div>
+                    <button className="p-2 hover:bg-yellow-500/20 rounded">
+                      <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-red-500/10 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div>
+                        <h3 className="text-white font-medium">At-Risk Clients</h3>
+                        <p className="text-sm text-gray-400">5 clients need attention</p>
+                      </div>
+                    </div>
+                    <button className="p-2 hover:bg-red-500/20 rounded">
+                      <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-purple-500/10 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                      <div>
+                        <h3 className="text-white font-medium">Weekly Planning</h3>
+                        <p className="text-sm text-gray-400">Plan next week's focus areas</p>
+                      </div>
+                    </div>
+                    <button className="p-2 hover:bg-purple-500/20 rounded">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Upcoming Check-ins */}
+            <div>
+              <h2 className="text-lg font-semibold text-white mb-4">Upcoming Check-ins</h2>
+              <div className="space-y-4">
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-700 rounded flex items-center justify-center">
+                        <span className="text-sm font-medium text-white">Today</span>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">5 check-ins due</p>
+                      </div>
+                    </div>
+                    <button className="text-blue-400 hover:text-blue-300">View</button>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800/50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-700 rounded flex items-center justify-center">
+                        <span className="text-sm font-medium text-white">Tom</span>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-400">8 check-ins scheduled</p>
+                      </div>
+                    </div>
+                    <button className="text-blue-400 hover:text-blue-300">View</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Client of the Week */}
+        <div className="mt-8">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <svg className="w-6 h-6 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 2a1 1 0 01.894.553l2.991 5.657 6.182.902a1 1 0 01.553 1.705l-4.465 4.474 1.054 6.174a1 1 0 01-1.45 1.054L10 18.897l-5.758 3.027a1 1 0 01-1.45-1.054l1.054-6.174L.381 10.722a1 1 0 01.553-1.705l6.182-.902L10.106 2.553A1 1 0 0110 2z" clipRule="evenodd" />
+                </svg>
+                <h2 className="text-lg font-semibold text-white">Client of the Week</h2>
+              </div>
+              <span className="text-sm text-blue-200">Week 12</span>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-white font-medium">Sarah Wilson</h3>
+                <p className="text-blue-200 text-sm">Most Consistent Progress</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              <div className="bg-white/10 rounded p-4">
+                <h4 className="text-blue-200 text-sm mb-2">Workouts</h4>
+                <p className="text-white text-xl font-semibold">6/6</p>
+                <p className="text-blue-200 text-xs mt-1">+1 from last week</p>
+              </div>
+              <div className="bg-white/10 rounded p-4">
+                <h4 className="text-blue-200 text-sm mb-2">Nutrition</h4>
+                <p className="text-white text-xl font-semibold">95%</p>
+                <p className="text-blue-200 text-xs mt-1">+5% from last week</p>
+              </div>
+              <div className="bg-white/10 rounded p-4">
+                <h4 className="text-blue-200 text-sm mb-2">Steps</h4>
+                <p className="text-white text-xl font-semibold">12.0k</p>
+                <p className="text-blue-200 text-xs mt-1">+2.0k avg</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Progress Photos */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-white">Recent Progress Photos</h2>
+            <button className="text-blue-400 hover:text-blue-300 text-sm">View all</button>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            {/* Photo placeholders */}
+            <div className="aspect-square bg-gray-800/50 rounded-lg"></div>
+            <div className="aspect-square bg-gray-800/50 rounded-lg"></div>
+            <div className="aspect-square bg-gray-800/50 rounded-lg"></div>
+            <div className="aspect-square bg-gray-800/50 rounded-lg"></div>
+          </div>
+        </div>
+
+        {/* AI Group Insights */}
+        <div className="mt-8">
+          <div className="bg-gray-800/50 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <h2 className="text-lg font-semibold text-white">AI Group Insights</h2>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-400">Last updated: 09/04/2025</span>
+                <button className="text-blue-400 hover:text-blue-300">Refresh</button>
+              </div>
+            </div>
+            {/* AI insights content would go here */}
+          </div>
         </div>
       </main>
     </div>

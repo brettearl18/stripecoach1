@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { toast } from 'react-hot-toast';
 import { UserRole } from '@/types/user';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 
@@ -102,25 +103,19 @@ const AccessibleRoutes = () => {
 };
 
 export default function LoginPage() {
-  const { signIn } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<UserRole>('client');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('coach');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
-      // Normalize email to lowercase
-      const normalizedEmail = email.toLowerCase().trim();
-      console.log('Attempting to sign in with:', { email: normalizedEmail, role });
-      
-      await signIn(normalizedEmail, role);
-      console.log('Sign in successful');
+      const auth = getAuth();
+      await signInWithEmailAndPassword(auth, email, password);
       
       // Determine redirect path based on role
       let redirectPath = '/';
@@ -136,91 +131,97 @@ export default function LoginPage() {
           break;
       }
       
-      console.log('Redirecting to:', redirectPath);
-      
-      // Force a hard navigation to ensure fresh state
-      window.location.href = redirectPath;
-    } catch (err) {
-      console.error('Sign in error:', err);
-      setError('Failed to sign in. Please check your email and role.');
+      router.push(redirectPath);
+    } catch (error) {
+      console.error('Sign in error:', error);
+      toast.error('Failed to sign in. Please check your email and password.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center p-4">
-      <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-[75%] border border-gray-700">
-        <h1 className="text-2xl font-bold text-white mb-6 text-center">Log In to Checkin.io</h1>
-
-        <div className="grid md:grid-cols-[1fr,2fr] gap-8">
-          <div>
-            {error && (
-              <div className="bg-red-500/10 border border-red-500 text-red-500 p-3 rounded mb-4">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-1">
-                  Role
-                </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="coach">Coach</option>
-                  <option value="client">Client</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full py-2 px-4 rounded font-medium text-white ${
-                  loading
-                    ? 'bg-blue-500/50 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                }`}
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
-
-            <div className="mt-4 text-sm text-gray-400">
-              <p className="text-center">Available test accounts:</p>
-              <ul className="mt-2 space-y-1 text-center">
-                <li>Admin: admin@stripecoach.com</li>
-                <li>Coach: michael.c@stripecoach.com</li>
-                <li>Client: john@example.com</li>
-              </ul>
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
+            Log In to Checkin.io
+          </h2>
+        </div>
+        
+        {/* Show any error messages */}
+        
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email Address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+              />
             </div>
-
-            <p className="mt-4 text-sm text-gray-400 text-center">
-              Note: This is a development login page. In production, proper authentication would be implemented.
-            </p>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+              />
+            </div>
           </div>
 
-          <AccessibleRoutes />
+          <div>
+            <label htmlFor="role" className="block text-sm font-medium text-gray-400 mb-2">
+              Role
+            </label>
+            <select
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as UserRole)}
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-700 bg-gray-800 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+              <option value="coach">Coach</option>
+              <option value="client">Client</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-6">
+          <div className="text-sm text-gray-400">
+            <p className="mb-2">Available test accounts:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Admin: admin@stripecoach.com</li>
+              <li>Coach: michael.c@stripecoach.com</li>
+              <li>Client: john@example.com</li>
+            </ul>
+            <p className="mt-4 text-xs">Note: This is a development login page. In production, proper authentication would be implemented.</p>
+          </div>
         </div>
       </div>
     </div>

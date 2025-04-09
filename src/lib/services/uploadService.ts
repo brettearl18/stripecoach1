@@ -1,7 +1,8 @@
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { AudioMessage, FileAttachment } from '@/types/feedback';
+import { app } from '../firebase/config';
 
-const storage = getStorage();
+const storage = getStorage(app);
 
 // Configuration
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

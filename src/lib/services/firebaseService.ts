@@ -1,4 +1,4 @@
-import { db } from '@/lib/firebase/config';
+import { db } from '../firebase';
 import {
   collection,
   doc,
@@ -8,8 +8,11 @@ import {
   where,
   Timestamp,
   writeBatch,
-  getDoc
+  getDoc,
+  setDoc,
+  Firestore
 } from 'firebase/firestore';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from 'firebase/auth';
 
 // Helper function to check if a value has a toDate method
 function hasToDate(value: any): value is { toDate: () => Date } {
@@ -77,6 +80,25 @@ export interface CheckIn {
   status: 'pending' | 'completed' | 'reviewed';
   type: 'weekly' | 'monthly' | 'custom';
   data: Record<string, any>;
+}
+
+// Add these interfaces at the top with other interfaces
+interface User {
+  id: string;
+  email: string;
+  role: 'admin' | 'coach' | 'client';
+  name?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ClientUser extends User {
+  coachId: string;
+  goals: string[];
+  avatar?: string;
+  lastLoginAt?: Date;
+  lastCheckIn?: Date;
+  isActive: boolean;
 }
 
 // Mock data and functions for development
@@ -325,7 +347,7 @@ export const getCoach = async (coachId: string): Promise<Coach | null> => {
     }
 
     // If not in mock data, query Firestore
-    const coachDoc = await getDoc(doc(db, 'coaches', coachId));
+    const coachDoc = await getDoc(doc(db as Firestore, 'coaches', coachId));
     if (!coachDoc.exists()) {
       return null;
     }
@@ -345,14 +367,38 @@ export const getCoach = async (coachId: string): Promise<Coach | null> => {
   }
 };
 
-export const createTestCoach = async (coachData: Omit<Coach, 'id'>): Promise<Coach> => {
-  const newCoach: Coach = {
-    ...coachData,
-    id: String(mockCoaches.length + 1),
-    lastLoginAt: new Date()
-  };
-  mockCoaches.push(newCoach);
-  return newCoach;
+export const createTestCoach = async (email: string, password: string): Promise<FirebaseUser> => {
+  try {
+    const auth = getAuth();
+    let user: FirebaseUser;
+    
+    try {
+      // Try to create new user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      user = userCredential.user;
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-exists' || error.code === 'auth/email-already-in-use') {
+        // If user exists, try to sign in
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        user = userCredential.user;
+      } else {
+        throw error;
+      }
+    }
+
+    // Create or update the coach profile in Firestore
+    await setDoc(doc(db as Firestore, 'coaches', user.uid), {
+      email: user.email,
+      role: 'coach',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }, { merge: true }); // Using merge: true to update if exists
+
+    return user;
+  } catch (error) {
+    console.error('Error creating/updating test coach:', error);
+    throw error;
+  }
 };
 
 export const updateCoach = async (id: string, coachData: Partial<Coach>): Promise<Coach> => {
@@ -387,7 +433,7 @@ export const getClients = async (): Promise<Client[]> => {
     }
 
     // If no mock data, try Firestore
-    const clientsRef = collection(db, 'clients');
+    const clientsRef = collection(db as Firestore, 'clients');
     const querySnapshot = await getDocs(clientsRef);
     
     return querySnapshot.docs.map(doc => {
@@ -406,9 +452,9 @@ export const getClients = async (): Promise<Client[]> => {
 
 export async function createTestData() {
   try {
-    const batch = writeBatch(db);
-    const clientsRef = collection(db, 'clients');
-    const analyticsRef = collection(db, 'clientAnalytics');
+    const batch = writeBatch(db as Firestore);
+    const clientsRef = collection(db as Firestore, 'clients');
+    const analyticsRef = collection(db as Firestore, 'clientAnalytics');
 
     // Get all coaches
     const coaches = await getCoaches();
@@ -507,7 +553,7 @@ export async function createTestData() {
         batch.set(clientRef, convertDatesToTimestamps(clientData));
 
         // Create analytics
-        const analyticsRef = doc(collection(db, 'clientAnalytics'));
+        const analyticsRef = doc(collection(db as Firestore, 'clientAnalytics'));
         const analyticsData = {
           clientId: clientRef.id,
           submissions: Math.floor(30 * completionRate), // Based on 30 days
@@ -557,7 +603,7 @@ export const getCheckIns = async (clientId?: string, limit?: number): Promise<an
 // Add these new functions for role-based data access
 export async function getUserData(userId: string): Promise<User | null> {
   try {
-    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userDoc = await getDoc(doc(db as Firestore, 'users', userId));
     if (!userDoc.exists()) return null;
     
     const userData = userDoc.data();
@@ -576,7 +622,7 @@ export async function getUserData(userId: string): Promise<User | null> {
 export async function getCoachClients(coachId: string): Promise<ClientUser[]> {
   try {
     const clientsQuery = query(
-      collection(db, 'users'),
+      collection(db as Firestore, 'users'),
       where('role', '==', 'client'),
       where('coachId', '==', coachId)
     );
@@ -597,7 +643,7 @@ export async function getCoachClients(coachId: string): Promise<ClientUser[]> {
 export async function getClientCheckIns(clientId: string, coachId?: string): Promise<CheckIn[]> {
   try {
     const checkInsQuery = query(
-      collection(db, 'checkins'),
+      collection(db as Firestore, 'checkins'),
       where('clientId', '==', clientId),
       ...(coachId ? [where('coachId', '==', coachId)] : [])
     );

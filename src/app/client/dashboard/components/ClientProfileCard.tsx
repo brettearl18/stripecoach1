@@ -23,129 +23,34 @@ import Link from 'next/link';
 import { format, isToday } from 'date-fns';
 import { getCoachReviewStatus, setNewCoachReview } from '@/lib/utils/coachReview';
 import { useState, useEffect } from 'react';
-
-// This would come from the backend in production
-const clientProfile = {
-  name: "John Smith",
-  profileImage: "/images/placeholder-avatar.jpg",
-  programType: "Weight Management",
-  stats: {
-    checkIns: 24,
-    totalSessions: 36,
-    consistency: 85,
-    daysStreak: 12
-  },
-  notifications: {
-    checkInDue: true,
-    unreadMessages: 3
-  },
-  program: {
-    currentWeek: 4,
-    totalWeeks: 12,
-    phase: "Foundation"
-  },
-  lastCheckIn: "2024-03-20T10:30:00Z",
-  badges: [
-    {
-      icon: FireIcon,
-      name: "30 Day Streak",
-      description: "Completed check-ins for 30 consecutive days! Your dedication is paying off.",
-      color: "text-orange-500",
-      bgColor: "bg-orange-100",
-      achieved: true,
-      date: "Achieved Mar 15, 2024"
-    },
-    {
-      icon: ScaleIcon,
-      name: "10kg Lost",
-      description: "Successfully lost 10kg since starting your journey. Amazing transformation!",
-      color: "text-green-500",
-      bgColor: "bg-green-100",
-      achieved: true,
-      date: "Achieved Mar 10, 2024"
-    },
-    {
-      icon: HeartIcon,
-      name: "Fitness Pro",
-      description: "Complete 50 workouts to unlock this badge. Current progress: 35/50",
-      color: "text-red-500",
-      bgColor: "bg-red-100",
-      achieved: false,
-      progress: "35/50"
-    },
-    {
-      icon: StarIcon,
-      name: "90% Consistency",
-      description: "Maintain a 90% program consistency for 4 weeks. Current: 85%",
-      color: "text-purple-500",
-      bgColor: "bg-purple-100",
-      achieved: false,
-      progress: "85%"
-    },
-    {
-      icon: TrophyIcon,
-      name: "Goal Crusher",
-      description: "Reached your first major milestone! Achieved target weight of 75kg.",
-      color: "text-yellow-500",
-      bgColor: "bg-yellow-100",
-      achieved: true,
-      date: "Achieved Feb 28, 2024"
-    },
-    {
-      icon: SparklesIcon,
-      name: "Early Bird",
-      description: "Complete 10 workouts before 7am. Progress: 6/10 morning workouts",
-      color: "text-blue-500",
-      bgColor: "bg-blue-100",
-      achieved: false,
-      progress: "6/10"
-    }
-  ],
-  upcomingEvents: [
-    {
-      id: 1,
-      type: "check-in",
-      title: "Weekly Check-in",
-      date: "2024-03-20",
-      time: "09:00 AM",
-      icon: ClipboardDocumentCheckIcon,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-50"
-    },
-    {
-      id: 2,
-      type: "video-call",
-      title: "Progress Review",
-      date: "2024-03-22",
-      time: "02:30 PM",
-      icon: VideoCameraIcon,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50"
-    },
-    {
-      id: 3,
-      type: "photo-update",
-      title: "Progress Photos Due",
-      date: "2024-03-25",
-      time: "Any time",
-      icon: CameraIcon,
-      color: "text-green-600",
-      bgColor: "bg-green-50"
-    }
-  ]
-};
+import { getClientProfile, ExtendedClientProfile } from '@/lib/services/clientProfileService';
+import { getAuth } from 'firebase/auth';
 
 export default function ClientProfileCard() {
+  const [profile, setProfile] = useState<ExtendedClientProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // Simulate a pending coach review for testing
-    setNewCoachReview('test-checkin-id');
+    const loadProfile = async () => {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (user) {
+        const profileData = await getClientProfile(user.uid);
+        if (profileData) {
+          setProfile(profileData);
+        }
+      }
+      setLoading(false);
+    };
+
+    loadProfile();
   }, []);
 
   // Check if check-in is already done for today
   const isCheckInDoneToday = () => {
-    const lastCheckIn = localStorage.getItem('lastCheckIn');
-    if (!lastCheckIn) return false;
-    return isToday(new Date(lastCheckIn));
+    if (!profile?.lastCheckIn) return false;
+    return isToday(new Date(profile.lastCheckIn));
   };
 
   // Check if there's a pending coach review
@@ -155,17 +60,36 @@ export default function ClientProfileCard() {
     return status.allSuggestionsAccepted ? 'completed' : 'pending';
   };
 
-  // Helper function to format date
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      weekday: 'short'
-    }).format(date);
-  };
-
   const reviewStatus = getReviewButtonState();
+
+  if (loading) {
+    return (
+      <div className="bg-[#1F2937] rounded-xl shadow-lg border border-gray-800/50 p-4">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-20 w-20 rounded-full bg-gray-700 mb-3"></div>
+          <div className="h-4 w-24 bg-gray-700 rounded mb-2"></div>
+          <div className="h-3 w-32 bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="bg-[#1F2937] rounded-xl shadow-lg border border-gray-800/50 p-4">
+        <div className="flex flex-col items-center">
+          <UserIcon className="h-20 w-20 text-gray-600 mb-3" />
+          <p className="text-gray-400">Profile not found</p>
+          <Link 
+            href="/client/profile/setup"
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Complete Profile Setup
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#1F2937] rounded-xl shadow-lg border border-gray-800/50">
@@ -173,10 +97,10 @@ export default function ClientProfileCard() {
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-4">
           <div className="h-20 w-20 rounded-full bg-[#374151] mb-3 overflow-hidden">
-            {clientProfile.profileImage ? (
+            {profile.profileImage ? (
               <img 
-                src={clientProfile.profileImage} 
-                alt={clientProfile.name}
+                src={profile.profileImage} 
+                alt={profile.name}
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -185,8 +109,8 @@ export default function ClientProfileCard() {
               </div>
             )}
           </div>
-          <h2 className="text-lg font-bold text-white">{clientProfile.name}</h2>
-          <p className="text-sm text-gray-400 mb-3">{clientProfile.programType}</p>
+          <h2 className="text-lg font-bold text-white">{profile.name}</h2>
+          <p className="text-sm text-gray-400 mb-3">{profile.programType}</p>
 
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 w-full mb-4">
@@ -197,159 +121,75 @@ export default function ClientProfileCard() {
                   ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
-              onClick={(e) => {
-                if (isCheckInDoneToday()) {
-                  e.preventDefault();
-                }
-              }}
             >
-              <ClipboardDocumentCheckIcon className="h-4 w-4 mr-1.5" />
-              {isCheckInDoneToday() ? 'Completed' : 'Check In'}
-              {!isCheckInDoneToday() && clientProfile.notifications.checkInDue && (
-                <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              )}
-            </Link>
-
-            {/* Coach's Review Button */}
-            <Link 
-              href={reviewStatus === 'none' ? "#" : "/client/reviews"}
-              className={`relative flex items-center justify-center px-3 py-2 text-sm rounded-lg transition-colors ${
-                reviewStatus === 'none'
-                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                  : reviewStatus === 'pending'
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'bg-gray-700 text-gray-400'
-              }`}
-              onClick={(e) => {
-                if (reviewStatus === 'none') {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <AcademicCapIcon className="h-4 w-4 mr-1.5" />
-              Coach's Review
-              {reviewStatus === 'pending' && (
-                <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-              )}
-            </Link>
-
-            <Link 
-              href="/client/messages"
-              className="relative flex items-center justify-center px-3 py-2 text-sm rounded-lg border border-gray-600 text-gray-200 hover:bg-gray-700/50 transition-colors"
-            >
-              <ChatBubbleLeftIcon className="h-4 w-4 mr-1.5" />
-              Messages
-              {clientProfile.notifications.unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center text-xs text-white">
-                  {clientProfile.notifications.unreadMessages}
+              <ClipboardDocumentCheckIcon className="h-4 w-4 mr-2" />
+              {isCheckInDoneToday() ? 'Check-in Completed' : 'Daily Check-in'}
+              {!isCheckInDoneToday() && profile.notifications.checkInDue && (
+                <span className="absolute -top-1 -right-1 h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                 </span>
               )}
             </Link>
-          </div>
 
-          {/* Achievement Badges */}
-          <div className="w-full mb-4">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-sm font-medium text-white">Achievements</h3>
-              <a href="#" className="text-xs text-indigo-400 hover:text-indigo-300">View All</a>
-            </div>
-            <div className="flex gap-2">
-              <div className="bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-500 p-2 rounded-xl">
-                <TrophyIcon className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 p-2 rounded-xl">
-                <FireIcon className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 p-2 rounded-xl">
-                <BoltIcon className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-purple-500 p-2 rounded-xl">
-                <HeartIcon className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 p-2 rounded-xl">
-                <StarIcon className="h-4 w-4 text-white" />
-              </div>
-              <div className="bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 p-2 rounded-xl">
-                <ClipboardDocumentCheckIcon className="h-4 w-4 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Events */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-medium text-white">Upcoming Events</h3>
-            <Link href="/client/calendar" className="text-xs text-indigo-400 hover:text-indigo-300">
-              View Calendar
+            <Link
+              href="/client/messages"
+              className="relative flex items-center justify-center px-3 py-2 text-sm bg-gray-700/50 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              <ChatBubbleLeftIcon className="h-4 w-4 mr-2" />
+              Messages
+              {profile.notifications.unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-xs rounded-full">
+                  {profile.notifications.unreadMessages}
+                </span>
+              )}
             </Link>
-          </div>
-          <div className="space-y-2">
-            {clientProfile.upcomingEvents.map((event) => (
-              <div 
-                key={event.id}
-                className="flex items-center p-2 rounded-lg bg-[#374151] border border-gray-700"
-              >
-                <div className="p-1.5 rounded-full bg-[#1F2937] mr-2">
-                  <event.icon className="h-4 w-4 text-indigo-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium text-white truncate">{event.title}</h4>
-                  <div className="flex items-center mt-0.5">
-                    <CalendarIcon className="h-3 w-3 text-gray-400 mr-1" />
-                    <span className="text-xs text-gray-400 mr-2">{formatDate(event.date)}</span>
-                    <ClockIcon className="h-3 w-3 text-gray-400 mr-1" />
-                    <span className="text-xs text-gray-400 truncate">{event.time}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Progress Bar */}
-        <div className="mb-4">
-          <div className="flex flex-col mb-2">
-            <div className="flex justify-between text-xs text-gray-400 mb-1">
-              <span>Program Progress - {clientProfile.program.phase} Phase</span>
-              <span>Week {clientProfile.program.currentWeek}/{clientProfile.program.totalWeeks}</span>
+            {reviewStatus !== 'none' && (
+              <Link
+                href="/client/review"
+                className={`flex items-center justify-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                  reviewStatus === 'completed'
+                    ? 'bg-emerald-600/20 text-emerald-400'
+                    : 'bg-amber-600/20 text-amber-400'
+                }`}
+              >
+                <AcademicCapIcon className="h-4 w-4 mr-2" />
+                {reviewStatus === 'completed' ? 'Review Complete' : 'Coach Review Available'}
+              </Link>
+            )}
+          </div>
+
+          {/* Program Progress */}
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span>Program Progress - {profile.program.phase} Phase</span>
+              <span>Week {profile.program.currentWeek}/{profile.program.totalWeeks}</span>
             </div>
-            <p className="text-xs text-gray-400">
-              {clientProfile.program.totalWeeks - clientProfile.program.currentWeek} weeks remaining
+            <div className="relative w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                style={{ width: `${(profile.program.currentWeek / profile.program.totalWeeks) * 100}%` }}>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 text-right">
+              {profile.program.totalWeeks - profile.program.currentWeek} weeks remaining
             </p>
           </div>
-          <div className="w-full bg-[#374151] rounded-full h-1.5">
-            <div 
-              className="bg-indigo-600 h-1.5 rounded-full" 
-              style={{ width: `${(clientProfile.program.currentWeek / clientProfile.program.totalWeeks) * 100}%` }}
-            ></div>
-          </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-[#374151] rounded-lg p-3">
-            <div className="flex items-center mb-1">
-              <CalendarIcon className="h-4 w-4 text-indigo-400 mr-1.5" />
-              <span className="text-xs text-gray-400">Check-ins</span>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-4 w-full mt-6">
+            <div className="text-center">
+              <p className="text-lg font-bold text-white">{profile.stats.checkIns}</p>
+              <p className="text-xs text-gray-400">Check-ins</p>
             </div>
-            <p className="text-lg font-bold text-white">{clientProfile.stats.checkIns}</p>
-          </div>
-
-          <div className="bg-[#374151] rounded-lg p-3">
-            <div className="flex items-center mb-1">
-              <ChartBarIcon className="h-4 w-4 text-indigo-400 mr-1.5" />
-              <span className="text-xs text-gray-400">Consistency</span>
+            <div className="text-center">
+              <p className="text-lg font-bold text-white">{profile.stats.consistency}%</p>
+              <p className="text-xs text-gray-400">Consistency</p>
             </div>
-            <p className="text-lg font-bold text-white">{clientProfile.stats.consistency}%</p>
-          </div>
-
-          <div className="bg-[#374151] rounded-lg p-3 col-span-2">
-            <div className="flex items-center mb-1">
-              <ArrowPathIcon className="h-4 w-4 text-indigo-400 mr-1.5" />
-              <span className="text-xs text-gray-400">Current Streak</span>
+            <div className="text-center">
+              <p className="text-lg font-bold text-white">{profile.stats.daysStreak} days</p>
+              <p className="text-xs text-gray-400">Streak</p>
             </div>
-            <p className="text-lg font-bold text-white">{clientProfile.stats.daysStreak} days</p>
           </div>
         </div>
       </div>
