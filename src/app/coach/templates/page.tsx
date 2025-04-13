@@ -109,13 +109,13 @@ export default function TemplatesPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsCreating(true)}
+            <Link
+              href="/coach/templates-v2"
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               <PlusIcon className="w-4 h-4 mr-2" />
               Create Template
-            </button>
+            </Link>
           </div>
         </div>
 

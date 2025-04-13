@@ -14,14 +14,16 @@ import Link from 'next/link';
 import { getClients } from '@/lib/services/firebaseService';
 
 interface Client {
-  id: string;
+  id?: string;
   name: string;
   email: string;
-  phone?: string;
+  coachId: string;
+  goals: string[];
+  avatar?: string;
   program?: string;
-  startDate: Date;
-  status: 'active' | 'pending' | 'inactive';
+  lastLoginAt?: Date;
   lastCheckIn?: Date;
+  isActive: boolean;
 }
 
 export default function ClientsPage() {
@@ -40,7 +42,13 @@ export default function ClientsPage() {
       
       try {
         const fetchedClients = await getClients(user.uid);
-        setClients(fetchedClients);
+        // Convert Timestamps to Dates
+        const clientsWithDates = fetchedClients.map(client => ({
+          ...client,
+          lastLoginAt: client.lastLoginAt?.toDate(),
+          lastCheckIn: client.lastCheckIn?.toDate()
+        }));
+        setClients(clientsWithDates);
       } catch (error) {
         console.error('Error loading clients:', error);
       } finally {
@@ -86,24 +94,35 @@ export default function ClientsPage() {
     }
   };
 
-  const filteredClients = clients
-    .filter(client => {
-      const matchesSearch = (
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      const aValue = a[sortField];
-      const bValue = b[sortField];
-      
-      if (aValue === bValue) return 0;
-      
-      const comparison = aValue < bValue ? -1 : 1;
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
+  const filteredClients = clients.filter(client => {
+    const nameMatch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                     client.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const statusMatch = statusFilter === 'all' ? true :
+                       statusFilter === 'active' ? client.isActive :
+                       statusFilter === 'inactive' ? !client.isActive : true;
+    
+    return nameMatch && statusMatch;
+  });
+
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    const aValue = sortField === 'name' ? a.name :
+                  sortField === 'email' ? a.email :
+                  sortField === 'status' ? (a.isActive ? 'Active' : 'Inactive') :
+                  sortField === 'goals' ? (a.goals?.length || 0) : '';
+                  
+    const bValue = sortField === 'name' ? b.name :
+                  sortField === 'email' ? b.email :
+                  sortField === 'status' ? (b.isActive ? 'Active' : 'Inactive') :
+                  sortField === 'goals' ? (b.goals?.length || 0) : '';
+
+    if (typeof aValue === 'number' && typeof bValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    }
+
+    const comparison = String(aValue).localeCompare(String(bValue));
+    return sortDirection === 'asc' ? comparison : -comparison;
+  });
 
   return (
     <div className="min-h-screen bg-[#13141A] text-white p-8">
@@ -143,7 +162,6 @@ export default function ClientsPage() {
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
-                  <option value="pending">Pending</option>
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
@@ -180,13 +198,14 @@ export default function ClientsPage() {
                       )}
                     </div>
                   </th>
+                  <th className="px-6 py-3 text-left">Goals</th>
                   <th 
                     className="px-6 py-3 text-left cursor-pointer"
-                    onClick={() => handleSort('program')}
+                    onClick={() => handleSort('lastLoginAt')}
                   >
                     <div className="flex items-center">
-                      <span>Program</span>
-                      {sortField === 'program' && (
+                      <span>Last Login</span>
+                      {sortField === 'lastLoginAt' && (
                         sortDirection === 'asc' ? 
                         <ChevronUpIcon className="h-4 w-4 ml-1" /> : 
                         <ChevronDownIcon className="h-4 w-4 ml-1" />
@@ -195,24 +214,11 @@ export default function ClientsPage() {
                   </th>
                   <th 
                     className="px-6 py-3 text-left cursor-pointer"
-                    onClick={() => handleSort('startDate')}
-                  >
-                    <div className="flex items-center">
-                      <span>Start Date</span>
-                      {sortField === 'startDate' && (
-                        sortDirection === 'asc' ? 
-                        <ChevronUpIcon className="h-4 w-4 ml-1" /> : 
-                        <ChevronDownIcon className="h-4 w-4 ml-1" />
-                      )}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left cursor-pointer"
-                    onClick={() => handleSort('status')}
+                    onClick={() => handleSort('isActive')}
                   >
                     <div className="flex items-center">
                       <span>Status</span>
-                      {sortField === 'status' && (
+                      {sortField === 'isActive' && (
                         sortDirection === 'asc' ? 
                         <ChevronUpIcon className="h-4 w-4 ml-1" /> : 
                         <ChevronDownIcon className="h-4 w-4 ml-1" />
@@ -232,38 +238,39 @@ export default function ClientsPage() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredClients.length === 0 ? (
+                ) : sortedClients.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-4 text-center text-gray-400">
                       No clients found
                     </td>
                   </tr>
                 ) : (
-                  filteredClients.map((client) => (
+                  sortedClients.map((client) => (
                     <tr 
                       key={client.id}
                       className="hover:bg-gray-700/50 transition-colors"
                     >
                       <td className="px-6 py-4">{client.name}</td>
                       <td className="px-6 py-4">{client.email}</td>
-                      <td className="px-6 py-4">{client.program || '-'}</td>
                       <td className="px-6 py-4">
-                        {client.startDate.toLocaleDateString()}
+                        {client.goals?.map((goal, index) => (
+                          <span key={index} className="inline-block bg-gray-700 rounded-full px-2 py-1 text-xs mr-1 mb-1">
+                            {goal}
+                          </span>
+                        )) || '-'}
+                      </td>
+                      <td className="px-6 py-4">
+                        {client.lastLoginAt?.toLocaleDateString() || 'Never'}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize
-                          ${client.status === 'active' ? 'bg-green-100 text-green-800' :
-                            client.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'}`}
+                          ${client.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
                         >
-                          {client.status}
+                          {client.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {client.lastCheckIn ? 
-                          client.lastCheckIn.toLocaleDateString() : 
-                          'Never'
-                        }
+                        {client.lastCheckIn?.toLocaleDateString() || 'Never'}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <Link

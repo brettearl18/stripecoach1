@@ -246,7 +246,7 @@ export default function CoachCheckIns() {
             <p className="text-gray-400">Monitor and review your client check-ins</p>
           </div>
           <Link
-            href="/coach/check-ins/create"
+            href="/coach/templates-v2"
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <DocumentPlusIcon className="h-5 w-5 mr-2" />

@@ -15,14 +15,30 @@ export const authOptions: NextAuthOptions = {
         }
 
         // This is where you would typically validate against your database
-        // For now, we'll use a mock user for development
-        if (credentials.email === "coach@example.com" && credentials.password === "password") {
-          return {
+        // For now, we'll use mock users for development
+        const mockUsers = {
+          "admin@example.com": {
             id: "1",
-            email: credentials.email,
-            name: "Demo Coach",
+            email: "admin@example.com",
+            name: "Admin User",
+            role: "admin",
+          },
+          "coach@example.com": {
+            id: "2",
+            email: "coach@example.com",
+            name: "Coach User",
             role: "coach",
-          };
+          },
+          "client@example.com": {
+            id: "3",
+            email: "client@example.com",
+            name: "Client User",
+            role: "client",
+          }
+        };
+
+        if (credentials.password === "password" && mockUsers[credentials.email]) {
+          return mockUsers[credentials.email];
         }
 
         return null;

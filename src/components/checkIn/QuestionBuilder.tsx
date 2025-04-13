@@ -340,6 +340,7 @@ export default function QuestionBuilder({ onSaveQuestions, initialQuestions = []
   const [extractedQuestions, setExtractedQuestions] = useState<Partial<Question>[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [showGoogleSheetInput, setShowGoogleSheetInput] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     if (initialQuestions.length > 0) {
@@ -460,15 +461,18 @@ export default function QuestionBuilder({ onSaveQuestions, initialQuestions = []
   const handleAddQuestion = () => {
     const newQuestion: Question = {
       id: crypto.randomUUID(),
-      text: '',
-      type: 'yesNo',
+      type: 'text',
+      question: '',
       required: false,
       weight: 1,
-      category: '',
-      options: []
+      options: [],
+      validation: {
+        min: 1,
+        max: 10
+      }
     };
     setQuestions([...questions, newQuestion]);
-    setShowQuestionForm(true);
+    setSelectedQuestion(newQuestion);
   };
 
   // Function to handle saving AI generated questions
@@ -483,6 +487,18 @@ export default function QuestionBuilder({ onSaveQuestions, initialQuestions = []
     setShowPreview(false);
     setPreviewText(null);
     setExtractedQuestions([]);
+  };
+
+  const handleQuestionChange = (field: keyof Question, value: any) => {
+    if (!selectedQuestion) return;
+    
+    const updatedQuestion = { ...selectedQuestion, [field]: value };
+    const updatedQuestions = questions.map(q => 
+      q.id === selectedQuestion.id ? updatedQuestion : q
+    );
+    
+    setSelectedQuestion(updatedQuestion);
+    setQuestions(updatedQuestions);
   };
 
   // Render form details step

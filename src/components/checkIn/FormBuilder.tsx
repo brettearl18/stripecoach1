@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useState, useEffect } from 'react';
-import { ArrowLeftIcon, PlusIcon, SparklesIcon, PencilSquareIcon, ScaleIcon, ChatBubbleBottomCenterTextIcon, HashtagIcon, ListBulletIcon, CheckCircleIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PlusIcon, SparklesIcon, PencilSquareIcon, ScaleIcon, ChatBubbleBottomCenterTextIcon, HashtagIcon, ListBulletIcon, CheckCircleIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, DocumentDuplicateIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AIQuestionnaireModal } from './AIQuestionnaireModal';
@@ -72,12 +72,34 @@ const FREQUENCY_OPTIONS = [
 ];
 
 const QUESTION_TYPES = [
-  { value: 'text', label: 'Text' },
-  { value: 'scale', label: 'Scale (1-10)' },
-  { value: 'multipleChoice', label: 'Multiple Choice' },
-  { value: 'number', label: 'Number' },
-  { value: 'checkbox', label: 'Checkbox' },
-  { value: 'date', label: 'Date' }
+  { 
+    value: 'yesNo', 
+    label: 'Yes/No Question',
+    description: 'Binary questions with impact weight',
+    example: 'Did you complete all workouts?',
+    icon: CheckCircleIcon
+  },
+  { 
+    value: 'scale', 
+    label: 'Scale (1-10)', 
+    description: 'Rating questions (1=poor, 10=excellent)',
+    example: 'Rate your energy levels',
+    icon: ChartBarIcon
+  },
+  { 
+    value: 'text', 
+    label: 'Text Answer',
+    description: 'Open-ended feedback',
+    example: 'What challenges did you face?',
+    icon: PencilSquareIcon
+  },
+  { 
+    value: 'multipleChoice', 
+    label: 'Multiple Choice',
+    description: 'Select multiple options',
+    example: 'Which areas need attention?',
+    icon: ListBulletIcon
+  }
 ];
 
 export default function FormBuilder({ initialData, isTemplate = false }: FormBuilderProps) {
@@ -166,12 +188,15 @@ export default function FormBuilder({ initialData, isTemplate = false }: FormBui
   const handleQuestionAdd = () => {
     const newQuestion: Question = {
       id: crypto.randomUUID(),
-      text: '',
       type: 'yesNo',
+      question: '',
       required: false,
       weight: 1,
-      category: '',
-      options: []
+      options: [],
+      validation: {
+        min: 1,
+        max: 10
+      }
     };
     setFormData(prev => ({
       ...prev,
@@ -180,7 +205,6 @@ export default function FormBuilder({ initialData, isTemplate = false }: FormBui
   };
 
   const handleQuestionEdit = (question: Question) => {
-    // Update the existing question
     setFormData(prev => ({
       ...prev,
       questions: prev.questions.map(q => 
@@ -531,21 +555,39 @@ export default function FormBuilder({ initialData, isTemplate = false }: FormBui
                     <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-3">
                         <span className="flex items-center gap-2 text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">
-                          {questionTypeIcons[question.type]}
+                          {(() => {
+                            const questionType = QUESTION_TYPES.find(t => t.value === question.type);
+                            const Icon = questionType?.icon;
+                            return Icon && <Icon className="w-4 h-4" />;
+                          })()}
                           {question.type}
                         </span>
-                        <span className="text-sm text-gray-100">{question.text}</span>
+                        <span className="text-sm text-gray-100">{question.question}</span>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         {question.required && (
                           <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded">Required</span>
                         )}
-                        {question.category && (
-                          <span className="bg-gray-700/50 px-2 py-0.5 rounded">{question.category}</span>
+                        {question.type === 'yesNo' ? (
+                          <span className={`px-2 py-0.5 rounded ${
+                            question.weight > 0 
+                              ? 'bg-green-500/10 text-green-400'
+                              : 'bg-red-500/10 text-red-400'
+                          }`}>
+                            Impact: {question.weight > 0 ? '+' : ''}{question.weight}
+                          </span>
+                        ) : question.weight > 1 && (
+                          <span className="bg-gray-700/50 px-2 py-0.5 rounded">Weight: {question.weight}</span>
                         )}
-                        {question.subcategories?.length > 0 && (
+                        {question.type === 'scale' && question.validation && (
                           <span className="bg-gray-700/50 px-2 py-0.5 rounded">
-                            {question.subcategories.join(', ')}
+                            Scale: {question.validation.min}-{question.validation.max}
+                          </span>
+                        )}
+                        {question.helpText && (
+                          <span className="bg-gray-700/50 px-2 py-0.5 rounded">
+                            <ChatBubbleBottomCenterTextIcon className="w-4 h-4 inline mr-1" />
+                            Has help text
                           </span>
                         )}
                       </div>

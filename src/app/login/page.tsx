@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { UserRole } from '@/types/user';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
@@ -105,7 +104,6 @@ const AccessibleRoutes = () => {
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('coach');
   const [loading, setLoading] = useState(false);
 
@@ -114,27 +112,34 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const auth = getAuth();
-      await signInWithEmailAndPassword(auth, email, password);
-      
-      // Determine redirect path based on role
-      let redirectPath = '/';
-      switch (role) {
-        case 'coach':
-          redirectPath = '/coach/dashboard';
-          break;
-        case 'client':
-          redirectPath = '/client/dashboard';
-          break;
-        case 'admin':
-          redirectPath = '/admin/dashboard';
-          break;
+      // Development bypass - just check if email matches role
+      const emailPrefix = email.split('@')[0];
+      if (
+        (role === 'admin' && emailPrefix === 'admin') ||
+        (role === 'coach' && emailPrefix === 'coach') ||
+        (role === 'client' && emailPrefix === 'client')
+      ) {
+        // Determine redirect path based on role
+        let redirectPath = '/';
+        switch (role) {
+          case 'coach':
+            redirectPath = '/coach/dashboard';
+            break;
+          case 'client':
+            redirectPath = '/client/dashboard';
+            break;
+          case 'admin':
+            redirectPath = '/admin/dashboard';
+            break;
+        }
+        
+        router.push(redirectPath);
+      } else {
+        toast.error('Please use the correct email prefix for your selected role (admin@, coach@, or client@)');
       }
-      
-      router.push(redirectPath);
     } catch (error) {
-      console.error('Sign in error:', error);
-      toast.error('Failed to sign in. Please check your email and password.');
+      console.error('Navigation error:', error);
+      toast.error('Failed to navigate to dashboard.');
     } finally {
       setLoading(false);
     }
@@ -152,7 +157,7 @@ export default function LoginPage() {
         {/* Show any error messages */}
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="rounded-md shadow-sm">
             <div>
               <label htmlFor="email" className="sr-only">
                 Email Address
@@ -164,23 +169,8 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none relative block w-full px-3 py-2 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-700 placeholder-gray-500 text-white bg-gray-800 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
               />
             </div>
           </div>
@@ -210,19 +200,20 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </div>
+
+          <div className="mt-8 text-gray-400 text-sm">
+            <p className="mb-2">Development Mode Test Accounts:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Admin: admin@example.com</li>
+              <li>Coach: coach@example.com</li>
+              <li>Client: client@example.com</li>
+            </ul>
+            <p className="mt-4 text-xs text-gray-500">Note: This is a development login page with authentication bypassed.</p>
+            <p className="mt-2 text-xs text-emerald-400">Just use any email that starts with admin@, coach@, or client@ to access the respective dashboard.</p>
+          </div>
         </form>
 
-        <div className="mt-6">
-          <div className="text-sm text-gray-400">
-            <p className="mb-2">Available test accounts:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>Admin: admin@stripecoach.com</li>
-              <li>Coach: michael.c@stripecoach.com</li>
-              <li>Client: john@example.com</li>
-            </ul>
-            <p className="mt-4 text-xs">Note: This is a development login page. In production, proper authentication would be implemented.</p>
-          </div>
-        </div>
+        <AccessibleRoutes />
       </div>
     </div>
   );

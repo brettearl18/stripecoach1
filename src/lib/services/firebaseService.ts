@@ -291,4 +291,60 @@ export const getClientResponses = async (clientId: string, formId?: string): Pro
     console.error('Error getting client responses:', error);
     throw error;
   }
+};
+
+// Client functions
+export const getClients = async (coachId: string): Promise<Client[]> => {
+  try {
+    // For development, return mock clients
+    return mockClients.filter(client => client.coachId === coachId);
+  } catch (error) {
+    console.error('Error getting clients:', error);
+    throw error;
+  }
+};
+
+// Check-in form functions
+export const saveCheckInForm = async (formData: CheckInForm, clientIds: string[] = []): Promise<string> => {
+  try {
+    const formRef = collection(db, 'checkInForms');
+    const docRef = await addDoc(formRef, {
+      ...formData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      assignedClients: clientIds
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving check-in form:', error);
+    throw error;
+  }
+};
+
+export const createFromTemplate = async (templateId: string): Promise<string> => {
+  try {
+    const templateRef = doc(db, 'checkInForms', templateId);
+    const templateDoc = await getDoc(templateRef);
+    
+    if (!templateDoc.exists()) {
+      throw new Error('Template not found');
+    }
+
+    const templateData = templateDoc.data() as CheckInForm;
+    const newFormData = {
+      ...templateData,
+      id: undefined,
+      isTemplate: false,
+      status: 'draft',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    const formRef = collection(db, 'checkInForms');
+    const docRef = await addDoc(formRef, newFormData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating from template:', error);
+    throw error;
+  }
 }; 

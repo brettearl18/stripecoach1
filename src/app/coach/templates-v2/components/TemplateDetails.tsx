@@ -1,91 +1,85 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TagIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { TagIcon, XMarkIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface TemplateDetailsProps {
-  initialData?: {
-    name: string;
+  initialData: {
+    title: string;
     description: string;
-    category: string;
-    tags: string[];
+    categories: string[];
+    isTemplate: boolean;
   };
   onSave: (data: {
-    name: string;
+    title: string;
     description: string;
-    category: string;
-    tags: string[];
+    categories: string[];
+    isTemplate: boolean;
   }) => void;
 }
 
-const TEMPLATE_CATEGORIES = [
-  { id: 'health', label: 'Health & Wellness' },
-  { id: 'fitness', label: 'Fitness' },
-  { id: 'nutrition', label: 'Nutrition' },
-  { id: 'mental-health', label: 'Mental Health' },
-  { id: 'lifestyle', label: 'Lifestyle' },
-  { id: 'business', label: 'Business Coaching' },
-  { id: 'career', label: 'Career Development' },
-  { id: 'custom', label: 'Custom' }
+const CATEGORIES = [
+  {
+    name: 'Wellness',
+    subcategories: ['Mental Health', 'Stress Management', 'Work-Life Balance', 'Mindfulness']
+  },
+  {
+    name: 'Fitness',
+    subcategories: ['Strength Training', 'Cardio', 'Flexibility', 'Sports Performance']
+  },
+  {
+    name: 'Nutrition',
+    subcategories: ['Meal Planning', 'Weight Management', 'Special Diets', 'Supplements']
+  },
+  {
+    name: 'Mental Health',
+    subcategories: ['Anxiety', 'Depression', 'Stress', 'Personal Growth']
+  },
+  {
+    name: 'Business',
+    subcategories: ['Leadership', 'Productivity', 'Team Management', 'Strategy']
+  },
+  {
+    name: 'Career',
+    subcategories: ['Professional Development', 'Job Search', 'Skills Development', 'Career Transition']
+  },
+  {
+    name: 'Life',
+    subcategories: ['Personal Goals', 'Habits', 'Time Management', 'Personal Finance']
+  },
+  {
+    name: 'Relationship',
+    subcategories: ['Communication', 'Dating', 'Marriage', 'Family']
+  },
+  {
+    name: 'Other',
+    subcategories: ['Custom']
+  }
 ];
 
 export default function TemplateDetails({ initialData, onSave }: TemplateDetailsProps) {
   const [formData, setFormData] = useState({
-    name: initialData?.name || '',
-    description: initialData?.description || '',
-    category: initialData?.category || '',
-    tags: initialData?.tags || []
+    title: initialData.title || '',
+    description: initialData.description || '',
+    categories: initialData.categories || [],
+    isTemplate: initialData.isTemplate
   });
-  const [newTag, setNewTag] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleAddTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, newTag.trim()]
-      }));
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
-  };
-
-  const handleSubmit = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Template name is required';
-    }
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    if (!formData.category) {
-      newErrors.category = 'Please select a category';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (formData.categories.length === 0) {
+      alert('Please select at least one category');
       return;
     }
-
     onSave(formData);
+  };
+
+  const toggleCategory = (category: string) => {
+    setFormData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(category)
+        ? prev.categories.filter(c => c !== category)
+        : [...prev.categories, category]
+    }));
   };
 
   return (
@@ -93,33 +87,29 @@ export default function TemplateDetails({ initialData, onSave }: TemplateDetails
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-3xl mx-auto space-y-8"
+      className="max-w-4xl mx-auto space-y-8"
     >
       <div>
         <h2 className="text-2xl font-semibold text-white mb-2">Template Details</h2>
         <p className="text-gray-400">
-          Start by providing some basic information about your template.
+          Start by providing basic information about your template
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Template Name */}
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Template Name
+            Template Title
           </label>
           <input
             type="text"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            placeholder="Enter template name"
-            className={`w-full bg-[#1C1C1F] border ${
-              errors.name ? 'border-red-500' : 'border-gray-700'
-            } rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            value={formData.title}
+            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full bg-[#1C1C1F] border border-gray-700 rounded-lg px-4 py-2.5 text-white"
+            placeholder="Enter a descriptive title"
+            required
           />
-          {errors.name && (
-            <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-          )}
         </div>
 
         {/* Description */}
@@ -129,101 +119,68 @@ export default function TemplateDetails({ initialData, onSave }: TemplateDetails
           </label>
           <textarea
             value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full bg-[#1C1C1F] border border-gray-700 rounded-lg px-4 py-2.5 text-white"
             placeholder="Describe what this template is for"
             rows={4}
-            className={`w-full bg-[#1C1C1F] border ${
-              errors.description ? 'border-red-500' : 'border-gray-700'
-            } rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+            required
           />
-          {errors.description && (
-            <p className="mt-1 text-sm text-red-500">{errors.description}</p>
-          )}
         </div>
 
-        {/* Category */}
+        {/* Categories */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Category
+            Categories (Select multiple)
           </label>
-          <select
-            value={formData.category}
-            onChange={(e) => handleChange('category', e.target.value)}
-            className={`w-full bg-[#1C1C1F] border ${
-              errors.category ? 'border-red-500' : 'border-gray-700'
-            } rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-          >
-            <option value="">Select a category</option>
-            {TEMPLATE_CATEGORIES.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-          {errors.category && (
-            <p className="mt-1 text-sm text-red-500">{errors.category}</p>
-          )}
-        </div>
-
-        {/* Tags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Tags
-          </label>
-          <div className="flex items-center space-x-2">
-            <div className="flex-1">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                  placeholder="Add tags"
-                  className="w-full bg-[#1C1C1F] border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <TagIcon className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
+          <div className="grid grid-cols-3 gap-4">
+            {CATEGORIES.map(category => (
+              <div
+                key={category.name}
+                className={`relative p-4 rounded-lg cursor-pointer transition-all ${
+                  formData.categories.includes(category.name)
+                    ? 'bg-indigo-600/20 border-2 border-indigo-500'
+                    : 'bg-[#1C1C1F] border-2 border-transparent hover:border-indigo-500/50'
+                }`}
+                onClick={() => toggleCategory(category.name)}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-white font-medium">{category.name}</h3>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {category.subcategories.slice(0, 2).join(', ')}
+                      {category.subcategories.length > 2 && '...'}
+                    </p>
+                  </div>
+                  {formData.categories.includes(category.name) && (
+                    <CheckCircleIcon className="w-5 h-5 text-indigo-400" />
+                  )}
+                </div>
+                {formData.categories.includes(category.name) && (
+                  <div className="mt-3 pt-3 border-t border-indigo-500/30">
+                    <p className="text-xs text-indigo-400">
+                      {category.subcategories.length} subcategories included
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddTag}
-              className="px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Add
-            </button>
+            ))}
           </div>
-          
-          {formData.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {formData.tags.map(tag => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-600/20 text-indigo-400"
-                >
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="ml-2 text-indigo-400 hover:text-indigo-300"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+          <p className="mt-2 text-sm text-gray-400">
+            Selected categories will be available as sections in the Design step
+          </p>
         </div>
-      </div>
 
-      <div className="flex justify-end pt-6">
-        <button
-          type="button"
-          onClick={handleSubmit}
-          className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          Continue to Design
-        </button>
-      </div>
+        {/* Submit Button */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          >
+            Continue to Design
+            <ChevronRightIcon className="w-5 h-5" />
+          </button>
+        </div>
+      </form>
     </motion.div>
   );
 } 

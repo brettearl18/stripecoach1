@@ -1,269 +1,376 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import TemplateDetails from './components/TemplateDetails';
 import TemplateDesigner from './components/TemplateDesigner';
+import TemplateLogic from './components/TemplateLogic';
 import TemplatePreview from './components/TemplatePreview';
-import { useAutoSave } from './hooks/useAutoSave';
-import { templateService } from './services/templateService';
+import TemplateSettings from './components/TemplateSettings';
+import TemplateAllocation from './components/TemplateAllocation';
+import { useRouter } from 'next/navigation';
+import { toast, Toaster } from 'react-hot-toast';
 
-// Step type definition
-type BuilderStep = {
-  id: number;
-  title: string;
-  description: string;
-};
+const STEPS = [
+  { id: 'details', label: 'Details', icon: 'D' },
+  { id: 'design', label: 'Design', icon: 'De' },
+  { id: 'logic', label: 'Logic', icon: 'L' },
+  { id: 'preview', label: 'Preview', icon: 'P' },
+  { id: 'settings', label: 'Settings', icon: 'S' },
+  { id: 'allocate', label: 'Allocate', icon: 'A' }
+];
 
-const BUILDER_STEPS: BuilderStep[] = [
+const CATEGORIES = [
   {
-    id: 1,
-    title: 'Template Details',
-    description: 'Set the basic information for your template'
+    name: 'Wellness',
+    subcategories: ['Mental Health', 'Stress Management', 'Work-Life Balance', 'Mindfulness']
   },
   {
-    id: 2,
-    title: 'Design',
-    description: 'Build your template structure'
+    name: 'Fitness',
+    subcategories: ['Strength Training', 'Cardio', 'Flexibility', 'Sports Performance']
   },
   {
-    id: 3,
-    title: 'Logic',
-    description: 'Add conditional logic and scoring'
+    name: 'Nutrition',
+    subcategories: ['Meal Planning', 'Weight Management', 'Special Diets', 'Supplements']
   },
   {
-    id: 4,
-    title: 'Preview',
-    description: 'Review your template'
+    name: 'Mental Health',
+    subcategories: ['Anxiety', 'Depression', 'Stress', 'Personal Growth']
   },
   {
-    id: 5,
-    title: 'Settings',
-    description: 'Configure template settings'
+    name: 'Business',
+    subcategories: ['Leadership', 'Productivity', 'Team Management', 'Strategy']
+  },
+  {
+    name: 'Career',
+    subcategories: ['Professional Development', 'Job Search', 'Skills Development', 'Career Transition']
+  },
+  {
+    name: 'Life',
+    subcategories: ['Personal Goals', 'Habits', 'Time Management', 'Personal Finance']
+  },
+  {
+    name: 'Relationship',
+    subcategories: ['Communication', 'Dating', 'Marriage', 'Family']
+  },
+  {
+    name: 'Other',
+    subcategories: ['Custom']
   }
 ];
 
 export default function TemplateBuilderV2() {
-  const [currentStep, setCurrentStep] = useState(1);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  // Redirect if not authenticated
+  if (status === 'unauthenticated') {
+    router.push('/auth/signin');
+    return null;
+  }
+
+  const [currentStep, setCurrentStep] = useState('details');
   const [templateData, setTemplateData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    tags: [],
-    sections: [],
-    settings: {}
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-
-  // Load draft on mount
-  useEffect(() => {
-    const loadDraft = async () => {
-      const draft = await templateService.loadDraft();
-      if (draft) {
-        setTemplateData(draft.data);
-        setLastSaved(new Date(draft.lastModified));
-      }
-    };
-    loadDraft();
-  }, []);
-
-  // Auto-save functionality
-  useAutoSave(
-    templateData,
-    async (data) => {
-      setIsSaving(true);
-      try {
-        await templateService.saveDraft(data);
-        setLastSaved(new Date());
-      } catch (error) {
-        console.error('Failed to auto-save:', error);
-        // You might want to show a toast notification here
-      } finally {
-        setIsSaving(false);
-      }
+    details: {
+      title: '',
+      description: '',
+      categories: [] as string[],
+      subcategories: [] as string[]
     },
-    2000 // Save after 2 seconds of inactivity
-  );
+    sections: [] as Section[],
+    logic: {
+      rules: []
+    },
+    settings: {
+      notifications: true,
+      reminders: true,
+      frequency: {
+        type: 'weekly' as const,
+        value: undefined
+      },
+      checkInWindow: 7,
+      customFrequency: null,
+      autoAssign: false
+    },
+    allocations: [] as ClientAllocation[]
+  });
 
-  const handleTemplateDetailsSubmit = (data: {
-    name: string;
-    description: string;
-    category: string;
-    tags: string[];
-  }) => {
+  const handleDetailsSubmit = (data: any) => {
+    // Create sections based on selected categories and their subcategories
+    const sections = data.categories.flatMap(categoryName => {
+      const category = CATEGORIES.find(c => c.name === categoryName);
+      if (!category) return [];
+      
+      // Create a main section for the category
+      const mainSection = {
+        id: `${categoryName.toLowerCase().replace(/\s+/g, '-')}-main`,
+        title: categoryName,
+        description: `Main section for ${categoryName}`,
+        questions: []
+      };
+
+      // Create subsections for each subcategory
+      const subsections = category.subcategories.map(subcategory => ({
+        id: `${categoryName.toLowerCase().replace(/\s+/g, '-')}-${subcategory.toLowerCase().replace(/\s+/g, '-')}`,
+        title: subcategory,
+        description: `${subcategory} related questions for ${categoryName}`,
+        questions: []
+      }));
+
+      return [mainSection, ...subsections];
+    });
+
     setTemplateData(prev => ({
       ...prev,
-      ...data
+      details: data,
+      sections
     }));
-    setCurrentStep(2);
+    setCurrentStep('design');
   };
 
-  const handleDesignerSubmit = (data: { sections: any[] }) => {
+  const handleDesignSubmit = (data: any) => {
+    setTemplateData(prev => ({ ...prev, sections: data.sections }));
+    setCurrentStep('logic');
+  };
+
+  const handleLogicSubmit = (data: any) => {
+    setTemplateData(prev => ({ ...prev, logic: data }));
+    setCurrentStep('preview');
+  };
+
+  const handlePreviewSubmit = () => {
+    setCurrentStep('settings');
+  };
+
+  const handleSettingsSubmit = (settings: any) => {
     setTemplateData(prev => ({
       ...prev,
-      sections: data.sections
+      settings
     }));
-    setCurrentStep(3);
+    setCurrentStep('allocate');
   };
 
-  const handleSaveTemplate = async () => {
-    setIsSaving(true);
+  const handleAllocationSubmit = async (allocations: ClientAllocation[]) => {
     try {
-      await templateService.saveDraft(templateData);
-      setLastSaved(new Date());
-      // Here you would typically also save the final version
-      // await api.post('/api/templates', templateData);
-    } catch (error) {
-      console.error('Failed to save template:', error);
-      // Show error notification
-    } finally {
-      setIsSaving(false);
+      // Check if user is authenticated
+      if (!session?.user) {
+        toast.error('Please sign in to save the template');
+        router.push('/auth/signin');
+        return;
+      }
+
+      setTemplateData(prev => ({
+        ...prev,
+        allocations
+      }));
+
+      const response = await fetch('/api/templates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...templateData,
+          allocations
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save template');
+      }
+
+      // Show success message
+      toast.success('Template saved successfully!');
+
+      // Redirect to templates list
+      router.push('/coach/templates-v2');
+    } catch (error: any) {
+      console.error('Error saving template:', error);
+      if (error.message === 'Unauthorized') {
+        toast.error('Your session has expired. Please sign in again.');
+        router.push('/auth/signin');
+      } else {
+        toast.error(error.message || 'Failed to save template. Please try again.');
+      }
     }
   };
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1:
+      case 'details':
         return (
           <TemplateDetails
-            initialData={templateData}
-            onSave={handleTemplateDetailsSubmit}
+            initialData={templateData.details}
+            onSave={handleDetailsSubmit}
           />
         );
-      case 2:
+      case 'design':
         return (
           <TemplateDesigner
-            initialData={templateData}
-            onSave={handleDesignerSubmit}
+            initialData={{ sections: templateData.sections }}
+            onSave={handleDesignSubmit}
           />
         );
-      case 4:
+      case 'logic':
+        return (
+          <TemplateLogic
+            initialData={{
+              sections: templateData.sections,
+              ...templateData.logic
+            }}
+            onSave={handleLogicSubmit}
+          />
+        );
+      case 'preview':
         return (
           <TemplatePreview
-            template={templateData}
+            sections={templateData.sections}
+            onSave={handlePreviewSubmit}
+          />
+        );
+      case 'settings':
+        return (
+          <TemplateSettings
+            initialData={templateData.settings}
+            onSave={handleSettingsSubmit}
+          />
+        );
+      case 'allocate':
+        return (
+          <TemplateAllocation
+            onSave={handleAllocationSubmit}
+            onBack={() => setCurrentStep('settings')}
+            defaultSettings={{
+              frequency: templateData.settings.frequency,
+              checkInWindow: templateData.settings.checkInWindow
+            }}
           />
         );
       default:
-        return (
-          <div className="text-center text-gray-400">
-            Step {currentStep} content is under development
-          </div>
-        );
+        return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#1C1C1F]">
-      {/* Header */}
-      <header className="border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link 
-                href="/coach/templates"
-                className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
-              >
-                <ChevronLeftIcon className="w-5 h-5" />
-                <span>Back to Templates</span>
-              </Link>
-              <h1 className="text-xl font-semibold text-white">Create New Template</h1>
-              {lastSaved && (
-                <span className="text-sm text-gray-400">
-                  Last saved: {lastSaved.toLocaleTimeString()}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/coach/check-ins"
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-              >
-                View Check-ins
-              </Link>
-              <Link
-                href="/client/check-in"
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-              >
-                Test Check-in
-              </Link>
-              <button 
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                onClick={() => setCurrentStep(4)} // Jump to preview step
-              >
-                Preview
-              </button>
-              <button
-                onClick={handleSaveTemplate}
-                disabled={isSaving}
-                className={`px-4 py-2 bg-indigo-600 text-white rounded-lg transition-colors ${
-                  isSaving
-                    ? 'opacity-75 cursor-not-allowed'
-                    : 'hover:bg-indigo-700'
-                }`}
-              >
-                {isSaving ? 'Saving...' : 'Save Template'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-[#141414] p-8 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
-      {/* Progress Steps */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex justify-between">
-          {BUILDER_STEPS.map((step, index) => (
-            <div 
-              key={step.id}
-              className="flex flex-col items-center w-48"
-              onClick={() => {
-                // Only allow going back to previous steps
-                if (step.id < currentStep) {
-                  setCurrentStep(step.id);
-                }
-              }}
-              style={{ cursor: step.id < currentStep ? 'pointer' : 'default' }}
+  return (
+    <div className="min-h-screen bg-[#141414]">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 5000,
+          style: {
+            background: '#1C1C1F',
+            color: '#fff',
+            border: '1px solid #2C2C30',
+          },
+          success: {
+            iconTheme: {
+              primary: '#4F46E5',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
+      
+      {/* Header */}
+      <div className="border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <nav className="flex items-center justify-between">
+            <Link
+              href="/coach/templates"
+              className="flex items-center text-gray-400 hover:text-white transition-colors"
             >
-              <motion.div 
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                  currentStep >= step.id 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-800 text-gray-400'
-                }`}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: currentStep === step.id ? 1 : 0.8 }}
-                transition={{ duration: 0.2 }}
-              >
-                {step.id}
-              </motion.div>
-              <div className="mt-2 text-center">
-                <div className={`font-medium ${
-                  currentStep >= step.id ? 'text-white' : 'text-gray-400'
-                }`}>
-                  {step.title}
-                </div>
-                <div className="text-sm text-gray-500">
-                  {step.description}
-                </div>
-              </div>
-              {index < BUILDER_STEPS.length - 1 && (
-                <div className={`h-0.5 w-full mt-5 ${
-                  currentStep > step.id ? 'bg-indigo-600' : 'bg-gray-800'
-                }`} />
-              )}
-            </div>
-          ))}
+              <ChevronLeftIcon className="w-5 h-5 mr-2" />
+              Back to Templates
+            </Link>
+            <button
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Save Template
+            </button>
+          </nav>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-[#2C2C30] rounded-xl p-6 min-h-[600px]">
+      {/* Progress Steps */}
+      <div className="border-b border-gray-800 bg-[#1C1C1F]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between max-w-3xl mx-auto">
+            {STEPS.map((step, index) => (
+              <div
+                key={step.id}
+                className="flex flex-col items-center"
+              >
+                <div className="flex items-center">
+                  <div
+                    className={`
+                      w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium
+                      transition-all duration-200
+                      ${currentStep === step.id
+                        ? 'bg-indigo-600 text-white ring-2 ring-indigo-600 ring-offset-2 ring-offset-[#1C1C1F]'
+                        : step.id < currentStep
+                        ? 'bg-indigo-600/20 text-indigo-400 border-2 border-indigo-600'
+                        : 'bg-gray-800 text-gray-400 border-2 border-gray-700'
+                      }
+                    `}
+                  >
+                    {step.icon}
+                  </div>
+                  {index < STEPS.length - 1 && (
+                    <div
+                      className={`
+                        w-24 h-[2px] mx-2
+                        ${step.id < currentStep
+                          ? 'bg-indigo-600'
+                          : 'bg-gray-700'
+                        }
+                      `}
+                    />
+                  )}
+                </div>
+                <span
+                  className={`
+                    mt-2 text-sm font-medium
+                    ${currentStep === step.id
+                      ? 'text-white'
+                      : step.id < currentStep
+                      ? 'text-indigo-400'
+                      : 'text-gray-500'
+                    }
+                  `}
+                >
+                  {step.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-6xl mx-auto">
           {renderStepContent()}
         </div>
-      </main>
+      </div>
     </div>
   );
 } 
