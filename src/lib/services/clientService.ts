@@ -1,7 +1,10 @@
-import { db } from '../firebase';
+import { db } from '../firebase/config';
 import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
 import { generateInviteToken } from '../utils/tokens';
 import { ClientProfile, ClientInvite } from '@/types/client';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auditService } from './auditService';
+import { getSession } from 'next-auth/react';
 
 interface NewClientData {
   firstName: string;
@@ -13,7 +16,57 @@ interface NewClientData {
   coachId: string;
 }
 
-export const clientService = {
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  scoringTierId?: string;
+  coachId: string;
+  settings: {
+    canAccessReports: boolean;
+    canAccessAnalytics: boolean;
+    canModifyProfile: boolean;
+  };
+}
+
+class ClientService {
+  private async validateCoachAccess(coachEmail: string, clientId: string): Promise<boolean> {
+    const clientRef = doc(db, 'clients', clientId);
+    const clientSnap = await getDoc(clientRef);
+    
+    if (!clientSnap.exists()) return false;
+    
+    const clientData = clientSnap.data();
+    return clientData.coachId === coachEmail;
+  }
+
+  private async validateUserAccess(userId: string, clientId: string): Promise<{ hasAccess: boolean; role: string }> {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      return { hasAccess: false, role: '' };
+    }
+
+    const userData = userSnap.data();
+    const role = userData.role;
+
+    if (role === 'admin') {
+      return { hasAccess: true, role };
+    }
+
+    if (role === 'coach') {
+      const hasAccess = await this.validateCoachAccess(userId, clientId);
+      return { hasAccess, role };
+    }
+
+    if (role === 'client') {
+      return { hasAccess: userId === clientId, role };
+    }
+
+    return { hasAccess: false, role: '' };
+  }
+
   async createClientProfile(data: NewClientData): Promise<ClientProfile> {
     const now = new Date();
     const profile: ClientProfile = {
@@ -40,7 +93,7 @@ export const clientService = {
     profile.id = docRef.id;
     
     return profile;
-  },
+  }
 
   async createClientInvite(data: NewClientData): Promise<ClientInvite> {
     try {
@@ -77,7 +130,7 @@ export const clientService = {
       console.error('Error creating client invite:', error);
       throw new Error('Failed to create client invitation');
     }
-  },
+  }
 
   async verifyInvite(token: string): Promise<ClientInvite | null> {
     try {
@@ -108,7 +161,7 @@ export const clientService = {
       console.error('Error verifying invite:', error);
       return null;
     }
-  },
+  }
 
   async acceptInvite(token: string): Promise<boolean> {
     try {
@@ -135,26 +188,23 @@ export const clientService = {
       console.error('Error accepting invite:', error);
       return false;
     }
-  },
+  }
 
-  async getClientProfile(profileId: string): Promise<ClientProfile | null> {
+  async getClientProfile(clientId: string): Promise<ClientProfile | null> {
     try {
-      const docRef = doc(db, 'clientProfiles', profileId);
+      const docRef = doc(db, 'clientProfiles', clientId);
       const docSnap = await getDoc(docRef);
-      
+
       if (!docSnap.exists()) {
         return null;
       }
 
-      return {
-        ...docSnap.data(),
-        id: docSnap.id
-      } as ClientProfile;
+      return docSnap.data() as ClientProfile;
     } catch (error) {
       console.error('Error getting client profile:', error);
       return null;
     }
-  },
+  }
 
   async updateClientProfile(profileId: string, updates: Partial<ClientProfile>): Promise<boolean> {
     try {
@@ -169,4 +219,115 @@ export const clientService = {
       return false;
     }
   }
-}; 
+
+  async updateClient(clientId: string, updates: Partial<Client>): Promise<void> {
+    const session = await getSession();
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized - Must be logged in');
+    }
+
+    // Validate user access
+    const { hasAccess, role } = await this.validateUserAccess(session.user.email, clientId);
+    if (!hasAccess) {
+      throw new Error('Forbidden - No access to this client');
+    }
+
+    // Prevent clients from updating restricted fields
+    if (role === 'client') {
+      const restrictedFields = ['scoringTierId', 'coachId', 'settings'];
+      const hasRestrictedFields = restrictedFields.some(field => field in updates);
+      if (hasRestrictedFields) {
+        throw new Error('Forbidden - Cannot modify restricted fields');
+      }
+    }
+
+    const clientRef = doc(db, 'clients', clientId);
+    const oldData = (await getDoc(clientRef)).data();
+
+    // Update the client
+    await updateDoc(clientRef, updates);
+
+    // Audit log the changes
+    if (updates.scoringTierId !== undefined && updates.scoringTierId !== oldData?.scoringTierId) {
+      await auditService.logScoringTierChange(
+        session.user.email,
+        clientId,
+        oldData?.scoringTierId,
+        updates.scoringTierId
+      );
+    }
+
+    // Log other significant changes
+    await auditService.logClientSettingsChange(
+      session.user.email,
+      clientId,
+      updates
+    );
+  }
+
+  async getClient(clientId: string): Promise<Client | null> {
+    const session = await getSession();
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized - Must be logged in');
+    }
+
+    // Validate user access
+    const { hasAccess, role } = await this.validateUserAccess(session.user.email, clientId);
+    if (!hasAccess) {
+      throw new Error('Forbidden - No access to this client');
+    }
+
+    const clientRef = doc(db, 'clients', clientId);
+    const clientSnap = await getDoc(clientRef);
+    
+    if (!clientSnap.exists()) {
+      return null;
+    }
+
+    const clientData = clientSnap.data();
+
+    // Filter sensitive data for client role
+    if (role === 'client') {
+      const { scoringTierId, settings, ...clientView } = clientData;
+      return {
+        id: clientSnap.id,
+        ...clientView
+      } as Client;
+    }
+
+    return {
+      id: clientSnap.id,
+      ...clientData
+    } as Client;
+  }
+
+  async getClientsByCoach(coachId: string): Promise<Client[]> {
+    const session = await getSession();
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized - Must be logged in');
+    }
+
+    // Only coaches and admins can list clients
+    const userRef = doc(db, 'users', session.user.email);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists() || !['admin', 'coach'].includes(userSnap.data().role)) {
+      throw new Error('Forbidden - Insufficient permissions');
+    }
+
+    // If coach, ensure they can only see their own clients
+    if (userSnap.data().role === 'coach' && session.user.email !== coachId) {
+      throw new Error('Forbidden - Can only view own clients');
+    }
+
+    const clientsRef = collection(db, 'clients');
+    const q = query(clientsRef, where('coachId', '==', coachId));
+    const querySnapshot = await getDocs(q);
+
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Client[];
+  }
+}
+
+export const clientService = new ClientService(); 

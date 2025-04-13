@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase/config';
 import {
   collection,
   doc,
@@ -10,9 +10,15 @@ import {
   writeBatch,
   getDoc,
   setDoc,
-  Firestore
+  Firestore,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  DocumentReference,
+  DocumentData,
+  QueryDocumentSnapshot
 } from 'firebase/firestore';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from 'firebase/auth';
 
 // Helper function to check if a value has a toDate method
 function hasToDate(value: any): value is { toDate: () => Date } {
@@ -369,7 +375,6 @@ export const getCoach = async (coachId: string): Promise<Coach | null> => {
 
 export const createTestCoach = async (email: string, password: string): Promise<FirebaseUser> => {
   try {
-    const auth = getAuth();
     let user: FirebaseUser;
     
     try {
@@ -418,7 +423,31 @@ export const deleteCoach = async (id: string): Promise<void> => {
 
 // Client functions
 export const getClientsByCoach = async (coachId: string): Promise<Client[]> => {
-  return mockClients.filter(client => client.coachId === coachId);
+  try {
+    const clientsRef = collection(db, 'clients');
+    const q = query(clientsRef, where('coachId', '==', coachId));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        program: data.program,
+        status: data.status,
+        startDate: data.startDate,
+        lastCheckIn: data.lastCheckIn,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        coachId: data.coachId
+      } as Client;
+    });
+  } catch (error) {
+    console.error('Error getting clients:', error);
+    return [];
+  }
 };
 
 export const getClientById = async (clientId: string): Promise<Client | null> => {
@@ -663,4 +692,245 @@ export async function getClientCheckIns(clientId: string, coachId?: string): Pro
 // Update getAllClients to use the mock data
 export const getAllClients = async (): Promise<Client[]> => {
   return mockClients;
+};
+
+export interface Question {
+  id: string;
+  type: 'text' | 'scale' | 'multipleChoice' | 'number' | 'yesNo';
+  question: string;
+  required: boolean;
+  helpText?: string;
+  options?: string[];
+  validation?: {
+    min: number;
+    max: number;
+  };
+  weight: number;  // Weight of the question (1-10)
+  isNegative?: boolean;  // Whether a positive response counts negatively
+}
+
+export interface CheckInForm {
+  id?: string;
+  title: string;
+  description: string;
+  questions: Question[];
+  frequency?: 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
+  customFrequency?: number;
+  availableFrom?: {
+    day: string;
+    time: string;
+  };
+  dueBy?: {
+    day: string;
+    time: string;
+  };
+  isTemplate?: boolean;
+  templateName?: string;
+  categoryTags?: string[];
+  createdBy?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+  status: 'draft' | 'active' | 'archived';
+  clientGroups?: string[];
+  reminderSettings?: {
+    enabled: boolean;
+    frequency: number;
+    unit: 'hours' | 'days';
+  };
+}
+
+export interface CheckInResponse {
+  id?: string;
+  formId: string;
+  clientId: string;
+  answers: {
+    questionId: string;
+    value: string | number | boolean | string[];
+  }[];
+  submittedAt: Timestamp;
+  lastReminder?: Timestamp;
+  status: 'completed' | 'partial' | 'missed';
+}
+
+const CHECKIN_FORMS_COLLECTION = 'checkInForms';
+const CHECKIN_RESPONSES_COLLECTION = 'checkInResponses';
+
+export const saveCheckInForm = async (formData: Omit<CheckInForm, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> => {
+  try {
+    const formsRef = collection(db, CHECKIN_FORMS_COLLECTION);
+    const docRef = await addDoc(formsRef, {
+      ...formData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving check-in form:', error);
+    throw error;
+  }
+};
+
+export const getCheckInForms = async (options?: { 
+  isTemplate?: boolean; 
+  status?: CheckInForm['status'];
+  createdBy?: string;
+}): Promise<CheckInForm[]> => {
+  try {
+    let q = collection(db, CHECKIN_FORMS_COLLECTION);
+    const conditions = [];
+
+    if (options?.isTemplate !== undefined) {
+      conditions.push(where('isTemplate', '==', options.isTemplate));
+    }
+    if (options?.status) {
+      conditions.push(where('status', '==', options.status));
+    }
+    if (options?.createdBy) {
+      conditions.push(where('createdBy', '==', options.createdBy));
+    }
+
+    if (conditions.length > 0) {
+      q = query(q, ...conditions);
+    }
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CheckInForm[];
+  } catch (error) {
+    console.error('Error getting check-in forms:', error);
+    throw error;
+  }
+};
+
+export const updateCheckInForm = async (formId: string, formData: Partial<CheckInForm>): Promise<void> => {
+  try {
+    const formRef = doc(db, CHECKIN_FORMS_COLLECTION, formId);
+    await updateDoc(formRef, {
+      ...formData,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating check-in form:', error);
+    throw error;
+  }
+};
+
+export const deleteCheckInForm = async (formId: string): Promise<void> => {
+  try {
+    const formRef = doc(db, CHECKIN_FORMS_COLLECTION, formId);
+    await deleteDoc(formRef);
+  } catch (error) {
+    console.error('Error deleting check-in form:', error);
+    throw error;
+  }
+};
+
+export const saveAsTemplate = async (formData: CheckInForm): Promise<string> => {
+  try {
+    const templateData = {
+      ...formData,
+      isTemplate: true,
+      status: 'active' as const,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    delete templateData.id;
+    
+    const formsRef = collection(db, CHECKIN_FORMS_COLLECTION);
+    const docRef = await addDoc(formsRef, templateData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving template:', error);
+    throw error;
+  }
+};
+
+export const createFromTemplate = async (templateId: string): Promise<string> => {
+  try {
+    const templates = await getCheckInForms({ isTemplate: true });
+    const template = templates.find(t => t.id === templateId);
+    
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    const newFormData = {
+      ...template,
+      isTemplate: false,
+      status: 'draft' as const,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    delete newFormData.id;
+    delete newFormData.templateName;
+
+    const formsRef = collection(db, CHECKIN_FORMS_COLLECTION);
+    const docRef = await addDoc(formsRef, newFormData);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating from template:', error);
+    throw error;
+  }
+};
+
+export const saveCheckInResponse = async (responseData: Omit<CheckInResponse, 'id' | 'submittedAt'>): Promise<string> => {
+  try {
+    const responsesRef = collection(db, CHECKIN_RESPONSES_COLLECTION);
+    const docRef = await addDoc(responsesRef, {
+      ...responseData,
+      submittedAt: serverTimestamp()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving check-in response:', error);
+    throw error;
+  }
+};
+
+export const getClientResponses = async (clientId: string, formId?: string): Promise<CheckInResponse[]> => {
+  try {
+    let q = collection(db, CHECKIN_RESPONSES_COLLECTION);
+    const conditions = [where('clientId', '==', clientId)];
+    
+    if (formId) {
+      conditions.push(where('formId', '==', formId));
+    }
+
+    q = query(q, ...conditions);
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CheckInResponse[];
+  } catch (error) {
+    console.error('Error getting client responses:', error);
+    throw error;
+  }
+};
+
+export const getCheckInTemplates = async (): Promise<CheckInForm[]> => {
+  try {
+    const templatesRef = collection(db, 'checkInForms');
+    const q = query(templatesRef, where('isTemplate', '==', true));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title,
+        description: data.description,
+        questions: data.questions,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        isTemplate: data.isTemplate
+      } as CheckInForm;
+    });
+  } catch (error) {
+    console.error('Error getting check-in templates:', error);
+    return [];
+  }
 };

@@ -1,8 +1,69 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@layer base {
+  :root {
+    --background: #1A1D21;
+    --foreground: #FFFFFF;
+    --card: #1F242C;
+    --card-foreground: #FFFFFF;
+    --popover: #1F242C;
+    --popover-foreground: #FFFFFF;
+    --primary: #6366F1;
+    --primary-foreground: #FFFFFF;
+    --secondary: #2A303A;
+    --secondary-foreground: #FFFFFF;
+    --muted: #374151;
+    --muted-foreground: #9CA3AF;
+    --accent: #2A303A;
+    --accent-foreground: #FFFFFF;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #374151;
+    --input: #2A303A;
+    --ring: #6366F1;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter);
+  }
+}
+
+@layer components {
+  /* Phone Input Styles */
+  .PhoneInput {
+    @apply flex items-center gap-2;
+  }
+
+  .PhoneInputCountry {
+    @apply flex items-center p-2 bg-gray-700 border border-gray-600 rounded-md text-gray-300;
+  }
+
+  .PhoneInputCountrySelect {
+    @apply bg-transparent border-none text-gray-300 pr-2 focus:outline-none;
+  }
+
+  .PhoneInputCountrySelectArrow {
+    @apply border-gray-400 opacity-70;
+  }
+
+  .PhoneInputCountryIcon {
+    @apply w-6 h-6 mr-2;
+  }
+
+  .PhoneInputInput {
+    @apply flex-1 min-w-0 bg-gray-700 text-white border border-gray-600 rounded-md 
+           py-2 px-3 text-sm focus:outline-none focus:border-indigo-500 
+           focus:ring-2 focus:ring-indigo-500/20 placeholder-gray-400;
+  }
 }
 
 @theme inline {

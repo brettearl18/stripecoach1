@@ -1,29 +1,31 @@
 'use client';
 
-import { Fragment, useState } from 'react';
-import { ArrowLeftIcon, PlusIcon, SparklesIcon, PencilSquareIcon, ScaleIcon, ChatBubbleBottomCenterTextIcon, HashtagIcon, ListBulletIcon, CheckCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Fragment, useState, useEffect } from 'react';
+import { ArrowLeftIcon, PlusIcon, SparklesIcon, PencilSquareIcon, ScaleIcon, ChatBubbleBottomCenterTextIcon, HashtagIcon, ListBulletIcon, CheckCircleIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AIQuestionnaireModal } from './AIQuestionnaireModal';
 import { ClientProfileModal, ClientProfile } from './ClientProfileModal';
-import { saveCheckInForm } from '@/lib/services/firebaseService';
-import type { CheckInForm, Client } from '@/lib/services/firebaseService';
+import { saveCheckInForm, saveAsTemplate, getCheckInForms, createFromTemplate, type CheckInForm, type Question } from '@/lib/services/firebaseService';
+import type { Client } from '@/types/client';
 import toast, { Toaster } from 'react-hot-toast';
 import ClientSelector from './ClientSelector';
 import CheckInFormView from './CheckInFormView';
+import QuestionBuilder from './QuestionBuilder';
 
 interface FormBuilderProps {
-  onSave?: (formData: any) => void;
+  initialData?: CheckInForm;
+  isTemplate?: boolean;
 }
 
 const validateForm = (formData: CheckInForm): string[] => {
   const errors: string[] = [];
 
   // Basic validation
-  if (!formData.name.trim()) {
-    errors.push('Form name is required');
-  } else if (formData.name.length < 3) {
-    errors.push('Form name must be at least 3 characters long');
+  if (!formData.title.trim()) {
+    errors.push('Form title is required');
+  } else if (formData.title.length < 3) {
+    errors.push('Form title must be at least 3 characters long');
   }
 
   if (!formData.description.trim()) {
@@ -61,12 +63,32 @@ const validateForm = (formData: CheckInForm): string[] => {
   return errors;
 };
 
-export default function FormBuilder({ onSave }: FormBuilderProps) {
+const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'custom', label: 'Custom' }
+];
+
+const QUESTION_TYPES = [
+  { value: 'text', label: 'Text' },
+  { value: 'scale', label: 'Scale (1-10)' },
+  { value: 'multipleChoice', label: 'Multiple Choice' },
+  { value: 'number', label: 'Number' },
+  { value: 'checkbox', label: 'Checkbox' },
+  { value: 'date', label: 'Date' }
+];
+
+export default function FormBuilder({ initialData, isTemplate = false }: FormBuilderProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [templates, setTemplates] = useState<CheckInForm[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [formData, setFormData] = useState<CheckInForm>({
-    name: '',
+    title: '',
     description: '',
+    questions: [],
     frequency: 'weekly',
     availableFrom: {
       day: 'Monday',
@@ -76,15 +98,31 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
       day: 'Tuesday',
       time: '17:00'
     },
-    questions: []
+    status: 'draft',
+    isTemplate: isTemplate,
+    ...initialData
   });
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
-  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const loadedTemplates = await getCheckInForms({ isTemplate: true });
+        setTemplates(loadedTemplates);
+      } catch (error) {
+        console.error('Error loading templates:', error);
+        toast.error('Failed to load templates');
+      }
+    };
+
+    loadTemplates();
+  }, []);
 
   const handleProfileComplete = (profile: ClientProfile) => {
     setClientProfile(profile);
@@ -105,6 +143,73 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
     setIsAIModalOpen(true);
   };
 
+  const handleTemplateSelect = async (templateId: string) => {
+    try {
+      const newFormId = await createFromTemplate(templateId);
+      const selectedTemplate = templates.find(t => t.id === templateId);
+      if (selectedTemplate) {
+        setFormData({
+          ...selectedTemplate,
+          id: newFormId,
+          isTemplate: false,
+          status: 'draft'
+        });
+        setSelectedTemplate(templateId);
+        toast.success('Template loaded successfully');
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      toast.error('Failed to load template');
+    }
+  };
+
+  const handleQuestionAdd = () => {
+    const newQuestion: Question = {
+      id: crypto.randomUUID(),
+      text: '',
+      type: 'yesNo',
+      required: false,
+      weight: 1,
+      category: '',
+      options: []
+    };
+    setFormData(prev => ({
+      ...prev,
+      questions: [...prev.questions, newQuestion]
+    }));
+  };
+
+  const handleQuestionEdit = (question: Question) => {
+    // Update the existing question
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map(q => 
+        q.id === question.id ? question : q
+      )
+    }));
+  };
+
+  const handleQuestionMove = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= formData.questions.length) return;
+    
+    const updatedQuestions = [...formData.questions];
+    [updatedQuestions[index], updatedQuestions[newIndex]] = 
+    [updatedQuestions[newIndex], updatedQuestions[index]];
+    
+    setFormData({
+      ...formData,
+      questions: updatedQuestions
+    });
+  };
+
+  const handleQuestionRemove = (questionId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.filter(q => q.id !== questionId)
+    }));
+  };
+
   const handleSaveForm = async () => {
     try {
       setIsLoading(true);
@@ -120,18 +225,41 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
       const formId = await saveCheckInForm(formData, selectedClients.map(client => client.id!));
       toast.success('Form saved successfully!');
       
-      // Call the onSave prop if provided
-      if (onSave) {
-        onSave(formData);
-      }
-
       // Navigate to forms list
-      router.push('/admin/forms');
+      router.push('/coach/check-ins');
     } catch (error) {
       console.error('Error saving form:', error);
       toast.error('Failed to save form. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSave = async (saveAsTemplate: boolean = false) => {
+    try {
+      if (!formData.title.trim()) {
+        toast.error('Form title is required');
+        return;
+      }
+
+      if (formData.questions.length === 0) {
+        toast.error('At least one question is required');
+        return;
+      }
+
+      if (formData.questions.some(q => !q.text.trim())) {
+        toast.error('All questions must have content');
+        return;
+      }
+
+      const saveFunction = saveAsTemplate ? saveAsTemplate : saveCheckInForm;
+      const savedId = await saveFunction(formData);
+
+      toast.success(saveAsTemplate ? 'Template saved successfully' : 'Form saved successfully');
+      router.push('/coach/check-ins');
+    } catch (error) {
+      console.error('Error saving form:', error);
+      toast.error('Failed to save form');
     }
   };
 
@@ -173,11 +301,11 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
         <div className="sticky top-0 z-10 bg-[#0B0F15]/95 backdrop-blur-sm px-6 py-4 flex items-center justify-between border-b border-gray-800">
           <div className="flex items-center gap-3">
             <Link 
-              href="/admin/forms"
+              href="/coach/check-ins"
               className="text-gray-400 hover:text-gray-300 flex items-center gap-2 transition-colors"
             >
               <ArrowLeftIcon className="h-4 w-4" />
-              Back to Forms
+              Back to Check-ins
             </Link>
             <span className="text-xl font-medium text-white">Create New Form</span>
           </div>
@@ -190,15 +318,14 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
               Preview Form
             </button>
             <button
-              onClick={() => router.push('/admin/forms')}
+              onClick={() => router.push('/coach/check-ins')}
               className="px-4 py-2 text-sm text-gray-300 hover:text-white rounded-lg transition-colors"
               disabled={isLoading}
             >
               Cancel
             </button>
             <button
-              onClick={handleSaveForm}
-              disabled={isLoading}
+              onClick={() => handleSave(true)}
               className={`px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all hover:shadow-lg hover:shadow-indigo-500/20 flex items-center gap-2 ${
                 isLoading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
@@ -212,7 +339,7 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
                   Saving...
                 </>
               ) : (
-                'Save Form'
+                <DocumentDuplicateIcon className="h-5 w-5 mr-2" />
               )}
             </button>
           </div>
@@ -224,12 +351,34 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
           <div className="bg-[#1A1F26] rounded-xl p-6 space-y-6 shadow-xl border border-gray-800/50">
             <h2 className="text-lg font-medium text-white mb-6">Form Details</h2>
             <div className="space-y-6">
+              {!isTemplate && templates.length > 0 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-200">
+                    Start from Template
+                  </label>
+                  <div className="mt-1 flex gap-4">
+                    <select
+                      value={selectedTemplate}
+                      onChange={(e) => handleTemplateSelect(e.target.value)}
+                      className="block w-full rounded-md border-gray-700 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="">Select a template</option>
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.templateName || template.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-200">Form Name</label>
+                <label className="block text-sm font-medium text-gray-200">Form Title</label>
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Enter a descriptive name for your form"
                   className="w-full px-4 py-2 bg-[#2A303A] rounded-lg border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
                 />
@@ -250,16 +399,31 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
                 <label className="block text-sm font-medium text-gray-200">Frequency</label>
                 <select
                   value={formData.frequency}
-                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, frequency: e.target.value as CheckInForm['frequency'] })}
                   className="w-full px-4 py-2 bg-[#2A303A] rounded-lg border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
                 >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="fortnightly">Fortnightly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom">Custom</option>
+                  {FREQUENCY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {formData.frequency === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-200">
+                    Custom Frequency (days)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.customFrequency || ''}
+                    onChange={(e) => setFormData({ ...formData, customFrequency: parseInt(e.target.value) })}
+                    className="w-full px-4 py-2 bg-[#2A303A] rounded-lg border border-gray-700 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow"
+                    min="1"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-800">
                 <div className="space-y-2">
@@ -347,7 +511,7 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
                   </button>
                   <button
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all hover:shadow-lg hover:shadow-indigo-500/20"
-                    onClick={() => {/* TODO: Add question handler */}}
+                    onClick={handleQuestionAdd}
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add Question
@@ -361,7 +525,7 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
               <div className="space-y-4">
                 {formData.questions.map((question, index) => (
                   <div
-                    key={index}
+                    key={question.id}
                     className="p-4 bg-[#2A303A] rounded-lg flex items-start justify-between border border-gray-800 hover:border-gray-700 transition-colors group"
                   >
                     <div className="space-y-1 flex-1">
@@ -388,19 +552,14 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => handleEditQuestion(index)}
+                        onClick={() => handleQuestionEdit(question)}
                         className="p-1.5 text-gray-400 hover:text-indigo-400 transition-colors bg-[#1A1F26] rounded-lg border border-gray-700"
                         title="Edit question"
                       >
                         <PencilSquareIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            questions: prev.questions.filter((_, i) => i !== index)
-                          }));
-                        }}
+                        onClick={() => handleQuestionRemove(question.id)}
                         className="p-1.5 text-gray-400 hover:text-red-400 transition-colors bg-[#1A1F26] rounded-lg border border-gray-700"
                         title="Delete question"
                       >
@@ -416,7 +575,7 @@ export default function FormBuilder({ onSave }: FormBuilderProps) {
                 <div className="flex items-center gap-6">
                   <button
                     className="flex flex-col items-center gap-4 p-6 bg-[#2A303A] rounded-xl hover:bg-[#353B47] transition-colors border border-gray-700 hover:border-gray-600 group"
-                    onClick={() => {/* TODO: Add question handler */}}
+                    onClick={handleQuestionAdd}
                   >
                     <div className="p-4 bg-indigo-500/10 rounded-lg group-hover:bg-indigo-500/20 transition-colors">
                       <PlusIcon className="h-8 w-8 text-indigo-500" />

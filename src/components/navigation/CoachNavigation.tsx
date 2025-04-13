@@ -8,13 +8,15 @@ import {
   ClipboardDocumentCheckIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  BellIcon
+  BellIcon,
+  ChatBubbleLeftIcon
 } from '@heroicons/react/24/outline';
 
 const navigation = [
   { name: 'Dashboard', href: '/coach/dashboard', icon: HomeIcon },
-  { name: 'Client List', href: '/coach/client2', icon: UsersIcon },
-  { name: 'Programs', href: '/coach/programs', icon: ClipboardDocumentCheckIcon },
+  { name: 'Client List', href: '/coach/clients', icon: UsersIcon },
+  { name: 'Check-ins', href: '/coach/check-ins', icon: ClipboardDocumentCheckIcon },
+  { name: 'Messages', href: '/coach/messages', icon: ChatBubbleLeftIcon },
   { name: 'Analytics', href: '/coach/analytics', icon: ChartBarIcon },
   { name: 'Settings', href: '/coach/settings', icon: Cog6ToothIcon },
 ];
@@ -28,7 +30,7 @@ export function CoachNavigation() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <span className="text-xl font-bold text-white">Stripe Coach</span>
+              <span className="text-xl font-bold text-white">Coach Dashboard</span>
             </div>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
@@ -42,34 +44,54 @@ export function CoachNavigation() {
                         isActive
                           ? 'bg-gray-900 text-white'
                           : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      } px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-2`}
+                      } px-3 py-2 rounded-md text-sm font-medium`}
                     >
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.name}</span>
+                      </div>
                     </Link>
                   );
                 })}
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <button className="text-gray-400 hover:text-white p-1">
+
+          {/* Notifications */}
+          <div className="hidden md:block">
+            <button
+              type="button"
+              className="p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+            >
               <span className="sr-only">View notifications</span>
-              <BellIcon className="h-6 w-6" />
+              <BellIcon className="h-6 w-6" aria-hidden="true" />
             </button>
-            <div className="flex items-center">
-              <div className="ml-3">
-                <div className="text-base font-medium leading-none text-white">Coach Name</div>
-                <div className="text-sm font-medium leading-none text-gray-400 mt-1">coach@example.com</div>
-              </div>
-              <button className="ml-3 bg-gray-800 flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white">
-                <span className="sr-only">Open user menu</span>
-                <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">CN</span>
-                </div>
-              </button>
-            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      <div className="md:hidden">
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`${
+                  isActive
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                } block px-3 py-2 rounded-md text-base font-medium`}
+              >
+                <div className="flex items-center space-x-2">
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.name}</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </nav>

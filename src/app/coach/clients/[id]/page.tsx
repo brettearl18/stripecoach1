@@ -31,7 +31,9 @@ import {
   FireIcon,
   HeartIcon,
   BoltIcon,
-  ArrowsPointingOutIcon
+  ArrowsPointingOutIcon,
+  UserIcon,
+  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +41,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import clientService from '@/lib/services/clientService';
+import { clientService } from '@/lib/services/clientService';
+import ClientSettings from './components/ClientSettings';
+import { SCORING_TIERS } from '../../templates-v2/services/scoringService';
 
 interface TabContentProps {
   client: any;
@@ -133,7 +137,10 @@ interface CoachReview {
   lastUpdated: string;
 }
 
-function processCheckInResponses(checkIns: any[]): CoachReview {
+function processCheckInResponses(checkIns: any[], scoringTierId?: string): CoachReview {
+  // Get the client's scoring tier or default to Beginner
+  const scoringTier = SCORING_TIERS.find(tier => tier.id === scoringTierId) || SCORING_TIERS[3];
+  
   const review: CoachReview = {
     training: {
       score: 0,
@@ -157,15 +164,17 @@ function processCheckInResponses(checkIns: any[]): CoachReview {
   const latestCheckIn = checkIns[0];
   if (!latestCheckIn) return review;
 
-  // Training Review
+  // Training Review with scoring tier thresholds
   const trainingScore = calculateTrainingScore(latestCheckIn);
   review.training.score = trainingScore;
   
-  if (latestCheckIn.responses['training-form-quality']?.value < 4) {
-    review.training.improvements.push('Focus on eccentric phase of lifts');
+  if (trainingScore < scoringTier.thresholds.red) {
+    review.training.improvements.push('Needs immediate attention - Schedule a review session');
+  } else if (trainingScore < scoringTier.thresholds.orange) {
+    review.training.improvements.push('Room for improvement - Focus on form and consistency');
   }
   
-  if (!latestCheckIn.responses['training-warmup']?.value) {
+  if (latestCheckIn.responses['training-warmup']?.value) {
     review.training.improvements.push('Maintain current warm-up routine');
   }
   
@@ -176,6 +185,12 @@ function processCheckInResponses(checkIns: any[]): CoachReview {
   // Nutrition Review
   const nutritionScore = calculateNutritionScore(latestCheckIn);
   review.nutrition.score = nutritionScore;
+  
+  if (nutritionScore < scoringTier.thresholds.red) {
+    review.nutrition.improvements.push('Needs immediate attention - Schedule a review session');
+  } else if (nutritionScore < scoringTier.thresholds.orange) {
+    review.nutrition.improvements.push('Room for improvement - Focus on form and consistency');
+  }
   
   if (latestCheckIn.responses['nutrition-protein']?.value < 4) {
     review.nutrition.improvements.push('Increase protein intake consistency');
@@ -194,6 +209,12 @@ function processCheckInResponses(checkIns: any[]): CoachReview {
   const mindsetScore = calculateMindsetScore(latestCheckIn);
   review.mindset.score = mindsetScore;
   
+  if (mindsetScore < scoringTier.thresholds.red) {
+    review.mindset.improvements.push('Needs immediate attention - Schedule a review session');
+  } else if (mindsetScore < scoringTier.thresholds.orange) {
+    review.mindset.improvements.push('Room for improvement - Focus on form and consistency');
+  }
+  
   if (latestCheckIn.responses['mindset-stress']?.value > 3) {
     review.mindset.recommendations.push('Consider implementing stress management techniques');
   }
@@ -206,15 +227,26 @@ function processCheckInResponses(checkIns: any[]): CoachReview {
 }
 
 function calculateTrainingScore(checkIn: any): number {
-  const scores = [
-    checkIn.responses['training-workouts-completed']?.value / 7 * 5 || 0,
-    checkIn.responses['training-form-quality']?.value || 0,
-    checkIn.responses['training-eccentric-focus']?.value || 0,
-    checkIn.responses['training-warmup']?.value ? 5 : 0,
-    checkIn.responses['training-mobility']?.value ? 5 : 0
-  ];
-  
-  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  let score = 0;
+  let maxScore = 0;
+
+  // Calculate percentage-based score
+  if (checkIn.responses['training-form-quality']?.value) {
+    score += checkIn.responses['training-form-quality'].value;
+    maxScore += 5;
+  }
+
+  if (checkIn.responses['training-warmup']?.value) {
+    score += 1;
+    maxScore += 1;
+  }
+
+  if (checkIn.responses['training-mobility']?.value) {
+    score += 1;
+    maxScore += 1;
+  }
+
+  return maxScore > 0 ? score / maxScore : 0;
 }
 
 function calculateNutritionScore(checkIn: any): number {
@@ -719,38 +751,62 @@ const CheckInDetails = ({
 
 // Tab content components
 const OverviewTab = ({ client }: TabContentProps) => (
-  <div className="grid grid-cols-3 gap-6">
-    {/* Left Column - Progress & Metrics */}
-    <div className="col-span-2 space-y-6">
-      {/* Progress Overview */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Progress Overview</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {Object.entries(client.weeklyProgress || {}).map(([area, progress]) => (
-              <div key={area} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">{area}</div>
-                <div className="mt-2">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full">
-                        <div
-                          className="h-2 bg-blue-500 rounded-full"
-                          style={{ width: `${progress}%` }}
-                        />
+  <div className="space-y-6">
+    {/* Client Settings */}
+    <ClientSettings 
+      client={client}
+      onUpdate={async (updates) => {
+        try {
+          await clientService.updateClient(client.id, updates);
+          // You might want to refresh the client data here
+        } catch (error) {
+          console.error('Failed to update client:', error);
+        }
+      }}
+    />
+
+    {/* Existing Overview content */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Left Column - Progress & Metrics */}
+      <div className="col-span-2 space-y-6">
+        {/* Progress Overview */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Progress Overview</h2>
+            <div className="grid grid-cols-3 gap-4">
+              {Object.entries(client.weeklyProgress || {}).map(([area, progress]) => (
+                <div key={area} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">{area}</div>
+                  <div className="mt-2">
+                    <div className="flex items-center">
+                      <div className="flex-1">
+                        <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full">
+                          <div
+                            className="h-2 bg-blue-500 rounded-full"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
+                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                        {progress}%
+                      </span>
                     </div>
-                    <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                      {progress}%
-                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
+        {/* Recent Check-ins */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Check-ins</h2>
+            <div className="space-y-4">
+              {client.checkIns?.slice(0, 3).map((checkIn: any) => (
+                <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
       {/* Recent Check-ins */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
         <div className="p-6">
@@ -1255,7 +1311,7 @@ const CalendarTab = ({ client }: TabContentProps) => (
 
       {/* Upcoming Events */}
       <div className="mt-6">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Upcoming Events</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Upcoming Events</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <div className="flex items-center space-x-3">
@@ -1468,7 +1524,7 @@ const CoachReviewSection = () => {
   );
 };
 
-export default function ClientDetailsPage() {
+export default function ClientProfilePage() {
   const params = useParams();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
@@ -1582,7 +1638,7 @@ export default function ClientDetailsPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserCircleIcon className="h-12 w-12 text-gray-400" />
+                    <UserIcon className="h-12 w-12 text-gray-400" />
                   )}
                 </div>
                 <div>
@@ -1591,7 +1647,7 @@ export default function ClientDetailsPage() {
                   </h1>
                   <div className="flex items-center space-x-4 mt-1">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Member since {new Date(client.joinedAt).toLocaleDateString()}
+                      Member since {new Date(client.startDate).toLocaleDateString()}
                     </span>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       client.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400' :
@@ -1605,7 +1661,7 @@ export default function ClientDetailsPage() {
               <div className="flex items-center space-x-4">
                 <Link
                   href={`/coach/messages?client=${client.id}`}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
                   <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
                   Message

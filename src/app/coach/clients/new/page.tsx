@@ -3,39 +3,55 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { clientService } from '@/lib/services/clientService';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
-import { 
-  EnvelopeIcon, 
-  CalendarIcon, 
-  UserIcon 
+import {
+  UserIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  CalendarIcon,
+  ClipboardDocumentListIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
-interface NewClientForm {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  startDate: string;
-  notes: string;
+interface OnboardingStep {
+  title: string;
+  description: string;
 }
+
+const steps: OnboardingStep[] = [
+  {
+    title: 'Basic Information',
+    description: 'Enter the client\'s basic details',
+  },
+  {
+    title: 'Contact Details',
+    description: 'Add contact information and preferences',
+  },
+  {
+    title: 'Program Selection',
+    description: 'Choose coaching program and schedule',
+  },
+  {
+    title: 'Goals & Metrics',
+    description: 'Set initial goals and tracking metrics',
+  },
+];
 
 export default function NewClientPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<NewClientForm>({
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     startDate: '',
-    notes: ''
+    program: 'standard',
+    goals: [],
+    notes: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -43,182 +59,208 @@ export default function NewClientPage() {
     }));
   };
 
-  const handlePhoneChange = (value: string | undefined) => {
-    setFormData(prev => ({
-      ...prev,
-      phone: value || ''
-    }));
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
     try {
-      if (!user?.uid) {
-        throw new Error('Coach ID not found');
-      }
-
-      const result = await clientService.createClientInvite({
-        ...formData,
-        coachId: user.uid
-      });
-
+      // TODO: Implement client creation logic
       toast.success('Client created successfully!');
-      router.push(`/coach/clients/${result.clientProfile.id}/setup`);
+      router.push('/coach/clients');
     } catch (error) {
-      console.error('Error:', error);
       toast.error('Failed to create client');
-    } finally {
-      setIsLoading(false);
+      console.error('Error creating client:', error);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300">First Name</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        );
+      case 1:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Phone</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+          </div>
+        );
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Program Type</label>
+              <select
+                name="program"
+                value={formData.program}
+                onChange={handleInputChange}
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+              >
+                <option value="standard">Standard Coaching</option>
+                <option value="premium">Premium Coaching</option>
+                <option value="vip">VIP Coaching</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Start Date</label>
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
+                onChange={handleInputChange}
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+              />
+            </div>
+          </div>
+        );
+      case 3:
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300">Goals & Notes</label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                rows={4}
+                className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"
+                placeholder="Enter client goals and any additional notes..."
+              />
+            </div>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Add New Client</h1>
-        <p className="mt-2 text-sm text-gray-400">
-          Enter the client's basic information to create their profile and send them an invitation.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-900 py-8">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Add New Client</h1>
+          <p className="text-gray-400">Create a new client profile and start their coaching journey</p>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-gray-800 rounded-lg p-6">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-300">
-              First Name
-            </label>
-            <div className="mt-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <UserIcon className="h-5 w-5 text-gray-400" />
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex justify-between">
+            {steps.map((step, index) => (
+              <div
+                key={step.title}
+                className={`flex-1 ${
+                  index !== steps.length - 1 ? 'border-r border-gray-700' : ''
+                }`}
+              >
+                <div className="relative flex flex-col items-center">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      index <= currentStep ? 'bg-blue-600' : 'bg-gray-700'
+                    }`}
+                  >
+                    {index + 1}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <div className="text-sm font-medium text-white">{step.title}</div>
+                    <div className="text-xs text-gray-400">{step.description}</div>
+                  </div>
+                </div>
               </div>
-              <input
-                type="text"
-                name="firstName"
-                id="firstName"
-                required
-                value={formData.firstName}
-                onChange={handleChange}
-                className="bg-gray-700 block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-                placeholder="John"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-300">
-              Last Name
-            </label>
-            <div className="mt-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <UserIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                name="lastName"
-                id="lastName"
-                required
-                value={formData.lastName}
-                onChange={handleChange}
-                className="bg-gray-700 block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-                placeholder="Doe"
-              />
-            </div>
+            ))}
           </div>
         </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-300">
-            Email Address
-          </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <EnvelopeIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="email"
-              name="email"
-              id="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="bg-gray-700 block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-              placeholder="client@example.com"
-            />
-          </div>
-        </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-6 mb-8">
+          {renderStep()}
+        </form>
 
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
-            Phone Number
-          </label>
-          <div className="mt-1">
-            <PhoneInput
-              international
-              countryCallingCodeEditable={false}
-              defaultCountry="AU"
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              className="[&_.PhoneInputCountry]:!text-gray-300 [&_.PhoneInputInput]:bg-gray-700 [&_.PhoneInputInput]:border [&_.PhoneInputInput]:border-gray-600 [&_.PhoneInputInput]:rounded-md [&_.PhoneInputInput]:text-white [&_.PhoneInputInput]:placeholder-gray-400 [&_.PhoneInputInput]:p-2 [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:focus:ring-2 [&_.PhoneInputInput]:focus:ring-indigo-500 [&_.PhoneInputInput]:focus:border-indigo-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="startDate" className="block text-sm font-medium text-gray-300">
-            Start Date
-          </label>
-          <div className="mt-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <CalendarIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="date"
-              name="startDate"
-              id="startDate"
-              required
-              value={formData.startDate}
-              onChange={handleChange}
-              className="bg-gray-700 block w-full pl-10 pr-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-300">
-            Additional Notes
-          </label>
-          <div className="mt-1">
-            <textarea
-              name="notes"
-              id="notes"
-              rows={3}
-              value={formData.notes}
-              onChange={handleChange}
-              className="bg-gray-700 block w-full px-3 py-2 border border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-white"
-              placeholder="Any additional notes about the client..."
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end space-x-4">
+        {/* Navigation */}
+        <div className="flex justify-between">
           <button
             type="button"
-            onClick={() => router.back()}
-            className="inline-flex items-center px-4 py-2 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-300 bg-transparent hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            onClick={handleBack}
+            disabled={currentStep === 0}
+            className="px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Cancel
+            <ArrowLeftIcon className="h-5 w-5 inline-block mr-2" />
+            Back
           </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Creating...' : 'Create Client'}
-          </button>
+          
+          {currentStep === steps.length - 1 ? (
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500"
+            >
+              Complete Setup
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleNext}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500"
+            >
+              Next
+              <ArrowRightIcon className="h-5 w-5 inline-block ml-2" />
+            </button>
+          )}
         </div>
-      </form>
+      </div>
     </div>
   );
 } 

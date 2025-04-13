@@ -6,6 +6,7 @@ import {
   SentimentMetric, 
   GroupInsight 
 } from '@/types/checkIn';
+import { ClientProfile } from '@/components/checkIn/ClientProfileModal';
 
 export class AIService {
   private openai: OpenAI;
@@ -160,4 +161,91 @@ export class AIService {
     const relevantMetrics = checkIns.map(ci => metricMappings[category](ci.metrics));
     return relevantMetrics.reduce((sum, val) => sum + val, 0) / relevantMetrics.length;
   }
+}
+
+// Mock AI service for development
+export async function generateQuestions(clientProfile: ClientProfile): Promise<any[]> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Generate questions based on client profile
+  const questions = [
+    {
+      text: 'How would you rate your energy levels today?',
+      type: 'scale',
+      required: true,
+      priority: 'vital',
+      category: 'Wellness',
+      subcategories: ['Energy Levels']
+    },
+    {
+      text: 'Did you follow your meal plan today?',
+      type: 'yes_no',
+      required: true,
+      priority: 'vital',
+      category: 'Nutrition',
+      subcategories: ['Meal Planning']
+    },
+    {
+      text: 'How many hours of sleep did you get last night?',
+      type: 'number',
+      required: true,
+      priority: 'vital',
+      category: 'Sleep',
+      subcategories: ['Duration']
+    },
+    {
+      text: 'What challenges did you face with your workouts this week?',
+      type: 'text',
+      required: false,
+      priority: 'intermediate',
+      category: 'Training',
+      subcategories: ['Form', 'Strength']
+    },
+    {
+      text: 'Which areas of nutrition do you need help with?',
+      type: 'multiple_choice',
+      required: true,
+      priority: 'intermediate',
+      category: 'Nutrition',
+      options: ['Meal Planning', 'Portion Control', 'Protein Intake', 'Hydration'],
+      subcategories: ['Meal Planning', 'Macros']
+    }
+  ];
+
+  // Filter and customize questions based on client profile
+  if (clientProfile.goals?.includes('Weight Loss')) {
+    questions.push({
+      text: 'How well did you stick to your calorie target today?',
+      type: 'scale',
+      required: true,
+      priority: 'vital',
+      category: 'Weight Management',
+      subcategories: ['Weight Loss']
+    });
+  }
+
+  if (clientProfile.goals?.includes('Muscle Gain')) {
+    questions.push({
+      text: 'Did you hit your protein target today?',
+      type: 'yes_no',
+      required: true,
+      priority: 'vital',
+      category: 'Nutrition',
+      subcategories: ['Macros']
+    });
+  }
+
+  if (clientProfile.challenges?.includes('Stress')) {
+    questions.push({
+      text: 'How would you rate your stress levels today?',
+      type: 'scale',
+      required: true,
+      priority: 'vital',
+      category: 'Mental Health',
+      subcategories: ['Stress']
+    });
+  }
+
+  return questions;
 } 

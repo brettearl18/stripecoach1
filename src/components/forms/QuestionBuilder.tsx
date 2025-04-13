@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Question } from '@/lib/types/forms';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 interface QuestionBuilderProps {
   onSave: (questions: Question[]) => void;
@@ -17,14 +18,19 @@ export default function QuestionBuilder({
   isAIMode = false
 }: QuestionBuilderProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
-  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(
+    initialQuestions.length > 0 ? initialQuestions[0] : null
+  );
 
   const handleAddQuestion = () => {
     const newQuestion: Question = {
-      id: `question-${Date.now()}`,
-      type: 'text',
+      id: crypto.randomUUID(),
       text: '',
-      required: false
+      type: 'yesNo',
+      required: false,
+      weight: 1,
+      category: '',
+      options: []
     };
     setQuestions([...questions, newQuestion]);
     setSelectedQuestion(newQuestion);
@@ -43,13 +49,13 @@ export default function QuestionBuilder({
   };
 
   return (
-    <div className="bg-[#1C1C1F] min-h-[600px]">
+    <div className="bg-[#1C1C1F] min-h-[600px] max-w-6xl mx-auto rounded-lg shadow-xl">
       <div className="border-b border-gray-800 p-4">
         <h2 className="text-lg font-medium text-white">
           {isAIMode ? 'AI Question Generator' : 'Question Builder'}
         </h2>
         <p className="text-sm text-gray-400 mt-1">
-          Review and edit the generated questions below. Select questions to regenerate them.
+          {isAIMode ? 'Review and edit the generated questions below.' : 'Create and edit your questions below.'}
         </p>
       </div>
 
@@ -120,96 +126,140 @@ export default function QuestionBuilder({
                   </label>
                   <select
                     value={selectedQuestion.type}
-                    onChange={(e) => handleQuestionChange('type', e.target.value)}
+                    onChange={(e) => {
+                      const type = e.target.value as QuestionType;
+                      handleQuestionChange('type', type);
+                      // Reset options when changing type
+                      if (type === 'multipleChoice' || type === 'radio') {
+                        handleQuestionChange('options', []);
+                      }
+                    }}
                     className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="select">Single Choice</option>
-                    <option value="multiselect">Multiple Choice</option>
-                    <option value="checkbox">Checkbox</option>
-                    <option value="rating_scale">Rating Scale</option>
-                    <option value="photo">Photo</option>
+                    {QUESTION_TYPES.map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Priority
+                    Category
                   </label>
                   <select
-                    value={selectedQuestion.priority || 'Optional'}
-                    onChange={(e) => handleQuestionChange('priority', e.target.value)}
+                    value={selectedQuestion.category}
+                    onChange={(e) => handleQuestionChange('category', e.target.value)}
                     className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Vital">Vital</option>
-                    <option value="Important">Important</option>
-                    <option value="Optional">Optional</option>
+                    <option value="">Select a category</option>
+                    {QUESTION_CATEGORIES.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {/* Options for select/multiselect */}
-              {(selectedQuestion.type === 'select' || selectedQuestion.type === 'multiselect') && (
+              {/* Options for multiple choice or radio questions */}
+              {(selectedQuestion.type === 'multipleChoice' || selectedQuestion.type === 'radio') && (
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Options (one per line)
+                    Options
                   </label>
-                  <textarea
-                    value={selectedQuestion.options?.join('\n') || ''}
-                    onChange={(e) => {
-                      const options = e.target.value.split('\n').filter(Boolean);
-                      handleQuestionChange('options', options);
-                    }}
-                    rows={4}
-                    placeholder="Enter each option on a new line"
-                    className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div className="space-y-2">
+                    {selectedQuestion.options?.map((option, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={option}
+                          onChange={(e) => {
+                            const options = [...(selectedQuestion.options || [])];
+                            options[index] = e.target.value;
+                            handleQuestionChange('options', options);
+                          }}
+                          className="flex-1 bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder={`Option ${index + 1}`}
+                        />
+                        <button
+                          onClick={() => {
+                            const options = selectedQuestion.options?.filter((_, i) => i !== index) || [];
+                            handleQuestionChange('options', options);
+                          }}
+                          className="p-2 text-red-400 hover:text-red-300"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const options = [...(selectedQuestion.options || []), ''];
+                        handleQuestionChange('options', options);
+                      }}
+                      className="text-sm text-indigo-400 hover:text-indigo-300"
+                    >
+                      + Add Option
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Additional settings based on question type */}
-              {selectedQuestion.type === 'rating_scale' && (
+              {/* Scale settings for scale questions */}
+              {selectedQuestion.type === 'scale' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Min Value
+                      Minimum Value
                     </label>
                     <input
                       type="number"
-                      value={selectedQuestion.minValue || 0}
-                      onChange={(e) => handleQuestionChange('minValue', parseInt(e.target.value))}
-                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={selectedQuestion.validation?.min || 1}
+                      onChange={(e) => {
+                        handleQuestionChange('validation', {
+                          ...selectedQuestion.validation,
+                          min: parseInt(e.target.value)
+                        });
+                      }}
+                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Max Value
+                      Maximum Value
                     </label>
                     <input
                       type="number"
-                      value={selectedQuestion.maxValue || 5}
-                      onChange={(e) => handleQuestionChange('maxValue', parseInt(e.target.value))}
-                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={selectedQuestion.validation?.max || 10}
+                      onChange={(e) => {
+                        handleQuestionChange('validation', {
+                          ...selectedQuestion.validation,
+                          max: parseInt(e.target.value)
+                        });
+                      }}
+                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
               )}
 
-              {selectedQuestion.type === 'number' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Unit
-                  </label>
-                  <input
-                    type="text"
-                    value={selectedQuestion.unit || ''}
-                    onChange={(e) => handleQuestionChange('unit', e.target.value)}
-                    placeholder="e.g., kg, lbs, minutes"
-                    className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              )}
+              {/* Weight input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Question Weight
+                </label>
+                <input
+                  type="number"
+                  value={selectedQuestion.weight || 1}
+                  onChange={(e) => handleQuestionChange('weight', parseInt(e.target.value))}
+                  min="1"
+                  max="10"
+                  className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="text-sm text-gray-400 mt-1">Weight determines the importance of this question (1-10)</p>
+              </div>
 
               <div className="flex items-center mt-4">
                 <input
@@ -223,15 +273,6 @@ export default function QuestionBuilder({
                   This question is required
                 </label>
               </div>
-
-              {isAIMode && (
-                <button
-                  type="button"
-                  className="mt-4 w-full py-2 px-4 border border-gray-700 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 transition-colors"
-                >
-                  Regenerate This Question
-                </button>
-              )}
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400">
@@ -261,7 +302,21 @@ export default function QuestionBuilder({
           )}
           <button
             type="button"
-            onClick={() => onSave(questions)}
+            onClick={() => {
+              // Validate questions before saving
+              if (questions.some(q => !q.text.trim())) {
+                alert('All questions must have text');
+                return;
+              }
+              if (questions.some(q => 
+                (q.type === 'multipleChoice' || q.type === 'radio') && 
+                (!q.options?.length || q.options.some(opt => !opt.trim()))
+              )) {
+                alert('All multiple choice or radio questions must have at least one option');
+                return;
+              }
+              onSave(questions);
+            }}
             className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
           >
             Save Questions
