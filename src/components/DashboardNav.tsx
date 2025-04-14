@@ -36,6 +36,7 @@ const navItems: Record<string, NavItem[]> = {
     { name: 'Settings', href: '/coach/settings' },
   ],
   client: [
+    { name: 'Setup', href: '/client/setup' },
     { name: 'Dashboard', href: '/client/dashboard' },
     { name: 'Progress', href: '/client/progress' },
     { name: 'Check-ins', href: '/client/check-ins' },
