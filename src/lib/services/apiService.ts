@@ -84,6 +84,11 @@ export async function updateAPIKey(
   id: string,
   data: Partial<APICredentials>
 ): Promise<void> {
+  // Validate rate limit values
+  if (data.rateLimit && data.rateLimit.requestsPerMinute < 0) {
+    throw new Error('Rate limit cannot be negative');
+  }
+
   const docRef = doc(db, API_KEYS_COLLECTION, id);
   await updateDoc(docRef, {
     ...data,
