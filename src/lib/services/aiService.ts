@@ -6,7 +6,6 @@ import {
   SentimentMetric, 
   GroupInsight 
 } from '@/types/checkIn';
-import { ClientProfile } from '@/components/checkIn/ClientProfileModal';
 
 export class AIService {
   private openai: OpenAI;
@@ -120,13 +119,77 @@ export class AIService {
 
   private parseAIResponse(response: string): AIAnalysis {
     try {
-      // For now, return the default response
-      // In production, you would parse the AI response into the AIAnalysis structure
-      return this.getDefaultResponse();
+      // Parse the JSON response from OpenAI
+      const parsedResponse = JSON.parse(response);
+
+      // Validate and transform the response into AIAnalysis format
+      const validatedResponse: AIAnalysis = {
+        overallMood: this.validateAndTransformMood(parsedResponse.overallMood || []),
+        recentWins: this.validateAndTransformArray(parsedResponse.recentWins || [], 'string'),
+        commonChallenges: this.validateAndTransformArray(parsedResponse.commonChallenges || [], 'string'),
+        insights: this.validateAndTransformInsights(parsedResponse.insights || []),
+        focusAreas: this.validateAndTransformArray(parsedResponse.focusAreas || [], 'string')
+      };
+
+      return validatedResponse;
     } catch (error) {
       console.error('Error parsing AI response:', error);
       return this.getDefaultResponse();
     }
+  }
+
+  private validateAndTransformMood(moodData: any[]): SentimentMetric[] {
+    if (!Array.isArray(moodData)) return this.getDefaultResponse().overallMood;
+
+    return moodData.map(item => ({
+      category: this.validateString(item.category) || 'Unknown',
+      score: this.validateNumber(item.score) || 5,
+      trend: this.validateTrend(item.trend) || 'stable',
+      change: this.validateNumber(item.change) || 0
+    }));
+  }
+
+  private validateAndTransformInsights(insightsData: any[]): Array<{ type: 'success' | 'warning' | 'concern'; message: string; impact: 'high' | 'medium' | 'low' }> {
+    if (!Array.isArray(insightsData)) return this.getDefaultResponse().insights;
+
+    return insightsData.map(item => ({
+      type: this.validateInsightType(item.type) || 'success',
+      message: this.validateString(item.message) || 'No insight available',
+      impact: this.validateImpact(item.impact) || 'medium'
+    }));
+  }
+
+  private validateAndTransformArray<T>(data: any[], type: 'string' | 'number'): T[] {
+    if (!Array.isArray(data)) return [];
+
+    return data.map(item => {
+      if (type === 'string') {
+        return this.validateString(item) as T;
+      } else {
+        return this.validateNumber(item) as T;
+      }
+    }).filter(item => item !== null);
+  }
+
+  private validateString(value: any): string | null {
+    return typeof value === 'string' ? value : null;
+  }
+
+  private validateNumber(value: any): number | null {
+    const num = Number(value);
+    return !isNaN(num) ? num : null;
+  }
+
+  private validateTrend(value: any): 'up' | 'down' | 'stable' | null {
+    return ['up', 'down', 'stable'].includes(value) ? value : null;
+  }
+
+  private validateInsightType(value: any): 'success' | 'warning' | 'concern' | null {
+    return ['success', 'warning', 'concern'].includes(value) ? value : null;
+  }
+
+  private validateImpact(value: any): 'high' | 'medium' | 'low' | null {
+    return ['high', 'medium', 'low'].includes(value) ? value : null;
   }
 
   private static calculateGroupSentiment(checkIns: CheckInForm[]): SentimentMetric[] {
@@ -161,91 +224,4 @@ export class AIService {
     const relevantMetrics = checkIns.map(ci => metricMappings[category](ci.metrics));
     return relevantMetrics.reduce((sum, val) => sum + val, 0) / relevantMetrics.length;
   }
-}
-
-// Mock AI service for development
-export async function generateQuestions(clientProfile: ClientProfile): Promise<any[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-
-  // Generate questions based on client profile
-  const questions = [
-    {
-      text: 'How would you rate your energy levels today?',
-      type: 'scale',
-      required: true,
-      priority: 'vital',
-      category: 'Wellness',
-      subcategories: ['Energy Levels']
-    },
-    {
-      text: 'Did you follow your meal plan today?',
-      type: 'yes_no',
-      required: true,
-      priority: 'vital',
-      category: 'Nutrition',
-      subcategories: ['Meal Planning']
-    },
-    {
-      text: 'How many hours of sleep did you get last night?',
-      type: 'number',
-      required: true,
-      priority: 'vital',
-      category: 'Sleep',
-      subcategories: ['Duration']
-    },
-    {
-      text: 'What challenges did you face with your workouts this week?',
-      type: 'text',
-      required: false,
-      priority: 'intermediate',
-      category: 'Training',
-      subcategories: ['Form', 'Strength']
-    },
-    {
-      text: 'Which areas of nutrition do you need help with?',
-      type: 'multiple_choice',
-      required: true,
-      priority: 'intermediate',
-      category: 'Nutrition',
-      options: ['Meal Planning', 'Portion Control', 'Protein Intake', 'Hydration'],
-      subcategories: ['Meal Planning', 'Macros']
-    }
-  ];
-
-  // Filter and customize questions based on client profile
-  if (clientProfile.goals?.includes('Weight Loss')) {
-    questions.push({
-      text: 'How well did you stick to your calorie target today?',
-      type: 'scale',
-      required: true,
-      priority: 'vital',
-      category: 'Weight Management',
-      subcategories: ['Weight Loss']
-    });
-  }
-
-  if (clientProfile.goals?.includes('Muscle Gain')) {
-    questions.push({
-      text: 'Did you hit your protein target today?',
-      type: 'yes_no',
-      required: true,
-      priority: 'vital',
-      category: 'Nutrition',
-      subcategories: ['Macros']
-    });
-  }
-
-  if (clientProfile.challenges?.includes('Stress')) {
-    questions.push({
-      text: 'How would you rate your stress levels today?',
-      type: 'scale',
-      required: true,
-      priority: 'vital',
-      category: 'Mental Health',
-      subcategories: ['Stress']
-    });
-  }
-
-  return questions;
 } 

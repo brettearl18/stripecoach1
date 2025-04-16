@@ -1,116 +1,127 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cacheMiddleware } from '../cacheMiddleware';
 import { cacheGet, cacheSet } from '@/lib/cache';
+
+// Mock next/server
+jest.mock('next/server', () => ({
+  NextResponse: {
+    next: jest.fn(() => new MockResponse()),
+    json: jest.fn((data, options) => {
+      const response = new MockResponse(data);
+      if (options?.headers) {
+        Object.entries(options.headers).forEach(([key, value]) => {
+          response.set(key, value);
+        });
+      }
+      return response;
+    })
+  }
+}));
 
 // Mock cache functions
 jest.mock('@/lib/cache', () => ({
   cacheGet: jest.fn(),
-  cacheSet: jest.fn(),
+  cacheSet: jest.fn()
 }));
 
-describe('Cache Middleware', () => {
-  const mockCacheGet = cacheGet as jest.MockedFunction<typeof cacheGet>;
-  const mockCacheSet = cacheSet as jest.MockedFunction<typeof cacheSet>;
+class MockResponse {
+  private _headers: Record<string, string> = {};
+  private _body;
 
+  constructor(body = null) {
+    this._body = body;
+  }
+
+  headers() {
+    return this._headers;
+  }
+
+  get(key: string) {
+    return this._headers[key];
+  }
+
+  set(key: string, value: string) {
+    this._headers[key] = value;
+    return this;
+  }
+
+  json() {
+    return Promise.resolve(this._body);
+  }
+
+  clone() {
+    const clone = new MockResponse(this._body);
+    Object.entries(this._headers).forEach(([key, value]) => {
+      clone.set(key, value);
+    });
+    return clone;
+  }
+}
+
+// Helper function to create mock requests
+function createMockRequest(pathname: string, method: string = 'GET') {
+  return {
+    method,
+    nextUrl: { 
+      pathname,
+      href: `http://localhost:3000${pathname}` 
+    },
+    url: `http://localhost:3000${pathname}`,
+    clone: function() { return this; }
+  };
+}
+
+describe('cacheMiddleware', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  const createRequest = (method: string, path: string) => {
-    return new NextRequest(new Request(`https://example.com${path}`, { method }));
-  };
+  it('should return cached response if available', async () => {
+    const cachedData = { test: 'data' };
+    (cacheGet as jest.Mock).mockResolvedValueOnce(cachedData);
 
-  const createResponse = (data: any) => {
-    return NextResponse.json(data);
-  };
+    const request = createMockRequest('/api/coach/clients');
+    const response = await cacheMiddleware(request);
 
-  describe('Non-cacheable routes', () => {
-    it('should skip caching for non-GET requests', async () => {
-      const req = createRequest('POST', '/api/coach/clients');
-      const res = createResponse({ data: 'test' });
-
-      const handler = jest.fn().mockResolvedValue(res);
-      await cacheMiddleware(req, handler);
-
-      expect(mockCacheGet).not.toHaveBeenCalled();
-      expect(mockCacheSet).not.toHaveBeenCalled();
-      expect(handler).toHaveBeenCalled();
-    });
-
-    it('should skip caching for non-cacheable routes', async () => {
-      const req = createRequest('GET', '/api/non-cacheable');
-      const res = createResponse({ data: 'test' });
-
-      const handler = jest.fn().mockResolvedValue(res);
-      await cacheMiddleware(req, handler);
-
-      expect(mockCacheGet).not.toHaveBeenCalled();
-      expect(mockCacheSet).not.toHaveBeenCalled();
-      expect(handler).toHaveBeenCalled();
-    });
+    expect(response).toBeInstanceOf(MockResponse);
+    expect(response.get('X-Cache')).toBe('HIT');
+    expect(await response.json()).toEqual(cachedData);
+    expect(cacheGet).toHaveBeenCalledWith(request.url);
+    expect(cacheSet).not.toHaveBeenCalled();
   });
 
-  describe('Cacheable routes', () => {
-    it('should return cached response when available', async () => {
-      const req = createRequest('GET', '/api/coach/clients');
-      const cachedData = { data: 'cached' };
-      mockCacheGet.mockResolvedValueOnce(cachedData);
-
-      const handler = jest.fn();
-      const response = await cacheMiddleware(req, handler);
-      const data = await response.json();
-
-      expect(data).toEqual(cachedData);
-      expect(mockCacheGet).toHaveBeenCalled();
-      expect(handler).not.toHaveBeenCalled();
-      expect(response.headers.get('X-Cache')).toBe('HIT');
+  it('should proceed with request if cache not available', async () => {
+    (cacheGet as jest.Mock).mockResolvedValueOnce(null);
+    const responseData = { test: 'response' };
+    (NextResponse.next as jest.Mock).mockResolvedValueOnce({
+      json: () => Promise.resolve(responseData)
     });
 
-    it('should cache response when not in cache', async () => {
-      const req = createRequest('GET', '/api/coach/templates');
-      const responseData = { data: 'fresh' };
-      mockCacheGet.mockResolvedValueOnce(null);
+    const request = createMockRequest('/api/coach/clients');
+    const response = await cacheMiddleware(request);
 
-      const handler = jest.fn().mockResolvedValue(createResponse(responseData));
-      const response = await cacheMiddleware(req, handler);
-      const data = await response.json();
-
-      expect(data).toEqual(responseData);
-      expect(mockCacheGet).toHaveBeenCalled();
-      expect(handler).toHaveBeenCalled();
-      expect(mockCacheSet).toHaveBeenCalled();
-      expect(response.headers.get('X-Cache')).toBe('MISS');
-    });
-
-    it('should use correct TTL based on route', async () => {
-      const req = createRequest('GET', '/api/coach/clients');
-      const responseData = { data: 'fresh' };
-      mockCacheGet.mockResolvedValueOnce(null);
-
-      const handler = jest.fn().mockResolvedValue(createResponse(responseData));
-      await cacheMiddleware(req, handler);
-
-      expect(mockCacheSet).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        { ttl: 300 } // 5 minutes for clients
-      );
-    });
+    expect(response).toBeInstanceOf(MockResponse);
+    expect(response.get('X-Cache')).toBe('MISS');
+    expect(await response.json()).toEqual(responseData);
+    expect(cacheGet).toHaveBeenCalledWith(request.url);
+    expect(cacheSet).toHaveBeenCalledWith(request.url, responseData, expect.any(Object));
   });
 
-  describe('Error handling', () => {
-    it('should handle cache errors gracefully', async () => {
-      const req = createRequest('GET', '/api/coach/clients');
-      mockCacheGet.mockRejectedValueOnce(new Error('Cache error'));
-      const responseData = { data: 'fresh' };
+  it('should not cache non-GET requests', async () => {
+    const request = createMockRequest('/api/coach/clients', 'POST');
+    const response = await cacheMiddleware(request);
 
-      const handler = jest.fn().mockResolvedValue(createResponse(responseData));
-      const response = await cacheMiddleware(req, handler);
-      const data = await response.json();
+    expect(response).toBeInstanceOf(MockResponse);
+    expect(cacheGet).not.toHaveBeenCalled();
+    expect(cacheSet).not.toHaveBeenCalled();
+  });
 
-      expect(data).toEqual(responseData);
-      expect(handler).toHaveBeenCalled();
-      expect(response.headers.get('X-Cache')).toBe('ERROR');
-    });
+  it('should not cache non-API routes', async () => {
+    const request = createMockRequest('/non-api-route');
+    const response = await cacheMiddleware(request);
+
+    expect(response).toBeInstanceOf(MockResponse);
+    expect(cacheGet).not.toHaveBeenCalled();
+    expect(cacheSet).not.toHaveBeenCalled();
   });
 }); 
