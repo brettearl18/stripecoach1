@@ -4,65 +4,22 @@ import { TagIcon, XMarkIcon, ChevronRightIcon, CheckCircleIcon } from '@heroicon
 
 interface TemplateDetailsProps {
   initialData: {
-    title: string;
+    name: string;
     description: string;
     categories: string[];
-    isTemplate: boolean;
+    tags: string[];
   };
-  onSave: (data: {
-    title: string;
-    description: string;
-    categories: string[];
-    isTemplate: boolean;
-  }) => void;
+  onSave: (data: any) => void;
 }
-
-const CATEGORIES = [
-  {
-    name: 'Wellness',
-    subcategories: ['Mental Health', 'Stress Management', 'Work-Life Balance', 'Mindfulness']
-  },
-  {
-    name: 'Fitness',
-    subcategories: ['Strength Training', 'Cardio', 'Flexibility', 'Sports Performance']
-  },
-  {
-    name: 'Nutrition',
-    subcategories: ['Meal Planning', 'Weight Management', 'Special Diets', 'Supplements']
-  },
-  {
-    name: 'Mental Health',
-    subcategories: ['Anxiety', 'Depression', 'Stress', 'Personal Growth']
-  },
-  {
-    name: 'Business',
-    subcategories: ['Leadership', 'Productivity', 'Team Management', 'Strategy']
-  },
-  {
-    name: 'Career',
-    subcategories: ['Professional Development', 'Job Search', 'Skills Development', 'Career Transition']
-  },
-  {
-    name: 'Life',
-    subcategories: ['Personal Goals', 'Habits', 'Time Management', 'Personal Finance']
-  },
-  {
-    name: 'Relationship',
-    subcategories: ['Communication', 'Dating', 'Marriage', 'Family']
-  },
-  {
-    name: 'Other',
-    subcategories: ['Custom']
-  }
-];
 
 export default function TemplateDetails({ initialData, onSave }: TemplateDetailsProps) {
   const [formData, setFormData] = useState({
-    title: initialData.title || '',
+    name: initialData.name || '',
     description: initialData.description || '',
     categories: initialData.categories || [],
-    isTemplate: initialData.isTemplate
+    tags: initialData.tags || [],
   });
+  const [newTag, setNewTag] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,64 +39,119 @@ export default function TemplateDetails({ initialData, onSave }: TemplateDetails
     }));
   };
 
+  const addTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const categories = [
+    {
+      name: 'Wellness',
+      subcategories: ['Mental Health', 'Stress Management', 'Work-Life Balance', 'Mindfulness']
+    },
+    {
+      name: 'Fitness',
+      subcategories: ['Strength Training', 'Cardio', 'Flexibility', 'Sports Performance']
+    },
+    {
+      name: 'Nutrition',
+      subcategories: ['Meal Planning', 'Weight Management', 'Special Diets', 'Supplements']
+    },
+    {
+      name: 'Mental Health',
+      subcategories: ['Anxiety', 'Depression', 'Stress', 'Personal Growth']
+    },
+    {
+      name: 'Business',
+      subcategories: ['Leadership', 'Productivity', 'Team Management', 'Strategy']
+    },
+    {
+      name: 'Career',
+      subcategories: ['Professional Development', 'Job Search', 'Skills Development', 'Career Transition']
+    },
+    {
+      name: 'Life',
+      subcategories: ['Personal Goals', 'Habits', 'Time Management', 'Personal Finance']
+    },
+    {
+      name: 'Relationship',
+      subcategories: ['Communication', 'Dating', 'Marriage', 'Family']
+    },
+    {
+      name: 'Other',
+      subcategories: ['Custom']
+    }
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="max-w-4xl mx-auto space-y-8"
+      className="max-w-3xl mx-auto space-y-8"
     >
       <div>
         <h2 className="text-2xl font-semibold text-white mb-2">Template Details</h2>
         <p className="text-gray-400">
-          Start by providing basic information about your template
+          Set the basic information for your template
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Title */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
             Template Title
           </label>
           <input
             type="text"
-            value={formData.title}
-            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            className="w-full bg-[#1C1C1F] border border-gray-700 rounded-lg px-4 py-2.5 text-white"
-            placeholder="Enter a descriptive title"
+            id="name"
+            value={formData.name}
+            onChange={e => setFormData({ ...formData, name: e.target.value })}
+            className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter template title..."
             required
           />
         </div>
 
-        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
             Description
           </label>
           <textarea
+            id="description"
             value={formData.description}
-            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full bg-[#1C1C1F] border border-gray-700 rounded-lg px-4 py-2.5 text-white"
-            placeholder="Describe what this template is for"
+            onChange={e => setFormData({ ...formData, description: e.target.value })}
+            className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Enter template description..."
             rows={4}
             required
           />
         </div>
 
-        {/* Categories */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Categories (Select multiple)
           </label>
           <div className="grid grid-cols-3 gap-4">
-            {CATEGORIES.map(category => (
+            {categories.map(category => (
               <div
                 key={category.name}
                 className={`relative p-4 rounded-lg cursor-pointer transition-all ${
                   formData.categories.includes(category.name)
                     ? 'bg-indigo-600/20 border-2 border-indigo-500'
-                    : 'bg-[#1C1C1F] border-2 border-transparent hover:border-indigo-500/50'
+                    : 'bg-[#2C2C30] border-2 border-transparent hover:border-indigo-500/50'
                 }`}
                 onClick={() => toggleCategory(category.name)}
               >
@@ -170,8 +182,52 @@ export default function TemplateDetails({ initialData, onSave }: TemplateDetails
           </p>
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Tags
+          </label>
+          <div className="flex gap-2 mb-2">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={newTag}
+                onChange={e => setNewTag(e.target.value)}
+                onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Add tags..."
+              />
+            </div>
+            <button
+              type="button"
+              onClick={addTag}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Add
+            </button>
+          </div>
+          {formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {formData.tags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-[#2C2C30] text-gray-300 rounded-full text-sm"
+                >
+                  <TagIcon className="w-4 h-4" />
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(tag)}
+                    className="text-gray-500 hover:text-gray-300"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end pt-6">
           <button
             type="submit"
             className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"

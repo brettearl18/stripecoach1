@@ -6,8 +6,7 @@ import {
   TrashIcon,
   DocumentDuplicateIcon,
   PencilIcon,
-  ChevronRightIcon,
-  SparklesIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import QuestionEditor from './QuestionEditor';
 
@@ -47,64 +46,6 @@ const QUESTION_TYPES = [
   { value: 'scale', label: 'Scale' }
 ];
 
-interface AIPromptModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (prompt: string) => void;
-  sectionTitle: string;
-}
-
-function AIPromptModal({ isOpen, onClose, onSubmit, sectionTitle }: AIPromptModalProps) {
-  const [prompt, setPrompt] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(prompt);
-    setPrompt('');
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-[#1C1C1F] rounded-lg p-6 w-full max-w-lg">
-        <h3 className="text-xl font-semibold text-white mb-4">
-          Generate Questions with AI
-        </h3>
-        <p className="text-gray-400 mb-4">
-          Describe the types of questions you want to generate for the "{sectionTitle}" section.
-          For example: "create questions about stress management and work-life balance"
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            placeholder="Enter your prompt here..."
-            rows={4}
-            required
-          />
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-400 hover:text-white"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              Generate Questions
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 export default function TemplateDesigner({ initialData, onSave }: TemplateDesignerProps) {
   const [sections, setSections] = useState<Section[]>(initialData.sections);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -112,8 +53,6 @@ export default function TemplateDesigner({ initialData, onSave }: TemplateDesign
     sectionId: string;
     question: Question;
   } | null>(null);
-  const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<Section | null>(null);
 
   const handleAddSection = () => {
     const newSection: Section = {
@@ -192,48 +131,6 @@ export default function TemplateDesigner({ initialData, onSave }: TemplateDesign
     }
   };
 
-  const handleAIGenerate = async (prompt: string) => {
-    if (!activeSection) return;
-    
-    try {
-      // Here we'll make an API call to generate questions
-      // For now, let's add some example questions
-      const newQuestions: Question[] = [
-        {
-          id: crypto.randomUUID(),
-          text: "How would you rate your current stress level at work?",
-          type: "scale",
-          required: true,
-          validation: { min: 1, max: 10 }
-        },
-        {
-          id: crypto.randomUUID(),
-          text: "Are you experiencing any physical symptoms of stress?",
-          type: "yesNo",
-          required: true,
-          yesIsPositive: false
-        },
-        {
-          id: crypto.randomUUID(),
-          text: "What strategies do you currently use to manage work-related stress?",
-          type: "text",
-          required: true
-        }
-      ];
-
-      setSections(sections.map(section =>
-        section.id === activeSection.id
-          ? { ...section, questions: [...section.questions, ...newQuestions] }
-          : section
-      ));
-
-      setAiModalOpen(false);
-    } catch (error) {
-      console.error('Error generating questions:', error);
-      alert('Failed to generate questions. Please try again.');
-    }
-  };
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -273,16 +170,6 @@ export default function TemplateDesigner({ initialData, onSave }: TemplateDesign
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        setActiveSection(section);
-                        setAiModalOpen(true);
-                      }}
-                      className="p-2 text-gray-400 hover:text-indigo-400 transition-colors"
-                      title="Generate questions with AI"
-                    >
-                      <SparklesIcon className="w-5 h-5" />
-                    </button>
                     <button
                       onClick={() => handleDuplicateSection(section)}
                       className="p-2 text-gray-400 hover:text-white transition-colors"
@@ -385,14 +272,6 @@ export default function TemplateDesigner({ initialData, onSave }: TemplateDesign
           )}
         </div>
       </div>
-
-      {/* AI Prompt Modal */}
-      <AIPromptModal
-        isOpen={aiModalOpen}
-        onClose={() => setAiModalOpen(false)}
-        onSubmit={handleAIGenerate}
-        sectionTitle={activeSection?.title || ''}
-      />
 
       {/* Navigation */}
       <div className="flex justify-end mt-8">

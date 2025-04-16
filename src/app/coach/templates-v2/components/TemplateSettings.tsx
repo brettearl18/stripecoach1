@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BellIcon, ClockIcon, UserGroupIcon, ChartBarIcon, CalendarIcon, ArrowPathIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { BellIcon, ClockIcon, UserGroupIcon, ChartBarIcon, CalendarIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface TemplateSettingsProps {
   initialData: {
-    notifications?: boolean;
-    reminders?: boolean;
-    frequency?: 'daily' | 'weekly' | 'monthly' | 'custom';
-    customFrequency?: {
-      value: number;
-      unit: 'days' | 'weeks' | 'months';
-    };
+    notifications: boolean;
+    reminders: boolean;
+    frequency: string;
     autoAssign: boolean;
     reminderDays: number[];
     completionWindow: number;
@@ -19,39 +15,22 @@ interface TemplateSettingsProps {
     scheduleStart?: string;
     scheduleEnd?: string;
   };
-  onSave: (data: {
-    notifications: boolean;
-    reminders: boolean;
-    frequency: string;
-    customFrequency?: {
-      value: number;
-      unit: string;
-    };
-    autoAssign: boolean;
-    reminderDays: number[];
-    completionWindow: number;
-    responseVisibility: 'coach' | 'client' | 'both';
-    autoAnalyze: boolean;
-    scheduleStart?: string;
-    scheduleEnd?: string;
-  }) => void;
+  onSave: (settings: any) => void;
 }
 
 export default function TemplateSettings({ initialData, onSave }: TemplateSettingsProps) {
-  const [notifications, setNotifications] = useState(initialData.notifications ?? true);
-  const [reminders, setReminders] = useState(initialData.reminders ?? true);
-  const [frequency, setFrequency] = useState(initialData.frequency ?? 'weekly');
-  const [customFrequency, setCustomFrequency] = useState(initialData.customFrequency ?? {
-    value: 2,
-    unit: 'weeks'
+  const [settings, setSettings] = useState({
+    notifications: initialData.notifications ?? true,
+    reminders: initialData.reminders ?? true,
+    frequency: initialData.frequency ?? 'weekly',
+    autoAssign: initialData.autoAssign ?? false,
+    reminderDays: initialData.reminderDays ?? [2], // Default to 2 days before due
+    completionWindow: initialData.completionWindow ?? 7,
+    responseVisibility: initialData.responseVisibility ?? 'both',
+    autoAnalyze: initialData.autoAnalyze ?? true,
+    scheduleStart: initialData.scheduleStart,
+    scheduleEnd: initialData.scheduleEnd,
   });
-  const [autoAssign, setAutoAssign] = useState(initialData.autoAssign ?? false);
-  const [reminderDays, setReminderDays] = useState(initialData.reminderDays ?? [2]);
-  const [completionWindow, setCompletionWindow] = useState(initialData.completionWindow ?? 7);
-  const [responseVisibility, setResponseVisibility] = useState(initialData.responseVisibility ?? 'both');
-  const [autoAnalyze, setAutoAnalyze] = useState(initialData.autoAnalyze ?? true);
-  const [scheduleStart, setScheduleStart] = useState(initialData.scheduleStart);
-  const [scheduleEnd, setScheduleEnd] = useState(initialData.scheduleEnd);
 
   const frequencyOptions = [
     { value: 'daily', label: 'Daily' },
@@ -61,20 +40,8 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
     { value: 'custom', label: 'Custom Schedule' }
   ];
 
-  const handleSave = () => {
-    onSave({
-      notifications,
-      reminders,
-      frequency,
-      ...(frequency === 'custom' ? { customFrequency } : {}),
-      autoAssign,
-      reminderDays,
-      completionWindow,
-      responseVisibility,
-      autoAnalyze,
-      scheduleStart,
-      scheduleEnd
-    });
+  const handleSubmit = () => {
+    onSave(settings);
   };
 
   return (
@@ -87,135 +54,77 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
       <div>
         <h2 className="text-2xl font-semibold text-white mb-2">Template Settings</h2>
         <p className="text-gray-400">
-          Configure how this template behaves when assigned to clients.
+          Configure how this template will be used and managed
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Notifications */}
-        <div className="bg-[#1C1C1F] rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Notifications</h3>
+      <div className="grid grid-cols-1 gap-8">
+        {/* Notifications & Reminders */}
+        <div className="bg-[#1C1C1F] rounded-lg p-6 space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <BellIcon className="w-6 h-6 text-indigo-400" />
+            <h3 className="text-lg font-medium text-white">Notifications & Reminders</h3>
+          </div>
+          
           <div className="space-y-4">
             <label className="flex items-center justify-between">
-              <div>
-                <span className="text-white">Enable Notifications</span>
-                <p className="text-sm text-gray-400">
-                  Send notifications when check-ins are due
-                </p>
-              </div>
+              <span className="text-gray-300">Enable notifications</span>
               <button
-                onClick={() => setNotifications(!notifications)}
+                onClick={() => setSettings(s => ({ ...s, notifications: !s.notifications }))}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  notifications ? 'bg-indigo-600' : 'bg-gray-700'
+                  settings.notifications ? 'bg-indigo-600' : 'bg-gray-700'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    notifications ? 'translate-x-6' : 'translate-x-1'
+                    settings.notifications ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
             </label>
 
             <label className="flex items-center justify-between">
-              <div>
-                <span className="text-white">Enable Reminders</span>
-                <p className="text-sm text-gray-400">
-                  Send reminder notifications for overdue check-ins
-                </p>
-              </div>
+              <span className="text-gray-300">Enable reminders</span>
               <button
-                onClick={() => setReminders(!reminders)}
+                onClick={() => setSettings(s => ({ ...s, reminders: !s.reminders }))}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  reminders ? 'bg-indigo-600' : 'bg-gray-700'
+                  settings.reminders ? 'bg-indigo-600' : 'bg-gray-700'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    reminders ? 'translate-x-6' : 'translate-x-1'
+                    settings.reminders ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
             </label>
-          </div>
-        </div>
 
-        {/* Check-in Frequency */}
-        <div className="bg-[#1C1C1F] rounded-lg p-6">
-          <h3 className="text-lg font-medium text-white mb-4">Check-in Frequency</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => setFrequency('daily')}
-              className={`p-4 rounded-lg border ${
-                frequency === 'daily'
-                  ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                  : 'border-gray-700 text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              Daily
-            </button>
-            <button
-              onClick={() => setFrequency('weekly')}
-              className={`p-4 rounded-lg border ${
-                frequency === 'weekly'
-                  ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                  : 'border-gray-700 text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              Weekly
-            </button>
-            <button
-              onClick={() => setFrequency('monthly')}
-              className={`p-4 rounded-lg border ${
-                frequency === 'monthly'
-                  ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                  : 'border-gray-700 text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setFrequency('custom')}
-              className={`p-4 rounded-lg border ${
-                frequency === 'custom'
-                  ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                  : 'border-gray-700 text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              Custom
-            </button>
+            {settings.reminders && (
+              <div className="pl-6 space-y-3">
+                <p className="text-sm text-gray-400">Send reminders before due date:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 5, 7].map(days => (
+                    <button
+                      key={days}
+                      onClick={() => {
+                        const newDays = settings.reminderDays.includes(days)
+                          ? settings.reminderDays.filter(d => d !== days)
+                          : [...settings.reminderDays, days];
+                        setSettings(s => ({ ...s, reminderDays: newDays }));
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        settings.reminderDays.includes(days)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-[#2C2C30] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {days} {days === 1 ? 'day' : 'days'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-
-          {frequency === 'custom' && (
-            <div className="mt-4 flex items-center gap-4">
-              <input
-                type="number"
-                min="1"
-                value={customFrequency.value}
-                onChange={(e) =>
-                  setCustomFrequency({
-                    ...customFrequency,
-                    value: parseInt(e.target.value) || 1
-                  })
-                }
-                className="bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white w-24"
-              />
-              <select
-                value={customFrequency.unit}
-                onChange={(e) =>
-                  setCustomFrequency({
-                    ...customFrequency,
-                    unit: e.target.value as 'days' | 'weeks' | 'months'
-                  })
-                }
-                className="bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white"
-              >
-                <option value="days">Days</option>
-                <option value="weeks">Weeks</option>
-                <option value="months">Months</option>
-              </select>
-            </div>
-          )}
         </div>
 
         {/* Schedule & Frequency */}
@@ -228,19 +137,40 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
+                Check-in Frequency
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {frequencyOptions.map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSettings(s => ({ ...s, frequency: option.value }))}
+                    className={`px-4 py-2 rounded-lg text-sm ${
+                      settings.frequency === option.value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-[#2C2C30] text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
                 Completion Window (days)
               </label>
               <input
                 type="number"
-                value={completionWindow}
-                onChange={e => setCompletionWindow(parseInt(e.target.value) || 7)}
+                value={settings.completionWindow}
+                onChange={e => setSettings(s => ({ ...s, completionWindow: parseInt(e.target.value) || 7 }))}
                 min={1}
                 max={30}
                 className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white"
               />
             </div>
 
-            {frequency === 'custom' && (
+            {settings.frequency === 'custom' && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -248,8 +178,8 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
                   </label>
                   <input
                     type="date"
-                    value={scheduleStart}
-                    onChange={e => setScheduleStart(e.target.value)}
+                    value={settings.scheduleStart}
+                    onChange={e => setSettings(s => ({ ...s, scheduleStart: e.target.value }))}
                     className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white"
                   />
                 </div>
@@ -259,8 +189,8 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
                   </label>
                   <input
                     type="date"
-                    value={scheduleEnd}
-                    onChange={e => setScheduleEnd(e.target.value)}
+                    value={settings.scheduleEnd}
+                    onChange={e => setSettings(s => ({ ...s, scheduleEnd: e.target.value }))}
                     className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white"
                   />
                 </div>
@@ -285,9 +215,9 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
                 {['coach', 'client', 'both'].map(option => (
                   <button
                     key={option}
-                    onClick={() => setResponseVisibility(option as any)}
+                    onClick={() => setSettings(s => ({ ...s, responseVisibility: option as any }))}
                     className={`px-4 py-2 rounded-lg text-sm capitalize ${
-                      responseVisibility === option
+                      settings.responseVisibility === option
                         ? 'bg-indigo-600 text-white'
                         : 'bg-[#2C2C30] text-gray-400 hover:text-white'
                     }`}
@@ -301,14 +231,14 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
             <label className="flex items-center justify-between">
               <span className="text-gray-300">Auto-assign to new clients</span>
               <button
-                onClick={() => setAutoAssign(!autoAssign)}
+                onClick={() => setSettings(s => ({ ...s, autoAssign: !s.autoAssign }))}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoAssign ? 'bg-indigo-600' : 'bg-gray-700'
+                  settings.autoAssign ? 'bg-indigo-600' : 'bg-gray-700'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoAssign ? 'translate-x-6' : 'translate-x-1'
+                    settings.autoAssign ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -330,14 +260,14 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
                 <span className="text-sm text-gray-500">Generate insights when responses are submitted</span>
               </div>
               <button
-                onClick={() => setAutoAnalyze(!autoAnalyze)}
+                onClick={() => setSettings(s => ({ ...s, autoAnalyze: !s.autoAnalyze }))}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  autoAnalyze ? 'bg-indigo-600' : 'bg-gray-700'
+                  settings.autoAnalyze ? 'bg-indigo-600' : 'bg-gray-700'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    autoAnalyze ? 'translate-x-6' : 'translate-x-1'
+                    settings.autoAnalyze ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -347,13 +277,12 @@ export default function TemplateSettings({ initialData, onSave }: TemplateSettin
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end mt-8">
+      <div className="flex justify-end pt-6">
         <button
-          onClick={handleSave}
+          onClick={handleSubmit}
           className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
         >
-          Save Template
-          <ChevronRightIcon className="w-5 h-5" />
+          Save Settings
         </button>
       </div>
     </motion.div>
