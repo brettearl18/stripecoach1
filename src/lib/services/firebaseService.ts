@@ -161,12 +161,13 @@ let mockClients: Client[] = [
 // Check-in functions
 export interface CheckIn {
   id: string;
-  clientId: string;
   coachId: string;
+  clientId: string;
   date: string;
-  status: 'pending' | 'completed' | 'reviewed';
-  type: 'weekly' | 'monthly' | 'custom';
-  data: Record<string, any>;
+  status: 'pending' | 'reviewed';
+  metrics: {
+    [key: string]: number;
+  };
 }
 
 export interface Question {
@@ -347,4 +348,57 @@ export const createFromTemplate = async (templateId: string): Promise<string> =>
     console.error('Error creating from template:', error);
     throw error;
   }
-}; 
+};
+
+export async function getCheckIns(clientId?: string): Promise<CheckIn[]> {
+  try {
+    const checkInsRef = collection(db, 'checkIns');
+    const q = clientId 
+      ? query(checkInsRef, where('clientId', '==', clientId))
+      : checkInsRef;
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as CheckIn[];
+  } catch (error) {
+    console.error('Error fetching check-ins:', error);
+    return [];
+  }
+}
+
+export async function getClientById(clientId: string): Promise<Client | null> {
+  try {
+    const clientRef = doc(db, 'clients', clientId);
+    const clientDoc = await getDoc(clientRef);
+    
+    if (!clientDoc.exists()) {
+      return null;
+    }
+
+    return {
+      id: clientDoc.id,
+      ...clientDoc.data()
+    } as Client;
+  } catch (error) {
+    console.error('Error fetching client:', error);
+    return null;
+  }
+}
+
+export async function getUserRole(userId: string): Promise<string | null> {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      return null;
+    }
+
+    return userDoc.data().role;
+  } catch (error) {
+    console.error('Error fetching user role:', error);
+    return null;
+  }
+} 

@@ -1,5 +1,6 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import { authService } from './services/authService';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -7,41 +8,35 @@ export const authOptions: NextAuthOptions = {
       name: 'Credentials',
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        role: { label: "Role", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error('Missing credentials');
         }
 
-        // This is where you would typically validate against your database
-        // For now, we'll use mock users for development
-        const mockUsers = {
-          "admin@example.com": {
-            id: "1",
-            email: "admin@example.com",
-            name: "Admin User",
-            role: "admin",
-          },
-          "coach@example.com": {
-            id: "2",
-            email: "coach@example.com",
-            name: "Coach User",
-            role: "coach",
-          },
-          "client@example.com": {
-            id: "3",
-            email: "client@example.com",
-            name: "Client User",
-            role: "client",
+        try {
+          const user = await authService.authenticateUser(
+            credentials.email,
+            credentials.password,
+            credentials.role
+          );
+
+          if (!user) {
+            throw new Error('Invalid credentials');
           }
-        };
 
-        if (credentials.password === "password" && mockUsers[credentials.email]) {
-          return mockUsers[credentials.email];
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error('Authentication error:', error);
+          throw new Error('Authentication failed');
         }
-
-        return null;
       }
     })
   ],
@@ -50,7 +45,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/login',
     error: '/auth/error',
   },
   callbacks: {
@@ -62,11 +57,12 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
+      if (token) {
+        session.user.role = token.role;
+        session.user.id = token.id;
       }
       return session;
     },
   },
+  secret: process.env.NEXTAUTH_SECRET,
 } 

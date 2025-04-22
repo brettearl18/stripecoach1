@@ -6,7 +6,7 @@ import { Tab } from '@headlessui/react';
 import { DynamicForm } from '@/components/forms/DynamicForm';
 import { FormTemplate, FormSubmission } from '@/types/forms';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import {
   ChartBarIcon,
   ClipboardDocumentListIcon,

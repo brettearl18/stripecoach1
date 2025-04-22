@@ -1,95 +1,105 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BellIcon } from '@heroicons/react/24/outline';
+import {
+  HomeIcon,
+  UsersIcon,
+  Squares2X2Icon,
+  Cog6ToothIcon,
+  ClipboardDocumentListIcon,
+  ChatBubbleLeftRightIcon,
+  ChartBarIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon
+} from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface NavItem {
-  name: string;
-  href: string;
-  badge?: number;
-}
+const navigation = [
+  { name: 'Dashboard', href: '/coach/dashboard', icon: HomeIcon },
+  { name: 'Clients', href: '/coach/clients', icon: UsersIcon },
+  { name: 'Templates', href: '/coach/templates-v2', icon: Squares2X2Icon },
+  { name: 'Settings', href: '/coach/settings', icon: Cog6ToothIcon },
+  { name: 'Forms', href: '/coach/forms', icon: ClipboardDocumentListIcon },
+  { name: 'Check-ins', href: '/coach/check-ins', icon: ChatBubbleLeftRightIcon },
+  { name: 'Messages', href: '/coach/messages', icon: ChatBubbleLeftRightIcon },
+  { name: 'Analytics', href: '/coach/analytics', icon: ChartBarIcon },
+];
 
-const navItems: Record<string, NavItem[]> = {
-  admin: [
-    { name: 'Dashboard', href: '/admin/dashboard' },
-    { name: 'Coaches', href: '/admin/coaches' },
-    { name: 'Clients', href: '/admin/clients' },
-    { name: 'Analytics', href: '/admin/analytics' },
-    { name: 'Settings', href: '/admin/settings' },
-    { name: 'Calendar', href: '/admin/calendar' },
-    { name: 'Messages', href: '/admin/messages' },
-    { name: 'Check-ins', href: '/admin/check-ins' },
-    { name: 'Programs', href: '/admin/programs' },
-    { name: 'Reports', href: '/admin/reports' },
-    { name: 'Billing', href: '/admin/billing' },
-  ],
-  coach: [
-    { name: 'Dashboard', href: '/coach/dashboard' },
-    { name: 'Dashboard 2', href: '/coach/dashboard2' },
-    { name: 'Clients', href: '/coach/clients' },
-    { name: 'Client Overview', href: '/coach/client2' },
-    { name: 'Messages', href: '/coach/messages', badge: 2 },
-    { name: 'Analytics', href: '/coach/analytics' },
-    { name: 'Settings', href: '/coach/settings' },
-  ],
-  client: [
-    { name: 'Setup', href: '/client/setup' },
-    { name: 'Dashboard', href: '/client/dashboard' },
-    { name: 'Progress', href: '/client/progress' },
-    { name: 'Check-ins', href: '/client/check-ins' },
-    { name: 'Food Scanner', href: '/client/food-scanner' },
-    { name: 'Messages', href: '/client/messages' },
-    { name: 'Settings', href: '/client/settings' },
-  ],
-};
-
-export function DashboardNav() {
+export default function DashboardNav() {
   const { user } = useAuth();
   const pathname = usePathname();
-  const role = user?.role || 'client';
-  const items = navItems[role] || [];
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white capitalize">{role} Dashboard</h1>
-              <p className="text-sm text-gray-500">{user?.name || user?.email}</p>
-            </div>
-            <nav className="hidden md:flex space-x-1">
-              {items.map((item) => (
+    <div 
+      className={cn(
+        "h-screen bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col",
+        isExpanded ? "w-64" : "w-16"
+      )}
+    >
+      <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+        {isExpanded ? (
+          <h1 className="text-xl font-bold">Coach Portal</h1>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+            <span className="text-sm font-bold">C</span>
+          </div>
+        )}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="p-1 hover:bg-gray-800 rounded-lg transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronLeftIcon className="h-5 w-5" />
+          ) : (
+            <ChevronRightIcon className="h-5 w-5" />
+          )}
+        </button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto py-4">
+        <ul className="space-y-1 px-2">
+          {navigation.map((item) => {
+            const isActive = pathname.startsWith(item.href);
+            return (
+              <li key={item.name}>
                 <Link
-                  key={item.href}
                   href={item.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors relative
-                    ${pathname === item.href
-                      ? 'text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                    }`}
+                  className={cn(
+                    "flex items-center px-3 py-2 rounded-lg transition-colors relative group",
+                    isActive
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  )}
                 >
-                  {item.name}
-                  {item.badge && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">
-                      {item.badge}
-                    </span>
+                  <item.icon className="h-6 w-6 shrink-0" />
+                  {isExpanded ? (
+                    <span className="ml-3">{item.name}</span>
+                  ) : (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50">
+                      {item.name}
+                    </div>
                   )}
                 </Link>
-              ))}
-            </nav>
-          </div>
-          <div className="flex items-center space-x-4">
-            <ThemeToggle />
-            <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white relative">
-              <BellIcon className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">
-                3
-              </span>
-            </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className={cn(
+        "p-4 border-t border-gray-800",
+        isExpanded ? "block" : "hidden"
+      )}>
+        <div className="flex items-center">
+          <div className="w-8 h-8 rounded-full bg-gray-700" />
+          <div className="ml-3">
+            <p className="text-sm font-medium">Coach Account</p>
+            <p className="text-xs text-gray-400">View Profile</p>
           </div>
         </div>
       </div>

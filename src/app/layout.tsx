@@ -3,6 +3,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import ClientProviders from './client-providers'
+import { SessionProvider } from '@/providers/SessionProvider'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,12 +24,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="antialiased font-sans">
-        <ClientProviders>
-          <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
-            {children}
-          </div>
-        </ClientProviders>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <SessionProvider>
+          <ThemeProvider>
+            <ClientProviders>
+              <div className="relative flex min-h-screen flex-col bg-background">
+                {children}
+              </div>
+            </ClientProviders>
+          </ThemeProvider>
+        </SessionProvider>
         <Toaster position="top-right" />
       </body>
     </html>

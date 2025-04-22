@@ -1,48 +1,69 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export default function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   // Get the pathname of the request
   const path = request.nextUrl.pathname;
+  console.log('Middleware - Current path:', path);
 
   // Define public paths that don't require authentication
   const isPublicPath = path === '/login' || path === '/signup' || path === '/reset-password' || path === '/';
+  console.log('Middleware - Is public path:', isPublicPath);
 
-  // Get the user from cookies
-  const userCookie = request.cookies.get('user')?.value;
-  let user = null;
-  
-  try {
-    if (userCookie) {
-      user = JSON.parse(userCookie);
-    }
-  } catch (error) {
-    console.error('Error parsing user cookie:', error);
-  }
+  // Get the token from NextAuth
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  });
 
-  // Redirect logic for authenticated users trying to access public paths
-  if (isPublicPath && user) {
-    const redirectPath = `/${user.role}/dashboard`;
+  console.log('Middleware - Token data:', {
+    exists: !!token,
+    role: token?.role,
+    email: token?.email,
+    path
+  });
+
+  // If accessing a public path while authenticated, redirect to role-specific dashboard
+  if (isPublicPath && token?.role) {
+    const redirectPath = `/${token.role}/dashboard`;
+    console.log('Middleware - Redirecting authenticated user from public path to:', redirectPath);
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
-  // Redirect logic for unauthenticated users trying to access protected paths
-  if (!isPublicPath && !user && !path.startsWith('/api')) {
+  // If accessing a protected path without authentication, redirect to login
+  if (!isPublicPath && !token) {
+    console.log('Middleware - Redirecting unauthenticated user to login');
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Role-based access control
-  if (user && !isPublicPath && !path.startsWith('/api')) {
-    const userRole = user.role;
-    const isAccessingOwnRole = path.startsWith(`/${userRole}`);
-    const isAdmin = userRole === 'admin';
+  // If authenticated, check role-based access
+  if (token?.role && !isPublicPath) {
+    const userRole = token.role;
+    
+    // Extract the role from the URL path (e.g., /coach/dashboard -> coach)
+    const urlRole = path.split('/')[1];
+    
+    console.log('Middleware - Role check:', {
+      userRole,
+      urlRole,
+      path
+    });
 
-    // Admin can access everything, others can only access their own role paths
-    if (!isAdmin && !isAccessingOwnRole) {
-      return NextResponse.redirect(new URL(`/${userRole}/dashboard`, request.url));
+    // Verify role-based access
+    if (userRole === 'admin') {
+      // Admin can access everything
+      console.log('Middleware - Admin access granted');
+      return NextResponse.next();
+    } else if (urlRole !== userRole) {
+      // Other roles can only access their own paths
+      const correctPath = `/${userRole}/dashboard`;
+      console.log('Middleware - Redirecting to correct role path:', correctPath);
+      return NextResponse.redirect(new URL(correctPath, request.url));
     }
   }
 
+  console.log('Middleware - Access granted');
   return NextResponse.next();
 }
 

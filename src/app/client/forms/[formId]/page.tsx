@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCheckInForms, saveFormSubmission, getFormSubmissions, type CheckInForm } from '@/lib/services/firebaseService';
 import CheckInFormView from '@/components/checkIn/CheckInFormView';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function ClientFormPage() {
   const params = useParams();

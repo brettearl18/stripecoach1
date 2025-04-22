@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveAssessment } from '@/lib/services/assessmentService';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface FormData {
   physicalStats: {

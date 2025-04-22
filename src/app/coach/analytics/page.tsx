@@ -1,319 +1,219 @@
 'use client';
 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { CalendarDateRangePicker } from '@/components/date-range-picker';
+import { LineChart, BarChart, DonutChart } from '@tremor/react';
+import { Download, RefreshCcw } from 'lucide-react';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import {
-  ChartBarIcon,
-  UsersIcon,
-  CurrencyDollarIcon,
-  ClockIcon,
-  ArrowTrendingUpIcon,
-  SparklesIcon,
-  CalendarIcon,
-  ChartPieIcon,
-} from '@heroicons/react/24/outline';
-import { DashboardNav } from '@/components/DashboardNav';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Mock data - replace with real data from your backend
-const mockData = {
-  clientMetrics: {
-    totalClients: 45,
-    activeClients: 38,
-    retentionRate: 92,
-    avgSessionsPerWeek: 3.5,
-    revenuePerClient: 250,
-  },
-  monthlyRevenue: [
-    { month: 'Jan', revenue: 8500 },
-    { month: 'Feb', revenue: 9200 },
-    { month: 'Mar', revenue: 11000 },
-    { month: 'Apr', revenue: 10500 },
-    { month: 'May', revenue: 12000 },
-  ],
-  clientProgress: {
-    weightLoss: { achieved: 85, total: 100 },
-    strengthGains: { achieved: 72, total: 100 },
-    nutritionAdherence: { achieved: 68, total: 100 },
-    workoutCompletion: { achieved: 88, total: 100 },
-  },
-  topPerformers: [
-    { name: 'Sarah Wilson', metric: 'Most Consistent', progress: 95 },
-    { name: 'James Thompson', metric: 'Best Progress', progress: 88 },
-    { name: 'Emma Davis', metric: 'Most Improved', progress: 82 },
-  ],
-};
+const chartdata = [
+  { date: '2024-01', "Client Progress": 63, "Check-ins": 40 },
+  { date: '2024-02', "Client Progress": 67, "Check-ins": 45 },
+  { date: '2024-03', "Client Progress": 72, "Check-ins": 52 },
+  { date: '2024-04', "Client Progress": 78, "Check-ins": 58 },
+];
 
-export default function Analytics() {
-  const [timeframe, setTimeframe] = useState('month');
+const clientStats = [
+  { name: 'Active', value: 85 },
+  { name: 'At Risk', value: 10 },
+  { name: 'Inactive', value: 5 },
+];
+
+export default function AnalyticsPage() {
+  const [selectedView, setSelectedView] = useState('overview');
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <DashboardNav />
-      
-      <main className="p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Comprehensive insights into your coaching business and client progress
-            </p>
-          </div>
-
-          {/* Time Frame Selector */}
-          <div className="mb-6 flex items-center gap-2">
-            <button
-              onClick={() => setTimeframe('week')}
-              className={
-                timeframe === 'week'
-                  ? 'px-4 py-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
-                  : 'px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }
-            >
-              Week
-            </button>
-            <button
-              onClick={() => setTimeframe('month')}
-              className={
-                timeframe === 'month'
-                  ? 'px-4 py-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
-                  : 'px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }
-            >
-              Month
-            </button>
-            <button
-              onClick={() => setTimeframe('quarter')}
-              className={
-                timeframe === 'quarter'
-                  ? 'px-4 py-2 rounded-lg bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
-                  : 'px-4 py-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-              }
-            >
-              Quarter
-            </button>
-          </div>
-
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Clients</p>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {mockData.clientMetrics.totalClients}
-                  </h3>
-                </div>
-                <UsersIcon className="w-12 h-12 text-indigo-500 opacity-80" />
-              </div>
-              <div className="mt-4 flex items-center text-sm">
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500 mr-1" />
-                <span className="text-green-500">+12%</span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">vs last month</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Monthly Revenue</p>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    ${mockData.monthlyRevenue[mockData.monthlyRevenue.length - 1].revenue.toLocaleString()}
-                  </h3>
-                </div>
-                <CurrencyDollarIcon className="w-12 h-12 text-green-500 opacity-80" />
-              </div>
-              <div className="mt-4 flex items-center text-sm">
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500 mr-1" />
-                <span className="text-green-500">+8%</span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">vs last month</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Retention Rate</p>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {mockData.clientMetrics.retentionRate}%
-                  </h3>
-                </div>
-                <ChartPieIcon className="w-12 h-12 text-purple-500 opacity-80" />
-              </div>
-              <div className="mt-4 flex items-center text-sm">
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500 mr-1" />
-                <span className="text-green-500">+5%</span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">vs last quarter</span>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Avg. Sessions/Week</p>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                    {mockData.clientMetrics.avgSessionsPerWeek}
-                  </h3>
-                </div>
-                <ClockIcon className="w-12 h-12 text-blue-500 opacity-80" />
-              </div>
-              <div className="mt-4 flex items-center text-sm">
-                <ArrowTrendingUpIcon className="w-4 h-4 text-green-500 mr-1" />
-                <span className="text-green-500">+0.5</span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">vs last month</span>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Revenue Chart */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm mb-8"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Revenue Trend</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockData.monthlyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis dataKey="month" stroke="#6B7280" />
-                  <YAxis stroke="#6B7280" />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="revenue" stroke="#6366F1" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-
-          {/* Client Progress and AI Insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            {/* Client Progress */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Client Progress Overview</h3>
-              <div className="space-y-4">
-                {Object.entries(mockData.clientProgress).map(([key, value]) => (
-                  <div key={key} className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <span className="text-gray-900 dark:text-white font-medium">
-                        {value.achieved}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500"
-                        style={{ width: `${value.achieved}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* AI Insights */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-            >
-              <div className="flex items-center gap-2 mb-6">
-                <SparklesIcon className="w-6 h-6 text-indigo-500" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AI Business Insights</h3>
-              </div>
-              <div className="space-y-4">
-                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
-                  <h4 className="font-medium text-indigo-700 dark:text-indigo-300 mb-2">Revenue Optimization</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Based on current trends, increasing session frequency by 1 per week could boost revenue by 15%.
-                    Consider introducing a premium tier package.
-                  </p>
-                </div>
-                <div className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg">
-                  <h4 className="font-medium text-green-700 dark:text-green-300 mb-2">Client Retention</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Clients who attend 3+ sessions per week show 95% retention rate. Focus on encouraging more
-                    frequent check-ins with less active clients.
-                  </p>
-                </div>
-                <div className="p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
-                  <h4 className="font-medium text-purple-700 dark:text-purple-300 mb-2">Growth Opportunity</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Your client satisfaction scores indicate room for 30% business growth. Consider expanding your
-                    team or introducing group sessions.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Top Performers */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Top Performing Clients</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {mockData.topPerformers.map((performer, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 flex items-start gap-4"
-                >
-                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/50 rounded-full flex items-center justify-center">
-                    <UsersIcon className="w-6 h-6 text-indigo-500" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white">{performer.name}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{performer.metric}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-full">
-                        <div
-                          className="h-full bg-indigo-500 rounded-full"
-                          style={{ width: `${performer.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {performer.progress}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+    <div className="container mx-auto p-6 space-y-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+          <p className="text-muted-foreground">Track your coaching business performance and client progress</p>
         </div>
-      </main>
+        <div className="flex items-center gap-4">
+          <CalendarDateRangePicker />
+          <Button variant="outline" size="icon">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon">
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">124</div>
+            <p className="text-xs text-muted-foreground">
+              +12% from last month
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">78%</div>
+            <p className="text-xs text-muted-foreground">
+              +5% from last month
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Check-in Rate</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">85%</div>
+            <p className="text-xs text-muted-foreground">
+              +3% from last month
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="progress" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
+          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="progress" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Progress Overview</CardTitle>
+              <CardDescription>Track client progress over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LineChart
+                data={chartdata}
+                index="date"
+                categories={["Client Progress", "Check-ins"]}
+                colors={["blue", "green"]}
+                yAxisWidth={40}
+                height="h-80"
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="engagement" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Client Status Distribution</CardTitle>
+                <CardDescription>Current client engagement levels</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DonutChart
+                  data={clientStats}
+                  category="value"
+                  index="name"
+                  colors={["green", "yellow", "red"]}
+                  height="h-80"
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Weekly Check-ins</CardTitle>
+                <CardDescription>Client check-in frequency</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BarChart
+                  data={chartdata}
+                  index="date"
+                  categories={["Check-ins"]}
+                  colors={["blue"]}
+                  yAxisWidth={40}
+                  height="h-80"
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="insights" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI-Generated Insights</CardTitle>
+              <CardDescription>Smart analysis of your coaching data</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Card className="bg-blue-50 dark:bg-blue-900/20 border-0">
+                <CardHeader>
+                  <CardTitle className="text-base">Trend Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Client progress has shown consistent improvement over the last 3 months, 
+                    with a notable correlation between check-in frequency and progress rates.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-green-50 dark:bg-green-900/20 border-0">
+                <CardHeader>
+                  <CardTitle className="text-base">Action Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2">
+                    <li>Focus on re-engaging 5 clients who haven't checked in for over 2 weeks</li>
+                    <li>Consider adjusting program intensity for clients showing slower progress</li>
+                    <li>Schedule check-ins with 3 high-performing clients for testimonials</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 } 

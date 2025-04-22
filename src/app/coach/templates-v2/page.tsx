@@ -5,6 +5,8 @@ import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Plus, Trash2, GripVertical, Save, Copy, MoreVertical, X, Camera, Ruler, Calendar, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { DefaultTemplates } from './components/DefaultTemplates'
+import { TemplateBranding } from './components/TemplateBranding'
 
 // Template types with clear descriptions and icons
 const TEMPLATE_TYPES = [
@@ -85,6 +87,13 @@ export default function TemplateBuilderV2() {
     description: '',
     sections: [],
     frequency: 'weekly',
+    branding: {
+      primaryColor: '#4F46E5',
+      secondaryColor: '#818CF8',
+      logo: '',
+      fontFamily: 'Inter',
+      customCSS: ''
+    },
     schedule: {
       type: 'weekly',
       days: [],
@@ -575,6 +584,35 @@ export default function TemplateBuilderV2() {
     </div>
   );
 
+  // Add the branding step render function
+  const renderBranding = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold">Customize Branding</h2>
+        <p className="text-muted-foreground">Personalize the appearance of your template</p>
+      </div>
+      <TemplateBranding
+        onBrandingUpdate={(branding) => setTemplate({ ...template, branding })}
+        initialBranding={template.branding}
+      />
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => setStep(3)}
+          className="px-4 py-2 text-muted-foreground hover:text-foreground"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => setStep(5)}
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+        >
+          Continue
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation Bar */}
@@ -586,7 +624,7 @@ export default function TemplateBuilderV2() {
               Back to Templates
             </Link>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Step {step} of 3</span>
+              <span className="text-sm text-muted-foreground">Step {step} of 5</span>
             </div>
           </div>
         </div>
@@ -604,6 +642,8 @@ export default function TemplateBuilderV2() {
             {step === 1 && renderTemplateTypeSelection()}
             {step === 2 && renderBasicDetails()}
             {step === 3 && renderSectionBuilder()}
+            {step === 4 && renderBranding()}
+            {step === 5 && renderPreview()}
           </motion.div>
         </AnimatePresence>
       </main>

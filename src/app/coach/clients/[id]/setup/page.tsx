@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { clientService } from '@/lib/services/clientService';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { 
   ArrowLeftIcon,
   ClipboardDocumentListIcon,

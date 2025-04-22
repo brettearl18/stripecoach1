@@ -119,21 +119,21 @@ export default function LoginPage() {
         (role === 'coach' && emailPrefix === 'coach') ||
         (role === 'client' && emailPrefix === 'client')
       ) {
-        // Store role in localStorage for development
-        localStorage.setItem('userRole', role);
-        
-        // Direct redirect based on role - bypassing profile setup
+        // Determine redirect path based on role
+        let redirectPath = '/';
         switch (role) {
           case 'coach':
-            router.push('/coach/clients');
+            redirectPath = '/coach/dashboard';
             break;
           case 'client':
-            router.push('/client/dashboard');
+            redirectPath = '/client/dashboard';
             break;
           case 'admin':
-            router.push('/admin/dashboard');
+            redirectPath = '/admin/dashboard';
             break;
         }
+        
+        router.push(redirectPath);
       } else {
         toast.error('Please use the correct email prefix for your selected role (admin@, coach@, or client@)');
       }

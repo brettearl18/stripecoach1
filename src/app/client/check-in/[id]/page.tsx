@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { FormTemplate, Question, Category } from '@/lib/types/forms';
 import { getTemplateById } from '@/lib/data/form-templates';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 // Add ProgressPhoto type
 type ProgressPhoto = {

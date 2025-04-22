@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { testClients, formatCurrency } from '@/lib/test-data';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import RetryPaymentDialog from '@/app/components/RetryPaymentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 

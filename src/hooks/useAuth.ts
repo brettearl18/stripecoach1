@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
-import { getCoach } from '@/lib/services/firebaseService';
+import { getUserRole } from '@/lib/services/firebaseService';
 
 interface ExtendedUser extends User {
-  role?: string;
-  name?: string;
+  role?: 'coach' | 'client';
 }
 
 export function useAuth() {
@@ -15,22 +14,11 @@ export function useAuth() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          // Get additional coach data
-          const coachData = await getCoach(firebaseUser.uid);
-          
-          // Combine Firebase user with coach data
-          const extendedUser: ExtendedUser = {
-            ...firebaseUser,
-            role: coachData?.role || 'Coach',
-            name: coachData?.name
-          };
-          
-          setUser(extendedUser);
-        } catch (error) {
-          console.error('Error loading coach data:', error);
-          setUser(firebaseUser);
-        }
+        const role = await getUserRole(firebaseUser.uid);
+        setUser({
+          ...firebaseUser,
+          role
+        });
       } else {
         setUser(null);
       }
@@ -40,5 +28,10 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  return { user, loading };
+  return {
+    user,
+    loading,
+    isCoach: user?.role === 'coach',
+    isClient: user?.role === 'client',
+  };
 } 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { SecuritySettings, getSecuritySettings, saveSecuritySettings, getDefaultSecuritySettings } from '@/lib/services/securityService';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export const useSecuritySettings = () => {
   const { user } = useAuth();

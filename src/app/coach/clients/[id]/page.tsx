@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
@@ -34,6 +34,7 @@ import {
   ArrowsPointingOutIcon,
   UserIcon,
   PencilSquareIcon,
+  ArrowLeft,
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -807,134 +808,126 @@ const OverviewTab = ({ client }: TabContentProps) => (
                 <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div>
-      {/* Recent Check-ins */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Check-ins</h2>
-          <div className="space-y-4">
-            {client.checkIns?.slice(0, 3).map((checkIn: any) => (
-              <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center">
-                      <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {new Date(checkIn.date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
-                  </div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    checkIn.status === 'completed'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
-                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
-                  }`}>
-                    {checkIn.status}
-                  </span>
-                </div>
-                {checkIn.metrics && (
-                  <div className="mt-3 grid grid-cols-3 gap-4">
-                    {Object.entries(checkIn.metrics).map(([key, value]) => (
-                      <div key={key} className="text-sm">
-                        <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
-                        <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+                      <div className="flex items-center">
+                        <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {new Date(checkIn.date).toLocaleDateString()}
+                        </span>
                       </div>
-                    ))}
+                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
+                    </div>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      checkIn.status === 'completed'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
+                    }`}>
+                      {checkIn.status}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Right Column - AI Insights & Actions */}
-    <div className="space-y-6">
-      {/* AI Summary */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Insights</h2>
-            <SparklesIcon className="h-5 w-5 text-blue-500" />
-          </div>
-          <div className="prose prose-sm dark:prose-invert">
-            <p className="text-gray-600 dark:text-gray-300">{client.aiSummary?.overview}</p>
-            
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                <TrophyIcon className="h-4 w-4 text-green-500 mr-2" />
-                Recent Wins
-              </h3>
-              <ul className="mt-2 space-y-2">
-                {client.aiSummary?.wins.map((win: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{win}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-2" />
-                Areas for Attention
-              </h3>
-              <ul className="mt-2 space-y-2">
-                {client.aiSummary?.challenges.map((challenge: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <ClockIcon className="h-4 w-4 text-yellow-500 mr-2 mt-1 flex-shrink-0" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{challenge}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                <SparklesIcon className="h-4 w-4 text-blue-500 mr-2" />
-                Recommendations
-              </h3>
-              <ul className="mt-2 space-y-2">
-                {client.aiSummary?.recommendations.map((rec: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-2 mt-1 flex-shrink-0" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">{rec}</span>
-                  </li>
-                ))}
-              </ul>
+                  {checkIn.metrics && (
+                    <div className="mt-3 grid grid-cols-3 gap-4">
+                      {Object.entries(checkIn.metrics).map(([key, value]) => (
+                        <div key={key} className="text-sm">
+                          <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
+                          <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <div className="flex items-center">
-                <ClipboardDocumentListIcon className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Schedule Check-in</span>
+      {/* Right Column - AI Insights & Actions */}
+      <div className="space-y-6">
+        {/* AI Summary */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Insights</h2>
+              <SparklesIcon className="h-5 w-5 text-blue-500" />
+            </div>
+            <div className="prose prose-sm dark:prose-invert">
+              <p className="text-gray-600 dark:text-gray-300">{client.aiSummary?.overview}</p>
+              
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                  <TrophyIcon className="h-4 w-4 text-green-500 mr-2" />
+                  Recent Wins
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {client.aiSummary?.wins.map((win: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
+                      <span className="text-sm text-gray-600 dark:text-gray-300">{win}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <div className="flex items-center">
-                <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Send Message</span>
+
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                  <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-2" />
+                  Areas for Attention
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {client.aiSummary?.challenges.map((challenge: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <ClockIcon className="h-4 w-4 text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+                      <span className="text-sm text-gray-600 dark:text-gray-300">{challenge}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-            </button>
-            <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-              <div className="flex items-center">
-                <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">Update Goals</span>
+
+              <div className="mt-4">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                  <SparklesIcon className="h-4 w-4 text-blue-500 mr-2" />
+                  Recommendations
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {client.aiSummary?.recommendations.map((rec: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-2 mt-1 flex-shrink-0" />
+                      <span className="text-sm text-gray-600 dark:text-gray-300">{rec}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-            </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+            <div className="space-y-3">
+              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <div className="flex items-center">
+                  <ClipboardDocumentListIcon className="h-5 w-5 text-gray-400 mr-3" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Schedule Check-in</span>
+                </div>
+                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+              </button>
+              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <div className="flex items-center">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-3" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Send Message</span>
+                </div>
+                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+              </button>
+              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <div className="flex items-center">
+                  <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Update Goals</span>
+                </div>
+                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1722,7 +1715,7 @@ export default function ClientProfilePage() {
                   className={`${
                     activeTab === tab
                       ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
                 >
                   {tab}

@@ -10,6 +10,13 @@ export interface TemplateDraft {
     tags: string[];
     sections: any[];
     settings: any;
+    branding?: {
+      primaryColor: string;
+      secondaryColor: string;
+      logo: string;
+      fontFamily: string;
+      customCSS: string;
+    };
   };
 }
 
@@ -25,8 +32,18 @@ export const templateService = {
       // Save to local storage for immediate access
       localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
 
-      // Here you would typically also save to your backend
-      // await api.post('/api/templates/drafts', draft);
+      // Save to backend
+      const response = await fetch('/api/templates/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(draft),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save template draft');
+      }
     } catch (error) {
       console.error('Failed to save template draft:', error);
       throw error;
@@ -41,11 +58,12 @@ export const templateService = {
         return JSON.parse(localDraft);
       }
 
-      // Here you would typically also check your backend
-      // const response = await api.get('/api/templates/drafts');
-      // return response.data;
-
-      return null;
+      // Load from backend
+      const response = await fetch('/api/templates/drafts');
+      if (!response.ok) {
+        throw new Error('Failed to load template draft');
+      }
+      return await response.json();
     } catch (error) {
       console.error('Failed to load template draft:', error);
       return null;
@@ -55,11 +73,60 @@ export const templateService = {
   clearDraft: async (): Promise<void> => {
     try {
       localStorage.removeItem(STORAGE_KEY);
-      // Here you would typically also clear from your backend
-      // await api.delete('/api/templates/drafts');
+      
+      // Clear from backend
+      const response = await fetch('/api/templates/drafts', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clear template draft');
+      }
     } catch (error) {
       console.error('Failed to clear template draft:', error);
       throw error;
     }
+  },
+
+  importTemplate: async (templateData: any): Promise<void> => {
+    try {
+      const response = await fetch('/api/templates/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(templateData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to import template');
+      }
+    } catch (error) {
+      console.error('Failed to import template:', error);
+      throw error;
+    }
+  },
+
+  validateTemplate: (template: any): boolean => {
+    // Required fields
+    if (!template.name || !template.sections || !Array.isArray(template.sections)) {
+      return false;
+    }
+
+    // Validate sections
+    for (const section of template.sections) {
+      if (!section.title || !section.questions || !Array.isArray(section.questions)) {
+        return false;
+      }
+
+      // Validate questions
+      for (const question of section.questions) {
+        if (!question.text || !question.type) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 }; 

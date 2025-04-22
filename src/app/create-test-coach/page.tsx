@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createTestCoach } from '@/lib/services/firebaseService';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function CreateTestCoachPage() {
   const router = useRouter();

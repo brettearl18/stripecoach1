@@ -355,11 +355,33 @@ const ClientsPage = () => {
   const { user, loading: authLoading } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+
+  // Move useMemo here, before any useEffect
+  const sortedClients = useMemo(() => {
+    return [...clients].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'currentWeek':
+          comparison = (a.currentWeek || 0) - (b.currentWeek || 0);
+          break;
+        case 'currentCompliance':
+          comparison = (a.currentCompliance || 0) - (b.currentCompliance || 0);
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [clients, sortField, sortOrder]);
 
   useEffect(() => {
     const loadClients = async () => {
@@ -411,26 +433,6 @@ const ClientsPage = () => {
       </div>
     );
   }
-
-  const sortedClients = useMemo(() => {
-    return [...clients].sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortField) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'currentWeek':
-          comparison = a.currentWeek - b.currentWeek;
-          break;
-        case 'currentCompliance':
-          comparison = a.currentCompliance - b.currentCompliance;
-          break;
-      }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-  }, [clients, sortField, sortOrder]);
 
   const handleSortChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
