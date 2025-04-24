@@ -1,292 +1,249 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CoachProfile } from '@/types/coach';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import Image from 'next/image';
-import Link from 'next/link';
-import { StarIcon, CalendarIcon, ChatBubbleLeftIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import {
+  CalendarIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  AcademicCapIcon,
+  UserGroupIcon,
+  StarIcon,
+  ChatBubbleLeftRightIcon,
+  TrophyIcon,
+} from '@heroicons/react/24/outline';
+
+// Mock coach data
+const mockCoachData = {
+  name: "Sarah Wilson",
+  title: "Senior Fitness & Nutrition Coach",
+  avatar: "/avatars/sarah.jpg",
+  specialties: ["Weight Management", "Strength Training", "Nutrition Planning"],
+  experience: "8+ years",
+  certifications: [
+    "Certified Strength & Conditioning Specialist (CSCS)",
+    "Precision Nutrition Level 2",
+    "CrossFit Level 2 Trainer"
+  ],
+  availability: {
+    nextSession: "2024-04-23T15:00:00Z",
+    timezone: "Pacific Time (PT)",
+    typicalResponse: "Within 2 hours",
+  },
+  stats: {
+    clientsTransformed: 500,
+    avgWeightLoss: "15kg",
+    successRate: "92%",
+    avgClientTenure: "14 months"
+  },
+  recentAchievements: [
+    {
+      title: "Top Coach 2024",
+      description: "Recognized for exceptional client results and satisfaction",
+      date: "2024-03"
+    },
+    {
+      title: "Advanced Sports Nutrition",
+      description: "Completed advanced certification in sports nutrition",
+      date: "2024-02"
+    }
+  ],
+  approach: [
+    {
+      title: "Personalized Programming",
+      description: "Custom workout and nutrition plans based on your specific goals and lifestyle"
+    },
+    {
+      title: "Data-Driven Progress",
+      description: "Regular assessments and adjustments based on your progress metrics"
+    },
+    {
+      title: "Holistic Wellness",
+      description: "Focus on sustainable lifestyle changes, not just quick fixes"
+    }
+  ]
+};
 
 export default function CoachProfilePage() {
-  const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCoachProfile();
-  }, []);
-
-  const fetchCoachProfile = async () => {
-    try {
-      const response = await fetch('/api/coach/profile');
-      if (!response.ok) {
-        throw new Error('Failed to fetch coach profile');
-      }
-      const data = await response.json();
-      setProfile(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
+    // Simulate loading delay
+    const timer = setTimeout(() => {
       setLoading(false);
-    }
-  };
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">Error: {error}</div>
-      </div>
-    );
-  }
-
-  if (!profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-gray-500">No profile found</div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* Hero Section */}
-        <div className="bg-white shadow">
-          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center space-x-8">
-              <div className="relative h-32 w-32 rounded-full overflow-hidden">
-                <Image
-                  src={profile.avatar}
-                  alt={profile.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{profile.name}</h1>
-                <p className="mt-1 text-xl text-gray-500">{profile.title}</p>
-                <div className="mt-4 flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <StarIcon className="h-5 w-5 text-yellow-400" />
-                    <span className="ml-1 text-sm text-gray-600">
-                      {profile.stats.successRate}% Success Rate
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <UserGroupIcon className="h-5 w-5 text-gray-400" />
-                    <span className="ml-1 text-sm text-gray-600">
-                      {profile.stats.totalClients} Clients
-                    </span>
+    <div className="min-h-screen bg-gray-900 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Coach Profile Header */}
+        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 mb-8">
+          <div className="flex items-start gap-6">
+            <div className="h-24 w-24 rounded-full bg-gray-700 flex items-center justify-center text-3xl font-medium text-white">
+              {mockCoachData.name.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-white">{mockCoachData.name}</h1>
+                  <p className="text-gray-400">{mockCoachData.title}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <StarIcon className="w-5 h-5 text-yellow-500" />
+                    <span className="text-yellow-500 font-medium">{mockCoachData.stats.successRate} Success Rate</span>
                   </div>
                 </div>
+                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                  Schedule Call
+                </button>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {mockCoachData.specialties.map((specialty, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-sm"
+                  >
+                    {specialty}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Bio */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">About Me</h2>
-                <p className="mt-4 text-gray-600">{profile.bio}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <UserGroupIcon className="w-6 h-6 text-blue-400 mb-2" />
+                <div className="text-2xl font-bold text-white">{mockCoachData.stats.clientsTransformed}+</div>
+                <div className="text-sm text-gray-400">Clients Transformed</div>
               </div>
+              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <TrophyIcon className="w-6 h-6 text-green-400 mb-2" />
+                <div className="text-2xl font-bold text-white">{mockCoachData.stats.avgWeightLoss}</div>
+                <div className="text-sm text-gray-400">Avg. Weight Loss</div>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <StarIcon className="w-6 h-6 text-yellow-400 mb-2" />
+                <div className="text-2xl font-bold text-white">{mockCoachData.stats.successRate}</div>
+                <div className="text-sm text-gray-400">Success Rate</div>
+              </div>
+              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <ClockIcon className="w-6 h-6 text-purple-400 mb-2" />
+                <div className="text-2xl font-bold text-white">{mockCoachData.stats.avgClientTenure}</div>
+                <div className="text-sm text-gray-400">Avg. Client Tenure</div>
+              </div>
+            </div>
 
-              {/* Expertise */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">Expertise</h2>
-                <div className="mt-4 space-y-4">
-                  {profile.expertise.map((exp, index) => (
-                    <div key={index} className="border-b border-gray-200 pb-4 last:border-0">
-                      <h3 className="text-lg font-medium text-gray-900">{exp.category}</h3>
-                      <p className="mt-1 text-gray-600">{exp.description}</p>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {exp.yearsOfExperience} years of experience
-                      </p>
+            {/* Coaching Approach */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Coaching Approach</h2>
+              <div className="space-y-4">
+                {mockCoachData.approach.map((item, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="p-2 bg-gray-700 rounded-lg h-fit">
+                      <AcademicCapIcon className="w-5 h-5 text-blue-400" />
                     </div>
-                  ))}
+                    <div>
+                      <h3 className="text-white font-medium">{item.title}</h3>
+                      <p className="text-gray-400 text-sm mt-1">{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Achievements */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Recent Achievements</h2>
+              <div className="space-y-4">
+                {mockCoachData.recentAchievements.map((achievement, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="p-2 bg-gray-700 rounded-lg h-fit">
+                      <TrophyIcon className="w-5 h-5 text-yellow-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium">{achievement.title}</h3>
+                      <p className="text-gray-400 text-sm mt-1">{achievement.description}</p>
+                      <p className="text-gray-500 text-sm mt-1">{achievement.date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-8">
+            {/* Quick Actions */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
+              <div className="space-y-3">
+                <button className="w-full flex items-center gap-3 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                  <CalendarIcon className="w-5 h-5" />
+                  Schedule 1:1 Call
+                </button>
+                <button className="w-full flex items-center gap-3 px-4 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                  <ChatBubbleLeftRightIcon className="w-5 h-5" />
+                  Send Message
+                </button>
+              </div>
+            </div>
+
+            {/* Availability & Response Time */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Availability</h2>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-gray-400 mb-1">Next Available Session</div>
+                  <div className="text-white">
+                    {new Date(mockCoachData.availability.nextSession).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit'
+                    })}
+                  </div>
                 </div>
-              </div>
-
-              {/* Testimonials */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">Client Testimonials</h2>
-                <div className="mt-4 space-y-6">
-                  {profile.testimonials.map((testimonial) => (
-                    <div key={testimonial.id} className="border-b border-gray-200 pb-6 last:border-0">
-                      <div className="flex items-center">
-                        {testimonial.clientAvatar && (
-                          <div className="relative h-10 w-10 rounded-full overflow-hidden">
-                            <Image
-                              src={testimonial.clientAvatar}
-                              alt={testimonial.clientName}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        )}
-                        <div className="ml-4">
-                          <h4 className="text-sm font-medium text-gray-900">
-                            {testimonial.clientName}
-                          </h4>
-                          <div className="flex items-center mt-1">
-                            {[...Array(5)].map((_, i) => (
-                              <StarIcon
-                                key={i}
-                                className={`h-4 w-4 ${
-                                  i < testimonial.rating
-                                    ? 'text-yellow-400'
-                                    : 'text-gray-300'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mt-4 text-gray-600">{testimonial.content}</p>
-                      <p className="mt-2 text-sm text-gray-500">
-                        {new Date(testimonial.date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
+                <div>
+                  <div className="text-gray-400 mb-1">Timezone</div>
+                  <div className="text-white">{mockCoachData.availability.timezone}</div>
+                </div>
+                <div>
+                  <div className="text-gray-400 mb-1">Typical Response Time</div>
+                  <div className="text-white">{mockCoachData.availability.typicalResponse}</div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-8">
-              {/* Packages */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">Coaching Packages</h2>
-                <div className="mt-4 space-y-4">
-                  {profile.packages.map((pkg) => (
-                    <div
-                      key={pkg.id}
-                      className={`border rounded-lg p-4 ${
-                        pkg.isPopular
-                          ? 'border-indigo-500 bg-indigo-50'
-                          : 'border-gray-200'
-                      }`}
-                    >
-                      <h3 className="text-lg font-medium text-gray-900">{pkg.name}</h3>
-                      <p className="mt-1 text-gray-600">{pkg.description}</p>
-                      <div className="mt-4">
-                        <span className="text-2xl font-bold text-gray-900">
-                          ${pkg.price}
-                        </span>
-                        <span className="text-gray-500">/{pkg.duration}</span>
-                      </div>
-                      <ul className="mt-4 space-y-2">
-                        {pkg.features.map((feature, index) => (
-                          <li key={index} className="flex items-center text-sm text-gray-600">
-                            <span className="mr-2">•</span>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                      <button className="mt-6 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">
-                        Select Package
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Availability */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">Availability</h2>
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-center text-gray-600">
-                    <CalendarIcon className="h-5 w-5 mr-2" />
-                    <span>Timezone: {profile.availability.timezone}</span>
+            {/* Certifications */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+              <h2 className="text-xl font-bold text-white mb-4">Certifications</h2>
+              <div className="space-y-3">
+                {mockCoachData.certifications.map((cert, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <AcademicCapIcon className="w-5 h-5 text-blue-400 mt-0.5" />
+                    <span className="text-gray-300">{cert}</span>
                   </div>
-                  <div className="space-y-2">
-                    {profile.availability.workingHours.map((hours, index) => (
-                      <div key={index} className="text-sm text-gray-600">
-                        {hours.day}: {hours.start} - {hours.end}
-                      </div>
-                    ))}
-                  </div>
-                  {profile.availability.bookingLink && (
-                    <Link
-                      href={profile.availability.bookingLink}
-                      className="mt-4 block w-full bg-indigo-600 text-white py-2 px-4 rounded-md text-center hover:bg-indigo-700"
-                    >
-                      Book a Session
-                    </Link>
-                  )}
-                </div>
-              </div>
-
-              {/* Contact */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h2 className="text-xl font-semibold text-gray-900">Contact</h2>
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-center text-gray-600">
-                    <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                    <a href={`mailto:${profile.contactInfo.email}`} className="hover:text-indigo-600">
-                      {profile.contactInfo.email}
-                    </a>
-                  </div>
-                  {profile.contactInfo.website && (
-                    <div className="flex items-center text-gray-600">
-                      <svg
-                        className="h-5 w-5 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
-                        />
-                      </svg>
-                      <a
-                        href={profile.contactInfo.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-indigo-600"
-                      >
-                        {profile.contactInfo.website}
-                      </a>
-                    </div>
-                  )}
-                  {profile.socialLinks && profile.socialLinks.length > 0 && (
-                    <div className="flex space-x-4">
-                      {profile.socialLinks.map((social, index) => (
-                        <a
-                          key={index}
-                          href={social.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-indigo-600"
-                        >
-                          <span className="sr-only">{social.platform}</span>
-                          {/* Add social media icons here */}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </div>
-    </ErrorBoundary>
+    </div>
   );
 } 

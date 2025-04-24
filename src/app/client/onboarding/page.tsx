@@ -1,159 +1,139 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ClientProfileModal, ClientProfile } from '@/components/checkIn/ClientProfileModal';
-import { InitialAssessment } from '@/components/onboarding/InitialAssessment';
-import { createClientProfile } from '@/lib/services/clientProfileService';
-import { getAuth } from 'firebase/auth';
-import {
-  UserIcon,
-  ClipboardDocumentCheckIcon,
-  AcademicCapIcon,
-  CheckCircleIcon
-} from '@heroicons/react/24/outline';
+import { useAuth } from '@/lib/auth';
+import { saveOnboardingProgress } from '@/lib/services/onboardingConfigService';
+import { UserIcon, ClipboardDocumentCheckIcon, CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import ProfileSetup from '@/components/onboarding/ProfileSetup';
+import GoalSelection from '@/components/onboarding/GoalSelection';
+import InitialAssessment from '@/components/onboarding/InitialAssessment';
 
 const steps = [
-  { id: 'profile', name: 'Profile Setup', icon: UserIcon },
-  { id: 'assessment', name: 'Initial Assessment', icon: ClipboardDocumentCheckIcon },
-  { id: 'program', name: 'Program Selection', icon: AcademicCapIcon },
-  { id: 'complete', name: 'All Set!', icon: CheckCircleIcon }
+  {
+    id: 'profile',
+    title: 'Profile Setup',
+    description: 'Tell us about yourself',
+    icon: UserIcon
+  },
+  {
+    id: 'goals',
+    title: 'Goal Selection',
+    description: 'Choose your focus areas',
+    icon: ClipboardDocumentCheckIcon
+  },
+  {
+    id: 'assessment',
+    title: 'Initial Assessment',
+    description: 'Complete your assessment',
+    icon: CheckCircleIcon
+  }
 ];
 
 export default function OnboardingPage() {
-  const [currentStep, setCurrentStep] = useState('profile');
-  const [profile, setProfile] = useState<ClientProfile | null>(null);
-  const [assessment, setAssessment] = useState(null);
-  const [program, setProgram] = useState(null);
   const router = useRouter();
-  const auth = getAuth();
+  const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState('profile');
+  const [profileData, setProfileData] = useState<any>(null);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Show progress steps
-  const renderSteps = () => (
-    <nav className="mb-8">
-      <ol className="flex items-center justify-center space-x-8">
-        {steps.map((step, index) => {
-          const isCurrent = step.id === currentStep;
-          const isComplete = steps.findIndex(s => s.id === currentStep) > index;
-          
-          return (
-            <li key={step.id} className="relative">
-              <div className="flex items-center">
-                <div className={`
-                  w-10 h-10 rounded-full flex items-center justify-center
-                  ${isComplete ? 'bg-green-600' : isCurrent ? 'bg-blue-600' : 'bg-gray-700'}
-                `}>
-                  <step.icon className="w-5 h-5 text-white" />
-                </div>
-                <span className={`
-                  ml-3 text-sm font-medium
-                  ${isCurrent ? 'text-white' : 'text-gray-400'}
-                `}>
-                  {step.name}
-                </span>
-              </div>
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-5 left-full w-24 h-px bg-gray-700" />
-              )}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
+  const handleProfileComplete = async (data: any) => {
+    setProfileData(data);
+    setCurrentStep('goals');
+  };
 
-  // Handle profile completion
-  const handleProfileComplete = async (profileData: ClientProfile) => {
-    if (!auth.currentUser) {
-      router.push('/login');
-      return;
-    }
+  const handleGoalsSelected = async (goals: string[]) => {
+    setSelectedGoals(goals);
+    setCurrentStep('assessment');
+  };
 
+  const handleAssessmentComplete = async (data: any) => {
+    if (!user?.uid) return;
+    
+    setIsSubmitting(true);
     try {
-      const result = await createClientProfile(auth.currentUser.uid, profileData);
-      if (result) {
-        setProfile(profileData);
-        setCurrentStep('assessment');
-      }
+      await saveOnboardingProgress(user.uid, {
+        profile: profileData,
+        goals: selectedGoals,
+        assessment: data,
+        completedAt: new Date().toISOString()
+      });
+      
+      router.push('/client/dashboard');
     } catch (error) {
-      console.error('Error creating profile:', error);
+      console.error('Error saving onboarding progress:', error);
+    } finally {
+      setIsSubmitting(false);
     }
-  };
-
-  // Handle assessment completion
-  const handleAssessmentComplete = (assessmentData: any) => {
-    setAssessment(assessmentData);
-    setCurrentStep('program');
-  };
-
-  // Handle program selection
-  const handleProgramSelect = (programData: any) => {
-    setProgram(programData);
-    setCurrentStep('complete');
-  };
-
-  // Handle completion
-  const handleComplete = () => {
-    router.push('/client/dashboard');
   };
 
   return (
-    <div className="w-full">
-      {renderSteps()}
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Welcome to Your Journey</h1>
+          <p className="text-gray-400">Let's set up your personalized program</p>
+        </div>
 
-      <div className="bg-gray-800 rounded-xl p-8 shadow-lg border border-gray-700">
-        {currentStep === 'profile' && (
-          <ClientProfileModal
-            isOpen={true}
-            onClose={() => {}}
-            onProfileComplete={handleProfileComplete}
-          />
-        )}
-
-        {currentStep === 'assessment' && (
-          <InitialAssessment
-            isOpen={true}
-            onClose={() => {}}
-            onComplete={handleAssessmentComplete}
-          />
-        )}
-
-        {currentStep === 'program' && (
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Choose Your Program</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Add program options here */}
-              <button
-                onClick={() => handleProgramSelect({ type: 'strength' })}
-                className="p-6 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                <h3 className="text-xl font-semibold text-white mb-2">Strength Training</h3>
-                <p className="text-gray-300">Focus on building strength and muscle</p>
-              </button>
-              <button
-                onClick={() => handleProgramSelect({ type: 'weight-loss' })}
-                className="p-6 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                <h3 className="text-xl font-semibold text-white mb-2">Weight Loss</h3>
-                <p className="text-gray-300">Focus on sustainable fat loss</p>
-              </button>
-            </div>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            {steps.map((step, index) => (
+              <div key={step.id} className="flex items-center">
+                <div className={`
+                  w-8 h-8 rounded-full flex items-center justify-center
+                  ${currentStep === step.id
+                    ? 'bg-blue-500 text-white'
+                    : currentStep === 'complete' || steps.findIndex(s => s.id === currentStep) > index
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-700 text-gray-400'
+                  }
+                `}>
+                  <step.icon className="w-5 h-5" />
+                </div>
+                {index < steps.length - 1 && (
+                  <div className={`
+                    flex-1 h-1 mx-2
+                    ${currentStep === 'complete' || steps.findIndex(s => s.id === currentStep) > index
+                      ? 'bg-green-500'
+                      : 'bg-gray-700'
+                    }
+                  `} />
+                )}
+              </div>
+            ))}
           </div>
-        )}
-
-        {currentStep === 'complete' && (
-          <div className="text-center">
-            <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">You're All Set!</h2>
-            <p className="text-gray-300 mb-8">Your profile is complete and your program is ready.</p>
-            <button
-              onClick={handleComplete}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Go to Dashboard
-            </button>
+          <div className="flex justify-between text-sm text-gray-400">
+            {steps.map(step => (
+              <div key={step.id} className="text-center">
+                <div className="font-medium">{step.title}</div>
+                <div>{step.description}</div>
+              </div>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="bg-gray-800/50 rounded-lg p-6">
+          {currentStep === 'profile' && (
+            <ProfileSetup onComplete={handleProfileComplete} />
+          )}
+
+          {currentStep === 'goals' && (
+            <GoalSelection
+              onGoalsSelected={handleGoalsSelected}
+              initialSelectedGoals={selectedGoals}
+            />
+          )}
+
+          {currentStep === 'assessment' && (
+            <InitialAssessment
+              isOpen={true}
+              onClose={() => {}}
+              onComplete={handleAssessmentComplete}
+              selectedGoals={selectedGoals}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

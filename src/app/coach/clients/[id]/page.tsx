@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { DashboardNav } from '@/components/DashboardNav';
+import DashboardNav from '@/components/DashboardNav';
 import {
   UserCircleIcon,
   EnvelopeIcon,
@@ -1517,6 +1517,120 @@ const CoachReviewSection = () => {
   );
 };
 
+const mockClientData = {
+  id: '1',
+  firstName: 'John',
+  lastName: 'Smith',
+  name: 'John Smith',
+  email: 'john.smith@example.com',
+  phone: '+1 (555) 123-4567',
+  startDate: '2024-01-15',
+  status: 'active',
+  metrics: {
+    streak: 4,
+    completionRate: 85,
+    lastCheckIn: '2024-03-20',
+    progress: 75,
+    weight: { value: 82.5, unit: 'kg', change: -0.8 },
+    sleep: { value: 7.8, unit: 'hours', change: 0.3 },
+    energy: { value: 8.5, unit: '/10', change: 1.5 },
+    stress: { value: 4, unit: '/10', change: -2 }
+  },
+  program: {
+    type: 'Weight Loss',
+    currentWeek: 8,
+    totalWeeks: 12,
+    phase: 'Progressive'
+  },
+  goals: [
+    { id: '1', title: 'Lose 20 pounds by June', progress: 65 },
+    { id: '2', title: 'Run a 5K under 30 minutes', progress: 40 },
+    { id: '3', title: 'Establish consistent meal prep routine', progress: 80 },
+    { id: '4', title: 'Improve sleep quality', progress: 70 }
+  ],
+  checkIns: [
+    {
+      id: '1',
+      formTitle: 'Weekly Progress Check-in',
+      date: '2024-03-20',
+      status: 'completed',
+      metrics: {
+        weight: '185',
+        sleep: '7.5',
+        energy: '8',
+        stress: '4'
+      },
+      responses: {
+        q1: { text: "Great progress this week. All workouts completed." },
+        q2: { text: "Energy levels have been consistently high" },
+        q3: { text: "Completed all planned workouts" },
+        q4: { text: "No concerns this week" }
+      },
+      notes: 'Great progress this week. All workouts completed.'
+    },
+    {
+      id: '2',
+      formTitle: 'Weekly Progress Check-in',
+      date: '2024-03-13',
+      status: 'completed',
+      metrics: {
+        weight: '187',
+        sleep: '7',
+        energy: '7',
+        stress: '5'
+      },
+      responses: {
+        q1: { text: "Struggled with evening snacking but maintained workout schedule." },
+        q2: { text: "Energy was good but fluctuated" },
+        q3: { text: "Missed one workout due to work" },
+        q4: { text: "Need help with evening cravings" }
+      },
+      notes: 'Struggled with evening snacking but maintained workout schedule.'
+    }
+  ],
+  weeklyProgress: {
+    training: 85,
+    nutrition: 75,
+    recovery: 80
+  },
+  forms: [
+    {
+      id: 'form1',
+      title: 'Monthly Assessment',
+      status: 'pending',
+      date: '2024-04-01'
+    },
+    {
+      id: 'form2',
+      title: 'Nutrition Questionnaire',
+      status: 'completed',
+      date: '2024-03-15'
+    }
+  ],
+  aiSummary: {
+    overview: "John has been making steady progress towards his goals. His consistency in check-ins and workout completion is commendable.",
+    wins: [
+      "Maintained consistent workout schedule",
+      "Improved sleep quality",
+      "Hit protein intake goals"
+    ],
+    challenges: [
+      "Managing stress levels",
+      "Weekend nutrition adherence"
+    ],
+    recommendations: [
+      "Focus on stress management techniques",
+      "Implement evening routine for better sleep",
+      "Add mobility work to recovery days"
+    ]
+  },
+  checkInHistory: Array.from({ length: 20 }, (_, i) => ({
+    week: i + 1,
+    date: new Date(Date.now() - (i * 7 * 24 * 60 * 60 * 1000)).toISOString(),
+    score: Math.random() > 0.1 ? Math.floor(Math.random() * 40) + 60 : 0
+  }))
+};
+
 export default function ClientProfilePage() {
   const params = useParams();
   const [activeTab, setActiveTab] = useState('overview');
@@ -1534,34 +1648,15 @@ export default function ClientProfilePage() {
       setLoading(true);
       setError(null);
       
-      // Get client profile from clientService
-      const profile = await clientService.getClientProfile(params.id as string);
-      if (!profile) {
-        throw new Error('Client profile not found');
+      if (!params.id) {
+        throw new Error('Client ID is required');
       }
 
-      // Transform profile data to match the component's expected format
-      setClient({
-        id: profile.id,
-        name: `${profile.firstName} ${profile.lastName}`,
-        email: profile.email,
-        phone: profile.phone,
-        startDate: profile.startDate,
-        status: profile.status,
-        metrics: {
-          streak: profile.metrics?.daysStreak || 0,
-          completionRate: profile.metrics?.completionRate || 0,
-          lastCheckIn: profile.metrics?.lastCheckIn,
-          progress: profile.metrics?.consistency || 0
-        },
-        program: profile.program,
-        forms: profile.assignedForms || [],
-        notes: profile.notes,
-        goals: profile.goals || []
-      });
+      // Use mock data instead of Firebase call
+      setClient(mockClientData);
     } catch (err) {
-      setError('Failed to load client data');
-      console.error(err);
+      console.error('Error loading client data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load client data');
     } finally {
       setLoading(false);
     }
@@ -1585,8 +1680,17 @@ export default function ClientProfilePage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <DashboardNav />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-red-500 dark:text-red-400">{error}</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+            <div className="flex flex-col items-center justify-center h-64">
+              <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mb-4" />
+              <p className="text-red-500 dark:text-red-400 text-lg font-medium mb-4">{error}</p>
+              <button
+                onClick={loadClient}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Try Again
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1701,6 +1805,67 @@ export default function ClientProfilePage() {
                     <span>+5%</span>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Compliance Timeline Indicator */}
+          <div className="mt-6 p-6 bg-gray-800/50 border border-gray-700 rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-white">Program Compliance Timeline</h3>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  &lt;60%
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                  60-79%
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  ≥80%
+                </span>
+              </div>
+            </div>
+            
+            <div className="relative">
+              {/* Timeline Bar */}
+              <div className="h-8 flex rounded-lg overflow-hidden">
+                {client.checkInHistory?.map((checkIn, index) => (
+                  <div
+                    key={index}
+                    className={`flex-1 ${
+                      !checkIn.score 
+                        ? 'bg-gray-700' 
+                        : checkIn.score >= 80
+                        ? 'bg-green-500'
+                        : checkIn.score >= 60
+                        ? 'bg-yellow-500'
+                        : 'bg-red-500'
+                    } relative group cursor-pointer transition-all hover:opacity-90`}
+                  >
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap">
+                        <div className="font-medium">Week {checkIn.week}</div>
+                        <div className="text-gray-400">{format(new Date(checkIn.date), 'MMM d, yyyy')}</div>
+                        {checkIn.score ? (
+                          <div className="mt-1">Score: {checkIn.score}%</div>
+                        ) : (
+                          <div className="text-gray-400">Missed</div>
+                        )}
+                      </div>
+                      <div className="border-t-8 border-x-8 border-x-transparent border-t-gray-900 w-0 h-0 mx-auto"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Week Labels */}
+              <div className="flex justify-between mt-2 text-sm text-gray-400">
+                <span>Week 1</span>
+                <span>Week {client.checkInHistory?.length || 20}</span>
               </div>
             </div>
           </div>

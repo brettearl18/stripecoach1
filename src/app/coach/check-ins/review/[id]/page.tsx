@@ -17,11 +17,21 @@ import {
   XMarkIcon,
   CalendarIcon,
   ArrowRightIcon,
+  UserCircleIcon,
+  ScaleIcon,
+  HeartIcon,
+  BoltIcon,
+  SparklesIcon,
+  ArrowTrendingUpIcon,
+  FireIcon,
+  CameraIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { format } from 'date-fns';
 import { mockCheckIn } from './mockCheckIn';
+import Image from 'next/image';
 
 interface ResponseComment {
   type: 'text' | 'audio';
@@ -31,21 +41,21 @@ interface ResponseComment {
 
 interface CheckInData {
   id: string;
-  clientName: string;
-  clientAvatar: string;
-  date: string;
+  clientId: string;
   type: string;
+  date: string;
   status: 'pending' | 'reviewed' | 'completed';
-  responses: {
-    [key: string]: {
-      category: string;
-      question: string;
-      answer: string | number | string[];
-      type: 'text' | 'rating_scale' | 'photo' | 'multiple_choice';
-      score: number;
-      coachComment?: ResponseComment;
-    };
+  client: {
+    id: string;
+    name: string;
+    email: string;
   };
+  responses: Array<{
+    question: string;
+    answer: string | number;
+    type: string;
+    score: number;
+  }>;
   metrics: {
     [key: string]: {
       value: number;
@@ -53,18 +63,8 @@ interface CheckInData {
       change: number;
     };
   };
-  photos: { url: string }[];
-  previousCheckIn: {
-    metrics: {
-      [key: string]: {
-        value: number;
-      };
-    };
-  };
-  overallScore: {
-    current: number;
-    previous: number;
-  };
+  summary?: string;
+  urgency: string;
 }
 
 // Add new interface for AI insights
@@ -255,11 +255,91 @@ const mockCheckInHistory = [
   }
 ];
 
+// AI Insights mock data
+const aiInsights = [
+  {
+    type: 'improvement',
+    title: 'Significant Progress',
+    description: 'Weight reduction of 0.8kg this week shows consistent progress towards the goal.',
+    metric: { current: 82.5, change: -0.8, unit: 'kg' }
+  },
+  {
+    type: 'achievement',
+    title: 'Energy Levels Improved',
+    description: 'Energy score increased by 1.5 points, indicating better recovery and adaptation.',
+    metric: { current: 8.5, change: 1.5, unit: '/10' }
+  },
+  {
+    type: 'attention',
+    title: 'Sleep Quality',
+    description: 'While sleep duration has improved slightly, focus on maintaining consistent sleep schedule.',
+    metric: { current: 7.8, change: 0.3, unit: 'hours' }
+  }
+];
+
+// Progress tracking mock data
+const progressHistory = [
+  { week: 1, date: '2024-03-01', score: 82 },
+  { week: 2, date: '2024-03-08', score: 85 },
+  { week: 3, date: '2024-03-15', score: 88 },
+  { week: 4, date: '2024-03-20', score: 85 }
+];
+
+// Add new interfaces for progress tracking
+interface ProgressPhotos {
+  date: string;
+  photos: {
+    front?: string;
+    side?: string;
+    back?: string;
+  };
+}
+
+interface BodyMeasurement {
+  date: string;
+  measurements: {
+    weight?: number;
+    bodyFat?: number;
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    arms?: number;
+    thighs?: number;
+  };
+}
+
+// Mock data for progress tracking
+const mockProgressPhotos: ProgressPhotos[] = [
+  {
+    date: '2024-03-20',
+    photos: {
+      front: '/mock/progress-front.jpg',
+      side: '/mock/progress-side.jpg',
+      back: '/mock/progress-back.jpg',
+    }
+  }
+];
+
+const mockMeasurements: BodyMeasurement[] = [
+  {
+    date: '2024-03-20',
+    measurements: {
+      weight: 82.5,
+      bodyFat: 18.5,
+      chest: 102,
+      waist: 88,
+      hips: 98,
+      arms: 36,
+      thighs: 58
+    }
+  }
+];
+
 export default function CheckInReview() {
   const params = useParams();
   const router = useRouter();
-  const [checkIn, setCheckIn] = useState<CheckInData | null>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [checkIn, setCheckIn] = useState<CheckInData>(mockCheckIn);
+  const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
   const [responseType, setResponseType] = useState<'text' | 'audio' | 'video' | 'link'>('text');
   const [feedback, setFeedback] = useState('');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -271,6 +351,11 @@ export default function CheckInReview() {
   const [responseComments, setResponseComments] = useState<{ [key: string]: ResponseComment }>({});
   const [isRecordingComment, setIsRecordingComment] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
+  const [responses, setResponses] = useState<{[key: string]: {
+    type: 'text' | 'audio' | 'video' | 'link';
+    content: string;
+    status: 'draft' | 'saved' | 'saving';
+  }}>({});
 
   const {
     isRecording: audioRecordingIsRecording,
@@ -377,10 +462,10 @@ export default function CheckInReview() {
 
   if (!checkIn) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="min-h-screen bg-[#13141A] text-white p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-400">
               {error || 'Loading check-in data...'}
             </p>
           </div>
@@ -389,540 +474,660 @@ export default function CheckInReview() {
     );
   }
 
+  const getMetricIcon = (metricName: string) => {
+    switch (metricName) {
+      case 'weight':
+        return <ScaleIcon className="h-5 w-5" />;
+      case 'sleep':
+        return <ClockIcon className="h-5 w-5" />;
+      case 'energy':
+        return <BoltIcon className="h-5 w-5" />;
+      case 'stress':
+        return <HeartIcon className="h-5 w-5" />;
+      default:
+        return <ChartBarIcon className="h-5 w-5" />;
+    }
+  };
+
+  const getMetricChangeColor = (change: number) => {
+    if (change > 0) return 'text-green-400';
+    if (change < 0) return 'text-red-400';
+    return 'text-gray-400';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-[#13141A] text-white">
+      {/* Top Navigation Bar */}
+      <div className="bg-gray-800/50 border-b border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <img
-                src={checkIn.clientAvatar}
-                alt={checkIn.clientName}
-                className="h-12 w-12 rounded-full"
-              />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {checkIn.clientName}
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {checkIn.type} • Submitted {format(new Date(checkIn.date), 'MMM d, h:mm a')}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
+            <Link
+              href="/coach/check-ins"
+              className="inline-flex items-center text-gray-400 hover:text-white"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Check-ins
+            </Link>
+            <div className="flex items-center gap-4">
               <button
-                onClick={() => router.back()}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+                onClick={() => setActiveTab('overview')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'overview'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
               >
-                Cancel
+                Overview
               </button>
               <button
-                onClick={handleSubmit}
-                disabled={isSubmitting || (!feedback && !recordedAudio)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+                onClick={() => setActiveTab('history')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'history'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                History
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-3 gap-8">
-          {/* Left Column - Client Data */}
-          <div className="col-span-2 space-y-6">
-            {/* Compliance Scores */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Metrics Overview
-                </h2>
-                <div className="grid grid-cols-4 gap-6">
-                  {/* Overall Score */}
-                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                      Overall Score
-                    </div>
-                    <div className="mt-1 flex items-baseline">
-                      <div className={`text-2xl font-semibold ${getComplianceColor(checkIn.overallScore.current)}`}>
-                        {checkIn.overallScore.current.toFixed(1)}%
-                      </div>
-                      <div className={`ml-2 text-sm font-medium ${
-                        checkIn.overallScore.current - checkIn.overallScore.previous > 0 
-                          ? 'text-green-500' 
-                          : checkIn.overallScore.current - checkIn.overallScore.previous < 0 
-                            ? 'text-red-500' 
-                            : 'text-gray-500'
-                      }`}>
-                        {(checkIn.overallScore.current - checkIn.overallScore.previous > 0 ? '+' : '')}
-                        {(checkIn.overallScore.current - checkIn.overallScore.previous).toFixed(1)}%
-                      </div>
-                    </div>
-                  </div>
-                  {/* Existing metrics */}
-                  {Object.entries(checkIn.metrics).map(([key, metric]) => {
-                    const previousValue = checkIn.previousCheckIn.metrics[key as keyof typeof checkIn.metrics].value;
-                    const change = getMetricChange(metric.value, previousValue);
-                    return (
-                      <div key={key} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">
-                          {key}
-                        </div>
-                        <div className="mt-1 flex items-baseline">
-                          <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                            {metric.value}
-                          </div>
-                          <div className="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-                            {metric.unit}
-                          </div>
-                          <div className={`ml-2 text-sm font-medium ${change.color}`}>
-                            {change.text}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+        {/* Header Section */}
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <div className="flex items-center gap-4 mb-2">
+              <h1 className="text-2xl font-bold">Check-in Review</h1>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                checkIn.status === 'pending' 
+                  ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-800/20'
+                  : 'bg-green-900/20 text-green-400 border border-green-800/20'
+              }`}>
+                {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
+              </span>
             </div>
-
-            {/* Check-in History Calendar */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5 text-blue-500" />
-                    Check-in History
-                  </h2>
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      Last {mockCheckInHistory.length} weeks
-                    </div>
-                    <Link
-                      href={`/coach/check-ins/history/${checkIn.clientId}`}
-                      className="text-sm text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1"
-                    >
-                      View All
-                      <ArrowRightIcon className="h-4 w-4" />
-                    </Link>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500 opacity-20"></div>
-                    <span>90%+</span>
-                    <div className="w-4 h-4 rounded-full bg-yellow-500 opacity-20"></div>
-                    <span>75-89%</span>
-                    <div className="w-4 h-4 rounded-full bg-red-500 opacity-20"></div>
-                    <span>&lt;75%</span>
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-gray-600"></div>
-                    <span>Missed</span>
-                  </div>
-                  <div className="grid grid-cols-7 gap-4">
-                    {mockCheckInHistory.map((checkIn, index) => (
-                      <div
-                        key={index}
-                        className={`relative flex flex-col items-center p-4 rounded-lg ${
-                          checkIn.status === 'missed'
-                            ? 'border-2 border-gray-300 dark:border-gray-600'
-                            : checkIn.score >= 90
-                            ? 'bg-green-50 dark:bg-green-500/5'
-                            : checkIn.score >= 75
-                            ? 'bg-yellow-50 dark:bg-yellow-500/5'
-                            : 'bg-red-50 dark:bg-red-500/5'
-                        }`}
-                      >
-                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                          Week {checkIn.week}
-                        </div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-white mt-1">
-                          {format(new Date(checkIn.date), 'MMM d')}
-                        </div>
-                        {checkIn.status !== 'missed' && (
-                          <div className={`text-sm font-medium mt-1 ${getComplianceColor(checkIn.score)}`}>
-                            {checkIn.score}%
-                          </div>
-                        )}
-                        {checkIn.status === 'missed' && (
-                          <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
-                            Missed
-                          </div>
-                        )}
-                        <Link
-                          href={`/coach/check-ins/review/check-${checkIn.week}`}
-                          className={`absolute inset-0 rounded-lg transition-colors ${
-                            checkIn.status === 'missed'
-                              ? 'hover:border-gray-400 dark:hover:border-gray-500'
-                              : 'hover:opacity-75'
-                          }`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Client Responses */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Check-in Responses
-                </h2>
-                <div className="space-y-8">
-                  {Object.entries(CHECK_IN_QUESTIONS).map(([category, questions]) => (
-                    <div key={category} className="space-y-4">
-                      <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 capitalize border-b border-gray-200 dark:border-gray-700 pb-2">
-                        {category}
-                      </h3>
-                      <div className="space-y-6">
-                        {questions.map((data) => (
-                          <div key={data.id} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {data.question}
-                              </h4>
-                              <span className={`text-sm font-medium ${getComplianceColor(data.score)}`}>
-                                {data.score}%
-                              </span>
-                            </div>
-                            <p className="text-gray-900 dark:text-white text-sm bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
-                              {data.answer}
-                            </p>
-                            
-                            {/* Coach Response Section */}
-                            <div className="mt-2 space-y-2">
-                              {responseComments[data.id] && (
-                                <div className="flex items-start space-x-2 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                                  {responseComments[data.id].type === 'audio' ? (
-                                    <div className="flex items-center space-x-2">
-                                      <PlayIcon className="h-5 w-5 text-blue-500" />
-                                      <span className="text-sm text-blue-600 dark:text-blue-400">Voice note</span>
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-blue-600 dark:text-blue-400">
-                                      {responseComments[data.id].content}
-                                    </p>
-                                  )}
-                                  <button
-                                    onClick={() => {
-                                      const newComments = { ...responseComments };
-                                      delete newComments[data.id];
-                                      setResponseComments(newComments);
-                                    }}
-                                    className="text-blue-500 hover:text-blue-600"
-                                  >
-                                    <XMarkIcon className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              )}
-                              
-                              <div className="flex space-x-2">
-                                <input
-                                  type="text"
-                                  placeholder="Add a comment..."
-                                  className="flex-1 px-3 py-1 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                                  onKeyPress={(e) => {
-                                    if (e.key === 'Enter' && e.currentTarget.value) {
-                                      setResponseComments(prev => ({
-                                        ...prev,
-                                        [data.id]: {
-                                          type: 'text',
-                                          content: e.currentTarget.value,
-                                          timestamp: new Date().toISOString()
-                                        }
-                                      }));
-                                      e.currentTarget.value = '';
-                                    }
-                                  }}
-                                />
-                                <button
-                                  onClick={() => {
-                                    if (isRecordingComment === data.id) {
-                                      stopRecording();
-                                      setIsRecordingComment(null);
-                                    } else {
-                                      startRecording();
-                                      setIsRecordingComment(data.id);
-                                    }
-                                  }}
-                                  className={`p-2 rounded-lg ${
-                                    isRecordingComment === data.id
-                                      ? 'bg-red-500 text-white'
-                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                  }`}
-                                >
-                                  <MicrophoneIcon className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Photos */}
-            {checkIn.photos.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                <div className="p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                    Progress Photos
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    {checkIn.photos.map((photo, index) => (
-                      <div key={index} className="aspect-square rounded-lg overflow-hidden">
-                        <img
-                          src={photo.url}
-                          alt="Progress"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            <p className="text-gray-400">
+              Submitted on {format(new Date(checkIn.date), 'MMMM d, yyyy')} at {format(new Date(checkIn.date), 'h:mm a')}
+            </p>
           </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || Object.values(responses).some(r => r.status !== 'saved')}
+            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <CheckCircleIcon className="h-5 w-5" />
+                Complete Review
+              </>
+            )}
+          </button>
+        </div>
 
-          {/* Right Column - Coach Response */}
-          <div className="space-y-6">
-            {/* AI Insights */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <ChartBarIcon className="h-5 w-5 text-blue-500" />
-                  AI Insights
-                </h2>
-                <div className="space-y-4">
-                  {mockAIInsights.map((insight, index) => (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg border-l-4 ${
-                        insight.type === 'improvement'
-                          ? 'border-green-500 bg-green-50 dark:bg-green-500/5'
-                          : insight.type === 'achievement'
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/5'
-                          : insight.type === 'attention'
-                          ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-500/5'
-                          : 'border-purple-500 bg-purple-50 dark:bg-purple-500/5'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                          {insight.title}
-                        </h3>
-                        {insight.metric && (
-                          <div className="flex items-center gap-1 text-sm">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">
-                              {insight.metric.current}
-                            </span>
-                            <span className={`${
-                              insight.metric.change > 0
-                                ? 'text-green-500'
-                                : insight.metric.change < 0
-                                ? 'text-red-500'
-                                : 'text-gray-500'
-                            }`}>
-                              ({insight.metric.change > 0 ? '+' : ''}{insight.metric.change})
-                            </span>
-                          </div>
-                        )}
+        {/* Client Info Card */}
+        <div className="bg-gray-800 rounded-xl p-6 mb-8">
+          <div className="flex items-center">
+            <div className="h-16 w-16 rounded-full bg-gray-700 flex items-center justify-center">
+              <UserCircleIcon className="h-10 w-10 text-gray-400" />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-xl font-medium">{checkIn.client.name}</h2>
+              <p className="text-gray-400">{checkIn.client.email}</p>
+            </div>
+            <div className="ml-auto flex items-center gap-4">
+              <Link
+                href={`/coach/clients/${checkIn.client.id}`}
+                className="text-blue-400 hover:text-blue-300 text-sm"
+              >
+                View Profile
+              </Link>
+              <Link
+                href={`/coach/messages?client=${checkIn.client.id}`}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                Send Message
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-8">
+          {/* Main Content - Left Column */}
+          <div className="col-span-2 space-y-8">
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(checkIn.metrics).map(([key, metric]) => (
+                <div key={key} className="bg-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <div className="p-2 bg-gray-700 rounded-lg mr-3">
+                        {getMetricIcon(key)}
                       </div>
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {insight.description}
-                      </p>
+                      <span className="text-sm font-medium capitalize">{key}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-2xl font-bold">
+                      {metric.value}
+                      <span className="text-sm text-gray-400 ml-1">{metric.unit}</span>
+                    </span>
+                    <span className={`text-sm font-medium ${getMetricChangeColor(metric.change)}`}>
+                      {metric.change > 0 ? '+' : ''}{metric.change}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
 
-            {/* Response Type Selection */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Response Type
-                </h2>
-                <div className="grid grid-cols-4 gap-4">
-                  <button
-                    onClick={() => setResponseType('text')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
-                      responseType === 'text'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
-                  >
-                    <DocumentTextIcon className="h-6 w-6 text-gray-400" />
-                    <span className="mt-2 text-sm font-medium">Text</span>
-                  </button>
-                  <button
-                    onClick={() => setResponseType('audio')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
-                      responseType === 'audio'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
-                  >
-                    <MicrophoneIcon className="h-6 w-6 text-gray-400" />
-                    <span className="mt-2 text-sm font-medium">Voice</span>
-                  </button>
-                  <button
-                    onClick={() => setResponseType('video')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
-                      responseType === 'video'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
-                  >
-                    <VideoCameraIcon className="h-6 w-6 text-gray-400" />
-                    <span className="mt-2 text-sm font-medium">Video</span>
-                  </button>
-                  <button
-                    onClick={() => setResponseType('link')}
-                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
-                      responseType === 'link'
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
-                  >
-                    <PaperClipIcon className="h-6 w-6 text-gray-400" />
-                    <span className="mt-2 text-sm font-medium">Link</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Response Input */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Your Response
-                </h2>
-                {responseType === 'text' && (
-                  <textarea
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter your feedback..."
-                  />
-                )}
-                {responseType === 'audio' && (
-                  <div className="space-y-4">
-                    {recordedAudio ? (
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                        <div className="flex items-center">
-                          <MicrophoneIcon className="h-5 w-5 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            Audio recorded
+            {/* Check-in Responses */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-medium mb-6">Check-in Responses</h3>
+              <div className="space-y-8">
+                {checkIn.responses.map((response, index) => (
+                  <div key={index} className="border-b border-gray-700 pb-8 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-300">{response.question}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            response.score >= 90 
+                              ? 'bg-green-900/20 text-green-400 border border-green-800/20'
+                              : response.score >= 75
+                              ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-800/20'
+                              : 'bg-red-900/20 text-red-400 border border-red-800/20'
+                          }`}>
+                            Score: {response.score}%
                           </span>
                         </div>
-                        <button
-                          onClick={() => setRecordedAudio(null)}
-                          className="text-red-500 hover:text-red-600"
-                        >
-                          Delete
-                        </button>
                       </div>
-                    ) : (
-                      <button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        className={`w-full flex items-center justify-center gap-2 p-4 rounded-lg border ${
-                          isRecording
-                            ? 'border-red-500 bg-red-50 dark:bg-red-500/10 text-red-500'
-                            : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        <MicrophoneIcon className="h-5 w-5" />
-                        {isRecording ? 'Stop Recording' : 'Start Recording'}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {responseType === 'video' && (
-                  <div className="flex items-center justify-center h-40 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-                      <VideoCameraIcon className="h-5 w-5" />
-                      Record Video
-                    </button>
-                  </div>
-                )}
-                {responseType === 'link' && (
-                  <div className="space-y-4">
-                    <input
-                      type="url"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="Enter URL..."
-                      className="w-full px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => {
-                          if (linkUrl) {
-                            setFeedback(prev => prev ? `${prev}\n${linkUrl}` : linkUrl);
-                            setLinkUrl('');
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                      >
-                        Add Link
-                      </button>
                     </div>
+
+                    <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
+                      <p className="text-lg">{response.answer}</p>
+                    </div>
+
+                    {/* Coach Response Section */}
+                    <div className="bg-gray-700/30 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h5 className="text-sm font-medium text-gray-400">Coach Response</h5>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const currentResponse = responses[response.id] || {};
+                              setResponseType('text');
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: { ...currentResponse, type: 'text' }
+                              }));
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              (responses[response.id]?.type || responseType) === 'text'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            <DocumentTextIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const currentResponse = responses[response.id] || {};
+                              setResponseType('audio');
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: { ...currentResponse, type: 'audio' }
+                              }));
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              (responses[response.id]?.type || responseType) === 'audio'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            <MicrophoneIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const currentResponse = responses[response.id] || {};
+                              setResponseType('video');
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: { ...currentResponse, type: 'video' }
+                              }));
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              (responses[response.id]?.type || responseType) === 'video'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            <VideoCameraIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const currentResponse = responses[response.id] || {};
+                              setResponseType('link');
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: { ...currentResponse, type: 'link' }
+                              }));
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${
+                              (responses[response.id]?.type || responseType) === 'link'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            <PaperClipIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Response Input Based on Type */}
+                      <div className="mt-2 space-y-3">
+                        {(responses[response.id]?.type || responseType) === 'text' && (
+                          <textarea
+                            placeholder="Type your feedback..."
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                            rows={3}
+                            value={responses[response.id]?.content || ''}
+                            onChange={(e) => {
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: {
+                                  type: 'text',
+                                  content: e.target.value,
+                                  status: 'draft'
+                                }
+                              }));
+                            }}
+                          />
+                        )}
+
+                        {(responses[response.id]?.type || responseType) === 'audio' && (
+                          <div className="flex items-center gap-2">
+                            {isRecording ? (
+                              <button
+                                onClick={stopRecording}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                              >
+                                <span className="animate-pulse">●</span>
+                                Stop Recording
+                              </button>
+                            ) : recordedAudio ? (
+                              <div className="flex items-center gap-2">
+                                <button className="px-4 py-2 bg-gray-700 text-white rounded-lg">
+                                  <PlayIcon className="h-5 w-5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setRecordedAudio(null);
+                                    setResponses(prev => ({
+                                      ...prev,
+                                      [response.id]: {
+                                        type: 'audio',
+                                        content: '',
+                                        status: 'draft'
+                                      }
+                                    }));
+                                  }}
+                                  className="text-red-400 hover:text-red-300"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  startRecording();
+                                  setResponses(prev => ({
+                                    ...prev,
+                                    [response.id]: {
+                                      type: 'audio',
+                                      content: 'recording...',
+                                      status: 'draft'
+                                    }
+                                  }));
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+                              >
+                                <MicrophoneIcon className="h-5 w-5" />
+                                Start Recording
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {(responses[response.id]?.type || responseType) === 'video' && (
+                          <button 
+                            onClick={() => {
+                              // Implement video recording
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: {
+                                  type: 'video',
+                                  content: 'video_recording_placeholder',
+                                  status: 'draft'
+                                }
+                              }));
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+                          >
+                            <VideoCameraIcon className="h-5 w-5" />
+                            Record Video Message
+                          </button>
+                        )}
+
+                        {(responses[response.id]?.type || responseType) === 'link' && (
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              placeholder="Paste a link..."
+                              className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                              value={responses[response.id]?.content || ''}
+                              onChange={(e) => {
+                                setResponses(prev => ({
+                                  ...prev,
+                                  [response.id]: {
+                                    type: 'link',
+                                    content: e.target.value,
+                                    status: 'draft'
+                                  }
+                                }));
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Save Button Per Question */}
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="text-sm">
+                            {responses[response.id]?.status === 'saved' && (
+                              <span className="text-green-400 flex items-center gap-1">
+                                <CheckCircleIcon className="h-4 w-4" />
+                                Saved
+                              </span>
+                            )}
+                            {responses[response.id]?.status === 'saving' && (
+                              <span className="text-blue-400">Saving...</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!responses[response.id]?.content) return;
+                              
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: {
+                                  ...prev[response.id],
+                                  status: 'saving'
+                                }
+                              }));
+
+                              // Simulate API call
+                              await new Promise(resolve => setTimeout(resolve, 500));
+
+                              setResponses(prev => ({
+                                ...prev,
+                                [response.id]: {
+                                  ...prev[response.id],
+                                  status: 'saved'
+                                }
+                              }));
+                            }}
+                            disabled={!responses[response.id]?.content || responses[response.id]?.status === 'saving'}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {responses[response.id]?.status === 'saving' ? 'Saving...' : 'Save Response'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - AI Insights & Progress */}
+          <div className="space-y-8">
+            {/* AI Insights */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                <SparklesIcon className="h-5 w-5 text-blue-400" />
+                AI Insights
+              </h3>
+              <div className="space-y-4">
+                {aiInsights.map((insight, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 rounded-lg border-l-4 ${
+                      insight.type === 'improvement'
+                        ? 'border-green-500 bg-green-500/5'
+                        : insight.type === 'achievement'
+                        ? 'border-blue-500 bg-blue-500/5'
+                        : 'border-yellow-500 bg-yellow-500/5'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-sm font-medium">
+                        {insight.title}
+                      </h4>
+                      {insight.metric && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <span className="font-medium">
+                            {insight.metric.current}
+                            {insight.metric.unit}
+                          </span>
+                          <span className={
+                            insight.metric.change > 0
+                              ? 'text-green-400'
+                              : insight.metric.change < 0
+                              ? 'text-red-400'
+                              : 'text-gray-400'
+                          }>
+                            ({insight.metric.change > 0 ? '+' : ''}{insight.metric.change})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      {insight.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Progress History */}
+            <div className="bg-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-medium mb-6 flex items-center gap-2">
+                <ArrowTrendingUpIcon className="h-5 w-5 text-blue-400" />
+                Progress History
+              </h3>
+
+              {/* Progress Photos */}
+              <div className="mb-8">
+                <h4 className="text-sm font-medium text-gray-400 mb-4">Progress Photos</h4>
+                {mockProgressPhotos.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-4">
+                    {['front', 'side', 'back'].map((view) => (
+                      <div key={view} className="aspect-[3/4] relative">
+                        {mockProgressPhotos[0].photos[view] ? (
+                          <Image
+                            src={mockProgressPhotos[0].photos[view]}
+                            alt={`Most recent ${view} view`}
+                            fill
+                            className="object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-700/30 rounded-lg flex flex-col items-center justify-center">
+                            <CameraIcon className="h-8 w-8 text-gray-500 mb-2" />
+                            <span className="text-sm text-gray-500 capitalize">{view} view</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-gray-700/30 rounded-lg p-6 text-center">
+                    <CameraIcon className="h-8 w-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-400">No progress photos submitted yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Body Measurements */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-400 mb-4">Body Measurements</h4>
+                {mockMeasurements.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(mockMeasurements[0].measurements).map(([key, value]) => (
+                      <div key={key} className="bg-gray-700/30 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-gray-400 capitalize">{key}</span>
+                          {key === 'bodyFat' && (
+                            <span className="text-xs text-gray-500">%</span>
+                          )}
+                          {key === 'weight' && (
+                            <span className="text-xs text-gray-500">kg</span>
+                          )}
+                          {!['bodyFat', 'weight'].includes(key) && (
+                            <span className="text-xs text-gray-500">cm</span>
+                          )}
+                        </div>
+                        <div className="text-lg font-medium">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-gray-700/30 rounded-lg p-6 text-center">
+                    <ScaleIcon className="h-8 w-8 text-gray-500 mx-auto mb-2" />
+                    <p className="text-gray-400">No measurements recorded yet</p>
                   </div>
                 )}
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Action Items */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Action Items
-                </h2>
-                <div className="space-y-4">
-                  {selectedTasks.map((task, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                    >
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{task}</span>
-                      <button
-                        onClick={() => setSelectedTasks(prev => prev.filter((_, i) => i !== index))}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <XMarkIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={customTask}
-                      onChange={(e) => setCustomTask(e.target.value)}
-                      placeholder="Add new action item..."
-                      className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <button
-                      onClick={() => {
-                        if (customTask.trim()) {
-                          setSelectedTasks(prev => [...prev, customTask.trim()]);
-                          setCustomTask('');
-                        }
-                      }}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
+        {/* Add the new Weekly Progress Analysis section at the bottom */}
+        <div className="grid grid-cols-2 gap-8 mt-8">
+          {/* Latest Check-in Summary */}
+          <div className="bg-gray-800 rounded-xl p-6">
+            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+              <ClockIcon className="h-5 w-5 text-blue-400" />
+              Latest Check-in Summary
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-gray-400">
+                  Week {checkIn.weekNumber} • {format(new Date(checkIn.date), 'MMM d, yyyy')}
+                </span>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  checkIn.score >= 90
+                    ? 'bg-green-900/20 text-green-400 border border-green-800/20'
+                    : checkIn.score >= 75
+                    ? 'bg-blue-900/20 text-blue-400 border border-blue-800/20'
+                    : 'bg-yellow-900/20 text-yellow-400 border border-yellow-800/20'
+                }`}>
+                  Score: {checkIn.score}%
+                </span>
+              </div>
+              
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Key Points</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Completed all planned workouts with high intensity
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Sleep quality improved to 7.8 hours average
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ExclamationCircleIcon className="h-4 w-4 text-yellow-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Stress levels slightly elevated due to work
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-700/20 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Previous Feedback</h4>
+                <p className="text-sm text-gray-300">
+                  Great work maintaining workout consistency. Focus on implementing the suggested stress management techniques this week. Your sleep improvements are contributing positively to recovery.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Overall Journey Summary */}
+          <div className="bg-gray-800 rounded-xl p-6">
+            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+              <ChartBarIcon className="h-5 w-5 text-blue-400" />
+              Overall Journey Summary
+            </h3>
+            <div className="space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Progress Overview</h4>
+                <p className="text-sm text-gray-300">
+                  Client has maintained consistent progress over {checkIn.weekNumber} weeks of coaching. Average compliance score of 85% shows strong commitment to the program. Notable improvements in sleep quality and workout consistency.
+                </p>
+              </div>
+
+              <div className="bg-gray-700/30 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Key Achievements</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <TrophyIcon className="h-4 w-4 text-yellow-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Increased average sleep duration by 1.2 hours
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <TrophyIcon className="h-4 w-4 text-yellow-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Achieved 90%+ compliance for 3 consecutive weeks
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <TrophyIcon className="h-4 w-4 text-yellow-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Established consistent morning routine
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-700/20 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-400 mb-2">Focus Areas</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <ArrowTrendingUpIcon className="h-4 w-4 text-blue-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Continue building on sleep quality improvements
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <ArrowTrendingUpIcon className="h-4 w-4 text-blue-400 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-300">
+                      Develop additional stress management strategies
+                    </span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
@@ -936,11 +1141,4 @@ function getComplianceColor(score: number) {
   if (score >= 90) return 'text-green-500';
   if (score >= 75) return 'text-yellow-500';
   return 'text-red-500';
-}
-
-function getMetricChange(current: number, previous: number) {
-  const change = current - previous;
-  if (change > 0) return { text: `+${change.toFixed(1)}`, color: 'text-green-500' };
-  if (change < 0) return { text: change.toFixed(1), color: 'text-red-500' };
-  return { text: '0', color: 'text-gray-500' };
 } 

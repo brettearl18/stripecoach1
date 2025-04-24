@@ -4,46 +4,34 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Clock, Trophy as LucideTrophy, Target, Heart as LucideHeart, Camera, LineChart } from "lucide-react";
 import {
-  BellIcon,
   ChartBarIcon,
   ArrowTrendingUpIcon,
-  UserGroupIcon,
-  FireIcon,
-  SparklesIcon,
-  CalendarIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon,
-  ClockIcon,
-  ChevronRightIcon,
+  TagIcon,
+  ClipboardDocumentCheckIcon,
   PhotoIcon,
-  ArrowsPointingOutIcon,
-  XMarkIcon,
-  BoltIcon,
+  ChevronRightIcon,
+  BellIcon,
+  UserGroupIcon,
+  CalendarIcon,
+  ChatBubbleBottomCenterTextIcon,
+  PencilIcon,
   HeartIcon,
   TrophyIcon,
-  FaceSmileIcon,
-  ChevronDownIcon,
-  PencilIcon,
-  ArrowPathIcon,
-  ChatBubbleBottomCenterTextIcon,
+  ExclamationCircleIcon,
+  SparklesIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline';
-import { 
-  CheckInForm, 
-  CheckInMetrics, 
-  CheckInStatus, 
-  CheckInPhoto,
-  CoachDashboardMetrics, 
-  EnhancedCheckInForm as IEnhancedCheckInForm
-} from '@/types/checkIn';
+import { Avatar } from "@/components/ui/avatar";
 import { format } from 'date-fns';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { DashboardCustomizer } from '@/components/DashboardCustomizer';
 import { CoachNavigation } from '@/components/navigation/CoachNavigation';
-import { PriorityAlerts } from '@/components/dashboard/PriorityAlerts'
-import { AnalyticsSnapshot } from '@/components/dashboard/AnalyticsSnapshot'
+import { PriorityAlerts } from '@/components/dashboard/PriorityAlerts';
+import { AnalyticsSnapshot } from '@/components/dashboard/AnalyticsSnapshot';
 import { ClientOfTheWeek } from '@/components/dashboard/ClientOfTheWeek';
 import { RecentProgressPhotos } from '@/components/dashboard/RecentProgressPhotos';
 import { AIGroupInsights } from '@/components/dashboard/AIGroupInsights';
@@ -53,8 +41,16 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { NotificationCenter } from '@/components/dashboard/NotificationCenter';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import type { DropResult } from 'react-beautiful-dnd';
-import { CoachSummary } from '@/components/dashboard/CoachSummary';
+import { CoachSummary, type CoachSummaryProps } from '@/components/dashboard/CoachSummary';
 import { RecentBadgeWins } from '@/components/dashboard/RecentBadgeWins';
+import { 
+  CheckInForm, 
+  CheckInMetrics, 
+  CheckInStatus, 
+  CheckInPhoto,
+  CoachDashboardMetrics, 
+  EnhancedCheckInForm as IEnhancedCheckInForm
+} from '@/types/checkIn';
 
 interface ClientProgress {
   id: string;
@@ -83,6 +79,13 @@ interface DashboardMetrics {
     needsAttention: number;
   };
   weeklyEngagement: number;
+  clientMetrics: {
+    improving: number;
+    totalActive: number;
+  };
+  engagementMetrics: {
+    averageCheckInCompletion: number;
+  };
 }
 
 interface ProgressPhoto {
@@ -185,6 +188,13 @@ const mockMetrics: DashboardMetrics = {
     needsAttention: 5,
   },
   weeklyEngagement: 85,
+  clientMetrics: {
+    improving: 12,
+    totalActive: 25
+  },
+  engagementMetrics: {
+    averageCheckInCompletion: 88
+  }
 };
 
 const mockEnhancedCheckIn: IEnhancedCheckInForm = {
@@ -262,69 +272,62 @@ const mockClientProgress: IEnhancedCheckInForm[] = [mockEnhancedCheckIn];
 
 const mockProgressPhotos: ProgressPhoto[] = [
   {
-    id: 'p1',
-    clientId: 'client-1',
-    clientName: 'Sarah Wilson',
-    photoUrl: '/progress-photos/sarah-progress-1.jpg',
-    date: '2024-03-21',
+    id: '1',
+    clientId: 'client1',
+    clientName: 'John Doe',
+    photoUrl: '/mock/progress1.jpg',
+    date: '2024-03-15',
     type: 'progress'
   },
-  // ... other photos
+  {
+    id: '2',
+    clientId: 'client2',
+    clientName: 'Jane Smith',
+    photoUrl: '/mock/progress2.jpg',
+    date: '2024-03-14',
+    type: 'progress'
+  }
 ];
 
 const mockAIAnalysis: AIAnalysis = {
   overallMood: [
     { category: 'Energy', score: 7.8, trend: 'up', change: 0.5 },
-    { category: 'Motivation', score: 8.2, trend: 'up', change: 0.3 },
-    { category: 'Stress', score: 4.5, trend: 'down', change: -0.8 },
-    { category: 'Sleep Quality', score: 7.2, trend: 'stable', change: 0.1 },
+    { category: 'Motivation', score: 8.2, trend: 'up', change: 0.3 }
   ],
   recentWins: [
     "80% of clients hit their protein targets this week",
-    "Average step count increased by 2,000 steps",
-    "5 clients achieved personal records in strength training",
-    "Significant improvement in morning routine compliance"
+    "Average step count increased by 2,000 steps"
   ],
   commonChallenges: [
     "Weekend nutrition adherence dropping",
-    "Post-work workout attendance decreased",
-    "Stress management during work hours",
-    "Late-night snacking incidents increased"
+    "Post-work workout attendance decreased"
   ],
   insights: [
     {
       type: 'success',
-      message: 'Group cohesion is strengthening, with 60% more peer interactions this week',
+      message: 'Group motivation levels have increased by 25% this week',
       impact: 'high'
-    },
-    {
-      type: 'warning',
-      message: 'Sleep patterns show disruption in 30% of clients - may need sleep hygiene workshop',
-      impact: 'medium'
     },
     {
       type: 'info',
-      message: 'Nutrition compliance peaks on Mondays and gradually decreases through the week',
-      impact: 'high'
+      message: 'Most clients are hitting their step goals consistently',
+      impact: 'medium'
     }
   ],
   focusAreas: [
     "Schedule a group session on weekend meal prep",
-    "Implement stress management techniques",
-    "Review and adjust evening routines",
-    "Strengthen accountability partnerships"
+    "Implement stress management techniques"
   ]
 };
 
-const mockClientOfTheWeek: ClientOfTheWeek = {
-  id: '1',
-  name: 'Sarah Wilson',
-  achievement: 'Most Consistent Progress',
+const mockClientOfTheWeek = {
+  name: "Sarah Johnson",
+  achievement: "Crushed all workout goals and improved nutrition compliance by 40%",
   weekNumber: 12,
   stats: {
-    workouts: { completed: 6, total: 6, trend: 'up', change: 1 },
-    nutrition: { percentage: 95, trend: 'up', change: 5 },
-    steps: { average: 12000, trend: 'up', change: 2000 }
+    workouts: { completed: 5, total: 5, change: 2 },
+    nutrition: { percentage: 95, change: 15 },
+    steps: { average: 12000, change: 2000 }
   }
 };
 
@@ -356,9 +359,9 @@ const mockHonorableMentions: HonorableMention[] = [
 ];
 
 const mockCoachProfile: CoachProfile = {
-  name: "Michael Chen",
+  name: "Sarah Johnson",
   motivationalQuote: "Empowering others to become their strongest, healthiest selves. Every small step counts!",
-  lastQuoteUpdate: "2024-04-05"
+  lastQuoteUpdate: new Date().toISOString()
 };
 
 const mockClientAIInsights: ClientAIInsights = {
@@ -432,44 +435,26 @@ const formatDate = (dateString: string) => {
   }
 };
 
-async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise<AIAnalysis> {
+async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise<GroupInsight[]> {
   try {
-    // Only send the latest check-in
-    const latestCheckIn = checkIns[0];
-    
-    const response = await fetch('/api/coach/ai-insights', {
+    const response = await fetch('/api/coach/ai/insights', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        checkIns: [latestCheckIn],
-        analysisType: 'group'
-      }),
+      body: JSON.stringify({ checkIns }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('AI insights error:', errorData);
-      
-      if (response.status === 429 && retryCount < 3) {
+      if (retryCount < 3) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return fetchAIInsights([latestCheckIn], retryCount + 1);
+        return fetchAIInsights(checkIns, retryCount + 1);
       }
-      
-      if (response.status === 401 || response.status === 403) {
-        toast.error('API authentication failed. Please check your API key.');
-      } else if (response.status === 500) {
-        toast.error('Server error occurred. Using cached data.');
-      } else {
-        toast.error('Unable to fetch AI insights. Using cached data.');
-      }
-      
-      return mockAIAnalysis;
+      return mockAIAnalysis.insights;
     }
 
     const data = await response.json();
-    return data.insights || mockAIAnalysis;
+    return data.insights || mockAIAnalysis.insights;
   } catch (error) {
     console.error('Error fetching AI insights:', error);
     if (retryCount < 3) {
@@ -477,582 +462,206 @@ async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise
       return fetchAIInsights(checkIns, retryCount + 1);
     }
     toast.error('Unable to fetch AI insights. Using cached data.');
-    return mockAIAnalysis;
+    return mockAIAnalysis.insights;
   }
 }
 
-export default function DashboardPage() {
-  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [widgetLayout, setWidgetLayout] = useState<WidgetLayout>({
-    coachSummary: { order: 1, isExpanded: true },
-    analytics: { order: 2, isExpanded: true },
-    alerts: { order: 3, isExpanded: true },
-    clientProgress: { order: 4, isExpanded: true },
-    insights: { order: 5, isExpanded: true }
-  });
+export default function CoachDashboard() {
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isCommandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [isNotificationsOpen, setNotificationsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
+  const [clientProgress, setClientProgress] = useState(mockClientProgress);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis>(mockAIAnalysis);
+  const [coachProfile, setCoachProfile] = useState<CoachProfile>(mockCoachProfile);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const lastAIUpdate = new Date().toISOString();
 
-  // Keyboard shortcut handler
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setShowCommandPalette(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
-
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination || !result.source) return;
-    
-    const items = { ...widgetLayout };
-    const [reorderedItem] = Object.entries(items).filter(
-      ([_, value]) => value.order === result.source.index + 1
-    );
-    const [targetItem] = Object.entries(items).filter(
-      ([_, value]) => value.order === result.destination.index + 1
-    );
-    
-    if (reorderedItem && targetItem) {
-      items[reorderedItem[0]].order = result.destination.index + 1;
-      items[targetItem[0]].order = result.source.index + 1;
-    }
-    
-    setWidgetLayout(items);
+  const handleSearchOpen = () => {
+    setCommandPaletteOpen(true);
   };
 
-  const handleRefreshInsights = async () => {
-    setIsRefreshingInsights(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsRefreshingInsights(false);
+  const handleNotificationsOpen = () => {
+    setNotificationsOpen(true);
+  };
+
+  const handleNotificationsClose = () => {
+    setNotificationsOpen(false);
+  };
+
+  const handleCommandPaletteClose = () => {
+    setCommandPaletteOpen(false);
+  };
+
+  const handleAIInsightsRefresh = async () => {
+    setIsLoadingInsights(true);
+    // TODO: Implement refresh logic
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    setIsLoadingInsights(false);
+    toast.success('Insights refreshed');
+  };
+
+  useEffect(() => {
+    // Simulate data loading
+    const loadData = async () => {
+      try {
+        // In a real app, you would fetch data here
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setMetrics(mockMetrics);
+        setCoachProfile(mockCoachProfile);
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadData();
+  }, []);
+
+  if (isLoading) {
+          return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            </div>
+          );
+  }
+
+  // Transform metrics into CoachSummary format
+  const coachSummaryData: CoachSummaryProps = {
+    coachName: coachProfile.name,
+    weeklyHighlights: {
+      wins: [
+        `${metrics.clientMetrics.improving} clients improving`,
+        `${metrics.engagementMetrics.averageCheckInCompletion}% check-in completion`,
+        `${metrics.clientMetrics.totalActive} active clients`
+      ],
+      clientQuotes: [
+        {
+          quote: "Your guidance has been transformative. I never thought I could achieve this much!",
+          clientName: "Sarah W."
+        },
+        {
+          quote: "The way you break down complex nutrition concepts makes it so much easier to follow through.",
+          clientName: "James T."
+        }
+      ],
+      impactMetrics: [
+        {
+          label: "Client Satisfaction",
+          value: "94%",
+          trend: "up",
+          change: 5
+        },
+        {
+          label: "Goal Achievement Rate",
+          value: `${metrics.engagementMetrics.averageCheckInCompletion}%`,
+          trend: "up",
+          change: 3
+        }
+      ]
+    },
+    encouragement: coachProfile.motivationalQuote
+  };
+
+  // Transform client of the week data to match interface
+  const transformedClientOfWeek = {
+    name: mockClientOfTheWeek.name,
+    achievement: mockClientOfTheWeek.achievement,
+    weekNumber: mockClientOfTheWeek.weekNumber,
+    stats: {
+      workouts: {
+        completed: mockClientOfTheWeek.stats.workouts.completed,
+        total: mockClientOfTheWeek.stats.workouts.total,
+        change: mockClientOfTheWeek.stats.workouts.change
+      },
+      nutrition: {
+        percentage: mockClientOfTheWeek.stats.nutrition.percentage,
+        change: mockClientOfTheWeek.stats.nutrition.change
+      },
+      steps: {
+        average: mockClientOfTheWeek.stats.steps.average,
+        change: mockClientOfTheWeek.stats.steps.change
+      }
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Command Palette */}
-      <CommandPalette 
-        isOpen={showCommandPalette} 
-        onClose={() => setShowCommandPalette(false)} 
-      />
-
-      {/* Notification Center */}
-      <NotificationCenter 
-        isOpen={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
-      />
-
-      <div className="flex">
-        {/* Sidebar */}
-        <DashboardSidebar 
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-        />
-
-        {/* Main Content */}
-        <div className={`flex-1 transition-all duration-200 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
-          {/* Top Navigation Bar */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 sm:px-6 lg:px-8">
-              <div className="flex h-16 items-center justify-between">
-                {/* Breadcrumb */}
-                <div className="flex items-center">
-                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Dashboard</h1>
+    <div className="min-h-screen bg-gray-900">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold text-white">Coach Dashboard</h1>
+                <div className="flex items-center space-x-4">
+            <button
+              onClick={handleSearchOpen}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <span className="sr-only">Search</span>
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </button>
+            <button
+              onClick={handleNotificationsOpen}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <span className="sr-only">View notifications</span>
+              <BellIcon className="w-6 h-6" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Quick Actions */}
-                <QuickActions 
-                  onSearchOpen={() => setShowCommandPalette(true)}
-                  onNotificationsOpen={() => setShowNotifications(true)}
-                />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Analytics Snapshot */}
+          <div className="lg:col-span-2">
+            <AnalyticsSnapshot />
             </div>
-          </div>
 
-          {/* Dashboard Content */}
-          <div className="container mx-auto px-4 py-8 space-y-6">
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="dashboard-widgets">
-                {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="space-y-6"
-                  >
-                    {Object.entries(widgetLayout)
-                      .sort(([_, a], [__, b]) => a.order - b.order)
-                      .map(([key, value], index) => (
-                        <Draggable key={key} draggableId={key} index={index}>
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                            >
-                              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                                {/* Widget Header */}
-                                <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
-                                  {...provided.dragHandleProps}
-                                >
-                                  <h2 className="text-lg font-medium text-gray-900 dark:text-white capitalize">
-                                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                                  </h2>
-                                  <div className="flex items-center space-x-2">
-                                    <button
-                                      onClick={() => {
-                                        setWidgetLayout({
-                                          ...widgetLayout,
-                                          [key]: {
-                                            ...value,
-                                            isExpanded: !value.isExpanded
-                                          }
-                                        });
-                                      }}
-                                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                    >
-                                      <ArrowsPointingOutIcon className="h-5 w-5" />
-                                    </button>
-                                  </div>
-                                </div>
+          {/* Client of the Week */}
+          <div className="lg:col-span-1">
+            <ClientOfTheWeek client={mockClientOfTheWeek} />
+                </div>
 
-                                {/* Widget Content */}
-                                <div className={`transition-all duration-200 ${value.isExpanded ? 'block' : 'hidden'}`}>
-                                  {key === 'coachSummary' && (
-                                    <div className="p-6 space-y-6">
-                                      {/* Top Quote Section */}
-                                      <div className="bg-gradient-to-r from-blue-600/10 to-indigo-600/10 rounded-lg p-6 border border-blue-200/10">
-                                        <div className="flex items-start gap-4">
-                                          <SparklesIcon className="h-6 w-6 text-blue-500 flex-shrink-0 mt-1" />
-                                          <div>
-                                            <h2 className="text-lg font-semibold text-white mb-3">Coach Impact Summary</h2>
-                                            <p className="text-gray-300 italic text-sm leading-relaxed">
-                                              "Your dedication to your clients' success is making a real difference. Keep fostering those transformative moments and celebrating the small wins - they're the building blocks of lasting change."
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
+          {/* Priority Alerts */}
+          <div className="lg:col-span-2">
+            <PriorityAlerts />
+        </div>
 
-                                      {/* Metrics Grid */}
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {/* Left Column - This Week's Wins */}
-                                        <div className="bg-gray-800/50 rounded-lg p-6">
-                                          <div className="flex items-center gap-3 mb-4">
-                                            <TrophyIcon className="h-6 w-6 text-yellow-500" />
-                                            <h3 className="text-lg font-semibold text-white">This Week's Wins</h3>
-                                          </div>
-                                          <div className="space-y-4">
-                                            <div className="flex items-center gap-4 bg-gray-700/30 rounded-lg p-4">
-                                              <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                                <ChartBarIcon className="h-6 w-6 text-emerald-500" />
-                                              </div>
-                                              <div>
-                                                <div className="text-2xl font-bold text-white">12</div>
-                                                <div className="text-sm text-gray-400">New Personal Records</div>
-                                              </div>
-                                            </div>
-                                            <div className="flex items-center gap-4 bg-gray-700/30 rounded-lg p-4">
-                                              <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                                <CheckCircleIcon className="h-6 w-6 text-blue-500" />
-                                              </div>
-                                              <div>
-                                                <div className="text-2xl font-bold text-white">85%</div>
-                                                <div className="text-sm text-gray-400">Check-in Completion</div>
-                                              </div>
-                                            </div>
-                                            <div className="flex items-center gap-4 bg-gray-700/30 rounded-lg p-4">
-                                              <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                                                <ArrowTrendingUpIcon className="h-6 w-6 text-purple-500" />
-                                              </div>
-                                              <div>
-                                                <div className="text-2xl font-bold text-white">3</div>
-                                                <div className="text-sm text-gray-400">Plateaus Overcome</div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
+          {/* Recent Badge Wins */}
+          <div className="lg:col-span-1">
+            <RecentBadgeWins />
+            </div>
 
-                                        {/* Right Column - Client Appreciation */}
-                                        <div className="bg-gray-800/50 rounded-lg p-6">
-                                          <div className="flex items-center gap-3 mb-4">
-                                            <ChatBubbleBottomCenterTextIcon className="h-6 w-6 text-blue-500" />
-                                            <h3 className="text-lg font-semibold text-white">Client Appreciation</h3>
-                                          </div>
-                                          <div className="space-y-4">
-                                            <div className="bg-gray-700/30 rounded-lg p-4">
-                                              <div className="flex items-start gap-3 mb-2">
-                                                <div className="h-8 w-8 rounded-full bg-gray-600 flex-shrink-0" />
-                                                <div>
-                                                  <div className="text-sm font-medium text-white">Sarah W.</div>
-                                                  <p className="text-sm text-gray-400 italic">
-                                                    "Your guidance has been transformative. I never thought I could achieve this much!"
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            </div>
-                                            <div className="bg-gray-700/30 rounded-lg p-4">
-                                              <div className="flex items-start gap-3 mb-2">
-                                                <div className="h-8 w-8 rounded-full bg-gray-600 flex-shrink-0" />
-                                                <div>
-                                                  <div className="text-sm font-medium text-white">James T.</div>
-                                                  <p className="text-sm text-gray-400 italic">
-                                                    "The way you break down complex nutrition concepts makes it so much easier to follow through."
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
+          {/* AI Group Insights */}
+          <div className="lg:col-span-3">
+            <AIGroupInsights 
+              lastUpdated={lastAIUpdate}
+              onRefresh={handleAIInsightsRefresh}
+              isLoading={isLoadingInsights}
+            />
+        </div>
 
-                                      {/* Bottom Impact Metrics */}
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-gray-800/50 rounded-lg p-6">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <div className="text-sm text-gray-400">Client Satisfaction</div>
-                                            <div className="text-sm text-emerald-500">↑5%</div>
-                                          </div>
-                                          <div className="flex items-baseline gap-2">
-                                            <div className="text-3xl font-bold text-white">94%</div>
-                                            <div className="text-sm text-gray-400">overall rating</div>
-                                          </div>
-                                          <div className="mt-4 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '94%' }} />
-                                          </div>
-                                        </div>
-
-                                        <div className="bg-gray-800/50 rounded-lg p-6">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <div className="text-sm text-gray-400">Goal Achievement Rate</div>
-                                            <div className="text-sm text-emerald-500">↑3%</div>
-                                          </div>
-                                          <div className="flex items-baseline gap-2">
-                                            <div className="text-3xl font-bold text-white">88%</div>
-                                            <div className="text-sm text-gray-400">success rate</div>
-                                          </div>
-                                          <div className="mt-4 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full" style={{ width: '88%' }} />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {key === 'analytics' && (
-                                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 p-6">
-                                      {/* Since Last Login Summary */}
-                                      <div className="xl:col-span-4 mb-6">
-                                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                                          <div className="p-6">
-                                            <div className="flex items-center justify-between mb-6">
-                                              <div className="flex items-center gap-3">
-                                                <ClockIcon className="h-6 w-6 text-blue-500" />
-                                                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                                  Since Last Login
-                                                </h2>
-                                              </div>
-                                              <span className="text-sm text-gray-500 dark:text-gray-400">
-                                                Last login: {format(new Date().setHours(new Date().getHours() - 24), 'MMM d, h:mm a')}
-                                              </span>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                              {/* Check-ins */}
-                                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                                                <div className="flex items-center gap-4">
-                                                  <div className="h-12 w-12 rounded-full bg-blue-500/20 flex items-center justify-center">
-                                                    <CheckCircleIcon className="h-6 w-6 text-blue-500" />
-                                                  </div>
-                                                  <div>
-                                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">8</div>
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">New Check-ins</div>
-                                                    <Link href="/coach/check-ins" className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block">
-                                                      View all →
-                                                    </Link>
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              {/* Progress Photos */}
-                                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                                                <div className="flex items-center gap-4">
-                                                  <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                                                    <PhotoIcon className="h-6 w-6 text-purple-500" />
-                                                  </div>
-                                                  <div>
-                                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">3</div>
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">New Progress Photos</div>
-                                                    <Link href="/coach/progress-photos" className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block">
-                                                      View all →
-                                                    </Link>
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              {/* Measurements */}
-                                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                                                <div className="flex items-center gap-4">
-                                                  <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                                    <ChartBarIcon className="h-6 w-6 text-emerald-500" />
-                                                  </div>
-                                                  <div>
-                                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">5</div>
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">New Measurements</div>
-                                                    <Link href="/coach/measurements" className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block">
-                                                      View all →
-                                                    </Link>
-                                                  </div>
-                                                </div>
-                                              </div>
-
-                                              {/* Achievements */}
-                                              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
-                                                <div className="flex items-center gap-4">
-                                                  <div className="h-12 w-12 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                                                    <TrophyIcon className="h-6 w-6 text-yellow-500" />
-                                                  </div>
-                                                  <div>
-                                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">4</div>
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">New Achievements</div>
-                                                    <Link href="/coach/achievements" className="text-xs text-blue-500 hover:text-blue-600 mt-1 inline-block">
-                                                      View all →
-                                                    </Link>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </div>
-
-                                            {/* Recent Activity Timeline */}
-                                            <div className="mt-8">
-                                              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Recent Activity Timeline</h3>
-                                              <div className="space-y-4">
-                                                {[
-                                                  {
-                                                    time: '2 hours ago',
-                                                    client: 'Sarah Wilson',
-                                                    action: 'submitted a check-in',
-                                                    type: 'check-in',
-                                                    highlight: 'Completed all workouts this week'
-                                                  },
-                                                  {
-                                                    time: '4 hours ago',
-                                                    client: 'James Thompson',
-                                                    action: 'uploaded new progress photos',
-                                                    type: 'photos',
-                                                    highlight: '+3 photos added'
-                                                  },
-                                                  {
-                                                    time: '5 hours ago',
-                                                    client: 'Emma Davis',
-                                                    action: 'updated measurements',
-                                                    type: 'measurements',
-                                                    highlight: '-2.5 inches on waist'
-                                                  },
-                                                  {
-                                                    time: '6 hours ago',
-                                                    client: 'Michael Chen',
-                                                    action: 'earned a new badge',
-                                                    type: 'achievement',
-                                                    highlight: '"Consistency Champion" for 30-day streak'
-                                                  }
-                                                ].map((activity, index) => (
-                                                  <div key={index} className="flex items-start gap-4 bg-gray-50/50 dark:bg-gray-800/50 rounded-lg p-3">
-                                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                                      activity.type === 'check-in' ? 'bg-blue-500/20' :
-                                                      activity.type === 'photos' ? 'bg-purple-500/20' :
-                                                      activity.type === 'measurements' ? 'bg-emerald-500/20' :
-                                                      'bg-yellow-500/20'
-                                                    }`}>
-                                                      {activity.type === 'check-in' && <CheckCircleIcon className="h-4 w-4 text-blue-500" />}
-                                                      {activity.type === 'photos' && <PhotoIcon className="h-4 w-4 text-purple-500" />}
-                                                      {activity.type === 'measurements' && <ChartBarIcon className="h-4 w-4 text-emerald-500" />}
-                                                      {activity.type === 'achievement' && <TrophyIcon className="h-4 w-4 text-yellow-500" />}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                      <div className="flex items-center justify-between">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                          {activity.client} {activity.action}
-                                                        </p>
-                                                        <span className="text-xs text-gray-500">{activity.time}</span>
-                                                      </div>
-                                                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                        {activity.highlight}
-                                                      </p>
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="xl:col-span-3">
-                                        <AnalyticsSnapshot />
-                                      </div>
-                                      <div className="xl:col-span-1">
-                                        <PriorityAlerts />
-                                      </div>
-                                    </div>
-                                  )}
-                                  {key === 'clientProgress' && (
-                                    <div className="p-6">
-                                      {/* Top Row - Client of the Week */}
-                                      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-                                        <div className="xl:col-span-1">
-                                          <ClientOfTheWeek client={mockClientOfTheWeek} />
-                                        </div>
-                                        <div className="xl:col-span-2">
-                                          {/* Client Stats Summary */}
-                                          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white h-full">
-                                            <div className="flex items-center justify-between mb-4">
-                                              <h3 className="text-lg font-semibold">Weekly Progress Overview</h3>
-                                              <span className="text-sm bg-white/20 px-3 py-1 rounded-full">Week 12</span>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-4">
-                                              <div>
-                                                <div className="text-white/70 text-sm mb-1">Workouts Completed</div>
-                                                <div className="text-2xl font-bold">92%</div>
-                                                <div className="text-sm text-emerald-300">↑ 5% from last week</div>
-                                              </div>
-                                              <div>
-                                                <div className="text-white/70 text-sm mb-1">Nutrition Goals</div>
-                                                <div className="text-2xl font-bold">85%</div>
-                                                <div className="text-sm text-emerald-300">↑ 3% from last week</div>
-                                              </div>
-                                              <div>
-                                                <div className="text-white/70 text-sm mb-1">Active Clients</div>
-                                                <div className="text-2xl font-bold">23/25</div>
-                                                <div className="text-sm text-emerald-300">2 new check-ins today</div>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Middle Row - Badge Wins and Progress Photos */}
-                                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-                                        <div>
-                                          <RecentBadgeWins />
-                                        </div>
-                                        <div>
-                                          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                                            <div className="p-6">
-                                              <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-3">
-                                                  <PhotoIcon className="h-6 w-6 text-blue-500" />
-                                                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                                    Latest Transformations
-                                                  </h2>
-                                                </div>
-                                                <Link
-                                                  href="/coach/progress-photos"
-                                                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500"
-                                                >
-                                                  View All →
-                                                </Link>
-                                              </div>
-                                              <div className="grid grid-cols-2 gap-4">
-                                                {mockProgressPhotos.slice(0, 2).map((photo) => (
-                                                  <div key={photo.id} className="relative group">
-                                                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
-                                                      <Image
-                                                        src={photo.photoUrl}
-                                                        alt={`Progress photo from ${photo.clientName}`}
-                                                        fill
-                                                        className="object-cover transition-transform group-hover:scale-105"
-                                                      />
-                                                    </div>
-                                                    <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent text-white">
-                                                      <p className="text-sm font-medium">{photo.clientName}</p>
-                                                      <p className="text-xs opacity-80">{format(new Date(photo.date), 'MMM d, yyyy')}</p>
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Bottom Row - Client Milestones */}
-                                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-                                        <div className="p-6">
-                                          <div className="flex items-center justify-between mb-6">
-                                            <div className="flex items-center gap-3">
-                                              <TrophyIcon className="h-6 w-6 text-yellow-500" />
-                                              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                                Recent Milestones
-                                              </h2>
-                                            </div>
-                                          </div>
-                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            {mockHonorableMentions.map((mention) => (
-                                              <div
-                                                key={mention.id}
-                                                className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
-                                              >
-                                                <div className="flex items-start gap-3">
-                                                  <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-600 flex-shrink-0" />
-                                                  <div>
-                                                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                                                      {mention.name}
-                                                    </h3>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                      {mention.highlight}
-                                                    </p>
-                                                    <div className="mt-2 flex items-center gap-2">
-                                                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                                        {mention.metric.value}
-                                                      </span>
-                                                      <span className={`text-xs ${
-                                                        mention.metric.trend === 'up' 
-                                                          ? 'text-green-500' 
-                                                          : mention.metric.trend === 'down' 
-                                                          ? 'text-red-500' 
-                                                          : 'text-gray-500'
-                                                      }`}>
-                                                        {mention.metric.trend === 'up' ? '↑' : '↓'} {mention.metric.change}%
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {key === 'insights' && (
-                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 p-6">
-                                      <div className="xl:col-span-1">
-                                        <AIGroupInsights
-                                          lastUpdated="2024-04-08"
-                                          onRefresh={handleRefreshInsights}
-                                          isLoading={isRefreshingInsights}
-                                        />
-                                      </div>
-                                      <div className="xl:col-span-1">
-                                        {/* Additional insights components */}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
+        {/* Recent Progress Photos */}
+          <div className="lg:col-span-3">
+            <RecentProgressPhotos photos={mockProgressPhotos} />
           </div>
         </div>
-      </div>
+
+        {/* Command Palette */}
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={handleCommandPaletteClose}
+        />
+
+        {/* Notification Center */}
+        <NotificationCenter
+          isOpen={isNotificationsOpen}
+          onClose={handleNotificationsClose}
+        />
+              </div>
     </div>
   );
 } 

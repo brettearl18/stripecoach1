@@ -4,25 +4,27 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
     --radius: 0.5rem;
   }
 
@@ -43,6 +45,8 @@
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
@@ -54,7 +58,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground transition-colors duration-300;
+    @apply bg-gray-900 text-gray-100;
     font-family: var(--font-inter);
   }
 }
@@ -101,3 +105,87 @@ body {
 }
 
 /* Phone Input Dark Theme Styles - these will be handled by the Tailwind classes above */
+
+/* Custom styles for dashboard cards */
+.dashboard-card {
+  @apply rounded-lg p-6 bg-card border border-border transition-all duration-200;
+}
+
+.dashboard-card:hover {
+  @apply shadow-md;
+}
+
+/* Stats and metrics */
+.stat-value {
+  @apply text-4xl font-bold text-primary;
+}
+
+.stat-label {
+  @apply text-sm text-muted-foreground;
+}
+
+/* Progress bars */
+.progress-bar {
+  @apply h-2 rounded-full bg-secondary overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full rounded-full transition-all duration-500;
+}
+
+/* Client appreciation quotes */
+.client-quote {
+  @apply italic text-muted-foreground bg-accent/10 p-4 rounded-lg border border-border;
+}
+
+/* Analytics section */
+.analytics-card {
+  @apply bg-card p-4 rounded-lg border border-border hover:shadow-md transition-all duration-200;
+}
+
+.analytics-value {
+  @apply text-2xl font-semibold text-primary;
+}
+
+.analytics-label {
+  @apply text-sm text-muted-foreground;
+}
+
+.dark-gradient {
+  background: linear-gradient(to bottom, rgba(17, 24, 39, 0) 0%, rgba(17, 24, 39, 1) 100%);
+}
+
+/* Additional dark mode optimized styles */
+.card-dark {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.hover-dark {
+  @apply hover:bg-gray-700/50 transition-colors duration-200;
+}
+
+.text-dark {
+  @apply text-gray-300;
+}
+
+.border-dark {
+  @apply border-gray-700;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}

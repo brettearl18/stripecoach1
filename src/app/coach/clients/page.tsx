@@ -20,13 +20,19 @@ import {
   BellIcon,
   CheckboxIcon,
   CheckIcon,
-  ChevronUpDownIcon
+  ChevronUpDownIcon,
+  ArrowDownTrayIcon,
+  DocumentDuplicateIcon,
+  TagIcon,
+  ArchiveBoxIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { getClients } from '@/lib/services/firebaseService';
 import { cn } from '@/lib/utils';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface WeeklyCheckIn {
   week: number;
@@ -57,8 +63,9 @@ interface Client {
 }
 
 interface BulkAction {
-  type: 'reminder';
+  type: 'reminder' | 'export' | 'template' | 'status' | 'archive';
   clientIds: string[];
+  data?: any;
 }
 
 // Helper function to get check-in status and color
@@ -406,7 +413,7 @@ const ClientsPage = () => {
     };
 
     if (!authLoading) {
-      loadClients();
+    loadClients();
     }
   }, [user, authLoading]);
 
@@ -455,11 +462,112 @@ const ClientsPage = () => {
     return nameMatch && statusMatch;
   });
 
-  const handleBulkAction = (action: BulkAction) => {
-    if (action.type === 'reminder') {
-      console.log('Sending reminders to:', action.clientIds);
-      // Implement reminder sending logic here
+  const handleBulkAction = async (action: BulkAction) => {
+    try {
+      switch (action.type) {
+        case 'reminder':
+          // Send reminders to selected clients
+          toast.promise(
+            sendReminders(action.clientIds),
+            {
+              loading: 'Sending reminders...',
+              success: 'Reminders sent successfully',
+              error: 'Failed to send reminders'
+            }
+          );
+          break;
+
+        case 'export':
+          // Export client data
+          toast.promise(
+            exportClientData(action.clientIds),
+            {
+              loading: 'Preparing export...',
+              success: 'Data exported successfully',
+              error: 'Failed to export data'
+            }
+          );
+          break;
+
+        case 'template':
+          // Open template assignment modal
+          setShowTemplateModal(true);
+          setSelectedClientsForTemplate(action.clientIds);
+          break;
+
+        case 'status':
+          // Update client status
+          toast.promise(
+            updateClientStatus(action.clientIds, action.data.status),
+            {
+              loading: 'Updating status...',
+              success: 'Status updated successfully',
+              error: 'Failed to update status'
+            }
+          );
+          break;
+
+        case 'archive':
+          // Archive/unarchive clients
+          toast.promise(
+            archiveClients(action.clientIds),
+            {
+              loading: 'Processing...',
+              success: 'Clients archived successfully',
+              error: 'Failed to archive clients'
+            }
+          );
+          break;
+      }
+    } catch (error) {
+      console.error('Error performing bulk action:', error);
+      toast.error('Failed to perform action');
     }
+  };
+
+  // Helper functions for bulk actions
+  const sendReminders = async (clientIds: string[]) => {
+    // Implementation for sending reminders
+    await Promise.all(clientIds.map(id => 
+      fetch(`/api/clients/${id}/reminder`, { method: 'POST' })
+    ));
+  };
+
+  const exportClientData = async (clientIds: string[]) => {
+    // Implementation for exporting client data
+    const response = await fetch('/api/clients/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientIds })
+    });
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'client-data.csv';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  const updateClientStatus = async (clientIds: string[], status: string) => {
+    // Implementation for updating client status
+    await Promise.all(clientIds.map(id => 
+      fetch(`/api/clients/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+    ));
+  };
+
+  const archiveClients = async (clientIds: string[]) => {
+    // Implementation for archiving clients
+    await Promise.all(clientIds.map(id => 
+      fetch(`/api/clients/${id}/archive`, { method: 'PUT' })
+    ));
   };
 
   const toggleClientSelection = (clientId: string) => {
@@ -516,7 +624,7 @@ const ClientsPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm"
           />
-        </div>
+            </div>
 
         {/* Sort Dropdown */}
         <div className="flex items-center gap-2">
@@ -538,7 +646,7 @@ const ClientsPage = () => {
           >
             {sortOrder === 'asc' ? '↑' : '↓'}
           </button>
-        </div>
+                </div>
 
         {/* Status Filter */}
         <select className="px-3 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm">
@@ -547,26 +655,88 @@ const ClientsPage = () => {
           <option value="at-risk">At Risk</option>
           <option value="on-track">On Track</option>
         </select>
-      </div>
+                </div>
 
-      {/* Bulk Actions */}
+      {/* Enhanced Bulk Actions */}
       {selectedClients.size > 0 && (
-        <div className="mb-4 flex items-center gap-2 p-3 bg-gray-800 rounded-lg border border-gray-700">
-          <span className="text-sm text-gray-400">{selectedClients.size} selected</span>
-          <button
-            onClick={() => handleBulkAction({ type: 'reminder', clientIds: Array.from(selectedClients) })}
-            className="px-3 py-1.5 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
-          >
-            <BellIcon className="w-3.5 h-3.5" />
-            Send Reminders
-          </button>
-          <button
-            onClick={() => setSelectedClients(new Set())}
-            className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors duration-200"
-          >
-            Clear Selection
-          </button>
-        </div>
+        <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-gray-700 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400">{selectedClients.size} selected</span>
+              <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg">
+                {((selectedClients.size / clients.length) * 100).toFixed(0)}% of total
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedClients(new Set())}
+              className="p-1.5 text-gray-400 hover:text-gray-300 rounded-lg transition-colors duration-200"
+              title="Clear selection"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleBulkAction({ type: 'reminder', clientIds: Array.from(selectedClients) })}
+              className="px-3 py-1.5 text-xs bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
+            >
+              <BellIcon className="w-3.5 h-3.5" />
+              Send Reminders
+            </button>
+
+            <button
+              onClick={() => handleBulkAction({ type: 'export', clientIds: Array.from(selectedClients) })}
+              className="px-3 py-1.5 text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
+            >
+              <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+              Export Data
+            </button>
+
+            <button
+              onClick={() => handleBulkAction({ type: 'template', clientIds: Array.from(selectedClients) })}
+              className="px-3 py-1.5 text-xs bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
+            >
+              <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+              Assign Template
+            </button>
+
+            <div className="relative group">
+              <button
+                className="px-3 py-1.5 text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
+              >
+                <TagIcon className="w-3.5 h-3.5" />
+                Update Status
+              </button>
+              <div className="absolute left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <div className="py-1">
+                  {['on_track', 'needs_attention', 'at_risk'].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => handleBulkAction({ type: 'status', clientIds: Array.from(selectedClients), data: { status } })}
+                      className="w-full px-4 py-2 text-xs text-left text-gray-300 hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <span className={`w-2 h-2 rounded-full ${
+                        status === 'on_track' ? 'bg-green-500' :
+                        status === 'needs_attention' ? 'bg-yellow-500' :
+                        'bg-red-500'
+                      }`} />
+                      {status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => handleBulkAction({ type: 'archive', clientIds: Array.from(selectedClients) })}
+              className="px-3 py-1.5 text-xs bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 rounded-lg transition-colors duration-200 flex items-center gap-1.5"
+            >
+              <ArchiveBoxIcon className="w-3.5 h-3.5" />
+              Archive
+            </button>
+                </div>
+              </div>
       )}
 
       {/* Clients Table with Updated Layout */}
@@ -589,7 +759,7 @@ const ClientsPage = () => {
           <div>STATUS</div>
           <div>ACTION</div>
           <div>AI INSIGHTS</div>
-        </div>
+                </div>
 
         <div className="divide-y divide-gray-700">
           {sortedClients.map((client) => (
@@ -631,18 +801,18 @@ const ClientsPage = () => {
                   >
                     {client.name}
                   </button>
-                </div>
-              </div>
+            </div>
+          </div>
 
               {/* Progress */}
               <div className="flex flex-col items-start">
                 <div className="text-sm font-medium text-white">
                   Week {client.currentWeek}
-                </div>
+                      </div>
                 <div className="text-xs text-gray-400">
                   {client.phase}
-                </div>
-              </div>
+                      </div>
+                    </div>
 
               {/* Check-in History */}
               <div className="flex gap-1.5">
@@ -665,10 +835,10 @@ const ClientsPage = () => {
                     {checkIn.status === 'pending' ? '?' : checkIn.score}
                   </div>
                 ))}
-              </div>
+                    </div>
 
               {/* Status */}
-              <div>
+                      <div>
                 {client.hasPendingCheckIn ? (
                   <div className="flex items-center gap-1.5 text-sm">
                     <ClockIcon className="w-3.5 h-3.5 text-blue-400" />
@@ -703,7 +873,7 @@ const ClientsPage = () => {
                     View
                   </button>
                 )}
-              </div>
+          </div>
 
               {/* AI Summary */}
               <div className="min-w-0 max-w-full">
@@ -723,8 +893,8 @@ const ClientsPage = () => {
           <UserGroupIcon className="w-10 h-10 mx-auto text-gray-600 mb-3" />
           <h3 className="text-base font-medium text-gray-300 mb-1">No clients found</h3>
           <p className="text-sm text-gray-500">Add your first client to get started</p>
-        </div>
-      )}
+            </div>
+          )}
 
       {/* Loading State - Optimized */}
       {loading && (

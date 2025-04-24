@@ -4,16 +4,16 @@ import { useState } from 'react';
 import {
   PhotoIcon,
   ArrowUpTrayIcon,
-  CalendarIcon,
+  SparklesIcon,
+  ChartBarIcon,
   ArrowsPointingOutIcon,
-  TrashIcon,
+  CalendarIcon,
   CheckCircleIcon,
-  BellIcon,
   XMarkIcon,
   TagIcon,
   PencilIcon,
   ShareIcon,
-  ArrowRightIcon
+  BellIcon
 } from '@heroicons/react/24/outline';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { uploadPhoto } from '@/lib/photoUpload';
@@ -69,12 +69,39 @@ interface PhotoUploadState {
   isSaving: boolean;
 }
 
+// Mock photo history data
+const mockPhotoHistory = [
+  {
+    id: 1,
+    date: '2024-03-15',
+    week: 1,
+    photos: {
+      front: '/mock/front-1.jpg',
+      side: '/mock/side-1.jpg',
+      back: '/mock/back-1.jpg',
+    },
+    analysis: {
+      bodyFat: '22%',
+      muscleGain: '+1.2 lbs',
+      visualProgress: 'Noticeable definition in shoulders and arms',
+      aiSuggestions: [
+        'Keep up the protein intake for muscle preservation',
+        'Consider adding more compound exercises',
+        'Good progress on reducing waist circumference'
+      ]
+    }
+  },
+  // Add more historical entries as needed
+];
+
 export default function PhotosPage() {
+  const [activeView, setActiveView] = useState('upload'); // 'upload' or 'history'
+  const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhoto | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [photos, setPhotos] = useState<ProgressPhoto[]>(samplePhotos);
   const [selectedType, setSelectedType] = useState<'front' | 'side' | 'back'>('front');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhoto | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [uploadState, setUploadState] = useState<PhotoUploadState>({
@@ -167,350 +194,222 @@ export default function PhotosPage() {
     }));
   };
 
+  const analyzePhotos = async () => {
+    setIsAnalyzing(true);
+    // Simulate AI analysis
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    setIsAnalyzing(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Top Navigation Bar */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Main Navigation */}
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Progress Photos</h1>
-              <nav className="hidden md:flex space-x-1">
-                <a 
-                  href="/client/dashboard" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Dashboard
-                </a>
-                <a 
-                  href="/client/check-ins" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Check-ins
-                </a>
-                <a 
-                  href="/client/photos" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors"
-                >
-                  Photos
-                </a>
-                <a 
-                  href="/client/measurements" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Measurements
-                </a>
-                <a 
-                  href="/client/subscription" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  Subscription
-                </a>
-                <a 
-                  href="/client/messages" 
-                  className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors relative"
-                >
-                  Messages
-                  <span className="absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-xs font-medium rounded-full">3</span>
-                </a>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <ThemeToggle />
-              <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                <CalendarIcon className="h-5 w-5" />
-              </button>
-              <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                <BellIcon className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-900 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Progress Photos</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Track your transformation journey with weekly progress photos
-          </p>
-        </div>
-
-        {/* Upload Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Upload New Photos</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Select photo type and upload your progress photo</p>
-            </div>
-            {saveSuccess && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full">
-                <CheckCircleIcon className="h-4 w-4" />
-                <span className="text-sm font-medium">Photo saved successfully!</span>
-              </div>
-            )}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Progress Photos</h1>
+            <p className="text-gray-400 mt-1">Track your transformation journey with weekly progress photos</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {(['front', 'side', 'back'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`flex items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                  selectedType === type
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <div className="text-center">
-                  <PhotoIcon className={`h-8 w-8 mx-auto mb-2 ${
-                    selectedType === type ? 'text-indigo-500 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'
-                  }`} />
-                  <span className={`text-sm font-medium capitalize ${
-                    selectedType === type ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400'
-                  }`}>
-                    {type} View
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex justify-center">
-            <label className={`relative cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-              uploadState.isSaving
-                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
-            } transition-colors`}>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setActiveView('upload')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                activeView === 'upload'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
               <ArrowUpTrayIcon className="h-5 w-5" />
-              <span className="text-sm font-medium">
-                {uploadState.isSaving ? 'Saving...' : 'Select Photo'}
-              </span>
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                disabled={uploadState.isSaving}
-              />
-            </label>
+              Upload New
+            </button>
+            <button
+              onClick={() => setActiveView('history')}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                activeView === 'history'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              }`}
+            >
+              <CalendarIcon className="h-5 w-5" />
+              History
+            </button>
           </div>
         </div>
 
-        {/* Preview Modal */}
-        {showPreview && uploadState.preview && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-            <div className="relative max-w-4xl w-full bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
-              <div className="absolute top-4 right-4 z-10">
-                <button
-                  onClick={() => setShowPreview(false)}
-                  className="p-2 bg-white dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-                {/* Photo Preview */}
-                <div className="relative aspect-square">
-                  <img
-                    src={uploadState.preview}
-                    alt="Preview"
-                    className="absolute inset-0 w-full h-full object-contain rounded-lg"
+        {activeView === 'upload' && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-white mb-2">Upload New Photos</h2>
+              <p className="text-gray-400 text-sm">Select photo type and upload your progress photos</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Front View Upload */}
+              <div className="relative group">
+                <div className="aspect-[3/4] rounded-lg border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors bg-gray-700/50 flex flex-col items-center justify-center cursor-pointer overflow-hidden">
+                  <PhotoIcon className="h-8 w-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="mt-2 text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">Front View</span>
+                  <input
+                    type="file"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={() => setSelectedType('front')}
+                    accept="image/*"
                   />
                 </div>
+              </div>
 
-                {/* Photo Details */}
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      Photo Details
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>{new Date().toLocaleDateString()}</span>
-                      <span>•</span>
-                      <span className="capitalize">{uploadState.type} View</span>
-                    </div>
-                  </div>
-
-                  {/* Tags */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-1">
-                      <TagIcon className="h-4 w-4" />
-                      Tags
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {(['before', 'after', 'milestone', 'weekly', 'monthly'] as PhotoTag[]).map((tag) => (
-                        <button
-                          key={tag}
-                          onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                            uploadState.tags.includes(tag)
-                              ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-                          }`}
-                        >
-                          {tag.charAt(0).toUpperCase() + tag.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-1">
-                      <PencilIcon className="h-4 w-4" />
-                      Notes
-                    </h4>
-                    <textarea
-                      value={uploadState.notes}
-                      onChange={(e) => setUploadState(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Add notes about this photo..."
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none h-24"
-                    />
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-4">
-                    <button
-                      onClick={handleSavePhoto}
-                      disabled={uploadState.isSaving}
-                      className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${
-                        uploadState.isSaving
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                          : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
-                      } transition-colors`}
-                    >
-                      <CheckCircleIcon className="h-5 w-5" />
-                      <span className="text-sm font-medium">
-                        {uploadState.isSaving ? 'Saving...' : 'Save Photo'}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setShowPreview(false)}
-                      className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+              {/* Side View Upload */}
+              <div className="relative group">
+                <div className="aspect-[3/4] rounded-lg border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors bg-gray-700/50 flex flex-col items-center justify-center cursor-pointer overflow-hidden">
+                  <PhotoIcon className="h-8 w-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="mt-2 text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">Side View</span>
+                  <input
+                    type="file"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={() => setSelectedType('side')}
+                    accept="image/*"
+                  />
                 </div>
+              </div>
+
+              {/* Back View Upload */}
+              <div className="relative group">
+                <div className="aspect-[3/4] rounded-lg border-2 border-dashed border-gray-600 hover:border-blue-500 transition-colors bg-gray-700/50 flex flex-col items-center justify-center cursor-pointer overflow-hidden">
+                  <PhotoIcon className="h-8 w-8 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  <span className="mt-2 text-sm font-medium text-gray-400 group-hover:text-blue-500 transition-colors">Back View</span>
+                  <input
+                    type="file"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    onChange={() => setSelectedType('back')}
+                    accept="image/*"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* AI Analysis Button */}
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={analyzePhotos}
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg text-white font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="h-5 w-5" />
+                    Analyze with AI
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* AI Analysis Results */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ChartBarIcon className="h-5 w-5 text-blue-400" />
+                  <h3 className="text-white font-medium">Body Composition</h3>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Estimated Body Fat: 18-20%</p>
+                  <p className="text-sm text-gray-300">Muscle Mass Index: Medium</p>
+                </div>
+              </div>
+
+              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <ArrowsPointingOutIcon className="h-5 w-5 text-green-400" />
+                  <h3 className="text-white font-medium">Changes Detected</h3>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-300">Shoulder Definition: +8%</p>
+                  <p className="text-sm text-gray-300">Waist Reduction: -2cm</p>
+                </div>
+              </div>
+
+              <div className="bg-gray-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <SparklesIcon className="h-5 w-5 text-purple-400" />
+                  <h3 className="text-white font-medium">AI Suggestions</h3>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-300">
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 mt-0.5" />
+                    Focus on upper body definition
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 mt-0.5" />
+                    Maintain current nutrition plan
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
         )}
 
-        {/* Photos Grid */}
-        <div className="space-y-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Photo History</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {photos.map((photo) => (
-              <div
-                key={photo.id}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden group"
-              >
-                <div className="relative aspect-square">
-                  <img
-                    src={photo.url}
-                    alt={`Progress photo - ${photo.type} view`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button
-                      onClick={() => handleFullScreenView(photo)}
-                      className="p-2 bg-white dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mx-2"
-                    >
-                      <ArrowsPointingOutIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => deletePhoto(photo.id)}
-                      className="p-2 bg-white dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors mx-2"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+        {activeView === 'history' && (
+          <div className="space-y-8">
+            {mockPhotoHistory.map((entry) => (
+              <div key={entry.id} className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Week {entry.week} Progress</h3>
+                    <p className="text-gray-400 text-sm">
+                      {new Date(entry.date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
                   </div>
+                  <button className="px-4 py-2 bg-gray-700 rounded-lg text-gray-300 hover:bg-gray-600 transition-colors">
+                    Compare
+                  </button>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium capitalize text-gray-900 dark:text-white">
-                      {photo.type} View
-                    </span>
-                    <div className="flex items-center text-gray-500 dark:text-gray-400">
-                      <CalendarIcon className="h-4 w-4 mr-1" />
-                      <span className="text-sm">{new Date(photo.date).toLocaleDateString()}</span>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {Object.entries(entry.photos).map(([view, url]) => (
+                    <div key={view} className="aspect-[3/4] relative group">
+                      <div className="absolute inset-0 bg-gray-700/50 rounded-lg flex items-center justify-center">
+                        <span className="text-gray-400 capitalize">{view} View</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-gray-700/50 rounded-lg p-4">
+                    <h4 className="text-white font-medium mb-2">Measurements</h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <p>Body Fat: {entry.analysis.bodyFat}</p>
+                      <p>Muscle Gain: {entry.analysis.muscleGain}</p>
                     </div>
                   </div>
-                  {photo.notes && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{photo.notes}</p>
-                  )}
+                  
+                  <div className="bg-gray-700/50 rounded-lg p-4 md:col-span-2">
+                    <h4 className="text-white font-medium mb-2">AI Analysis</h4>
+                    <p className="text-gray-300 text-sm mb-3">{entry.analysis.visualProgress}</p>
+                    <ul className="space-y-2">
+                      {entry.analysis.aiSuggestions.map((suggestion, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm text-gray-300">
+                          <CheckCircleIcon className="h-4 w-4 text-green-400 mt-0.5" />
+                          {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        )}
       </div>
-
-      {/* Full Screen Modal */}
-      {selectedPhoto && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-          <div className="relative max-w-4xl w-full bg-white dark:bg-gray-800 rounded-xl overflow-hidden">
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={closeFullScreenView}
-                className="p-2 bg-white dark:bg-gray-800 rounded-full text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="relative aspect-square">
-              <img
-                src={selectedPhoto.url}
-                alt={`Progress photo - ${selectedPhoto.type} view`}
-                className="absolute inset-0 w-full h-full object-contain"
-              />
-            </div>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white capitalize">
-                    {selectedPhoto.type} View
-                  </h3>
-                  <div className="flex items-center text-gray-500 dark:text-gray-400 mt-1">
-                    <CalendarIcon className="h-4 w-4 mr-1" />
-                    <span className="text-sm">{new Date(selectedPhoto.date).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleSavePhoto}
-                  disabled={isSaving}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${
-                    isSaving
-                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600'
-                  } transition-colors`}
-                >
-                  <CheckCircleIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">
-                    {isSaving ? 'Saving...' : 'Save Photo'}
-                  </span>
-                </button>
-              </div>
-              {selectedPhoto.notes && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">{selectedPhoto.notes}</p>
-              )}
-              {saveSuccess && (
-                <div className="mt-4 flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full w-fit">
-                  <CheckCircleIcon className="h-4 w-4" />
-                  <span className="text-sm font-medium">Photo saved successfully!</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 

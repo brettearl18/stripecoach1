@@ -44,6 +44,18 @@ service cloud.firestore {
         (role == 'client' && settings.accessControl.rolePermissions.client[operation])
       );
     }
+
+    // Onboarding rules
+    match /onboarding/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Assessments rules
+    match /assessments/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
     
     // Security Settings rules
     match /securitySettings/{adminId} {

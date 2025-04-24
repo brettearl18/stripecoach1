@@ -20,6 +20,12 @@ import {
   ArrowDownIcon,
   MinusIcon,
   CalendarIcon,
+  XMarkIcon,
+  TrophyIcon,
+  ArrowTrendingDownIcon,
+  ArrowTrendingUpIcon,
+  PhotoIcon,
+  ChartPieIcon,
 } from '@heroicons/react/24/outline';
 
 // Register Chart.js components
@@ -131,6 +137,18 @@ const calculateBMI = (weight: number, height: number) => {
   };
 };
 
+// Add new type for form data
+type MeasurementFormData = {
+  date: string;
+  weight: string;
+  chest: string;
+  waist: string;
+  hips: string;
+  biceps: string;
+  thighs: string;
+  notes?: string;
+};
+
 export default function MeasurementsPage() {
   const [measurements, setMeasurements] = useState<Measurement[]>(sampleMeasurements);
   const [isAdding, setIsAdding] = useState(false);
@@ -148,6 +166,18 @@ export default function MeasurementsPage() {
   const [selectedMeasurement, setSelectedMeasurement] = useState<string | 'all'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [height, setHeight] = useState(175); // Default height in cm
+  const [selectedMetric, setSelectedMetric] = useState<Measurement>('weight');
+  const [unit, setUnit] = useState<'imperial' | 'metric'>('imperial');
+  const [formData, setFormData] = useState<MeasurementFormData>({
+    date: new Date().toISOString().split('T')[0],
+    weight: '',
+    chest: '',
+    waist: '',
+    hips: '',
+    biceps: '',
+    thighs: '',
+    notes: '',
+  });
 
   // Calculate BMI from latest weight
   const latestWeight = measurementData.measurements.weight[measurementData.measurements.weight.length - 1];
@@ -175,6 +205,7 @@ export default function MeasurementsPage() {
       calves: 0,
     });
     setNotes('');
+    setShowAddModal(false);
   };
 
   const getChange = (current: number, previous: number): { value: number; type: 'increase' | 'decrease' | 'same' } => {
@@ -359,216 +390,467 @@ export default function MeasurementsPage() {
     }
   };
 
+  const handleInputChange = (field: keyof MeasurementFormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const individualChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      title: {
+        display: true,
+        color: '#fff',
+        font: {
+          size: 14,
+          family: "'Inter', sans-serif",
+          weight: '600'
+        },
+        padding: { bottom: 15 }
+      },
+      tooltip: {
+        backgroundColor: '#374151',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        bodyFont: {
+          size: 12,
+          family: "'Inter', sans-serif"
+        },
+        titleFont: {
+          size: 12,
+          family: "'Inter', sans-serif",
+          weight: '600'
+        },
+        padding: 10,
+        boxPadding: 4,
+        usePointStyle: true,
+        borderColor: '#4B5563',
+        borderWidth: 1,
+        boxWidth: 8,
+        boxHeight: 8,
+        caretSize: 5,
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: false,
+        grid: {
+          color: '#374151',
+          drawBorder: false,
+        },
+        border: {
+          display: false,
+        },
+        ticks: {
+          color: '#9CA3AF',
+          font: {
+            size: 10,
+            family: "'Inter', sans-serif"
+          },
+          padding: 8,
+          maxTicksLimit: 5
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        },
+        border: {
+          display: false,
+        },
+        ticks: {
+          color: '#9CA3AF',
+          font: {
+            size: 10,
+            family: "'Inter', sans-serif"
+          },
+          padding: 4,
+          maxTicksLimit: 4
+        }
+      }
+    }
+  };
+
+  const getIndividualChartData = (measurement: keyof typeof measurementData.measurements) => {
+    return {
+      labels: measurementData.dates,
+      datasets: [{
+        label: measurement.charAt(0).toUpperCase() + measurement.slice(1),
+        data: measurementData.measurements[measurement],
+        borderColor: measurementColors[measurement],
+        backgroundColor: `${measurementColors[measurement]}20`,
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: 'white',
+        pointHoverBackgroundColor: measurementColors[measurement],
+        pointBorderColor: measurementColors[measurement],
+        pointBorderWidth: 2
+      }]
+    };
+  };
+
+  // Calculate trends and insights
+  const calculateTrends = () => {
+    const trends = Object.entries(measurementData.measurements).map(([key, values]) => {
+      const last4Values = values.slice(-4);
+      const trend = last4Values.every((val, i) => i === 0 || val <= last4Values[i - 1]);
+      const percentChange = ((values[values.length - 1] - values[0]) / values[0] * 100).toFixed(1);
+      
+      return {
+        measurement: key,
+        trend: trend ? 'decreasing' : 'increasing',
+        percentChange: percentChange,
+        recentChange: (values[values.length - 1] - values[values.length - 2]).toFixed(1),
+        consistency: calculateConsistency(values)
+      };
+    });
+
+    return trends;
+  };
+
+  const calculateConsistency = (values: number[]) => {
+    let consistent = 0;
+    for (let i = 1; i < values.length; i++) {
+      if (Math.abs(values[i] - values[i-1]) <= 0.5) consistent++;
+    }
+    return (consistent / (values.length - 1) * 100).toFixed(0);
+  };
+
+  const trends = calculateTrends();
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-          {/* Header with BMI */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Body Measurements Tracker
-              </h1>
-              <div className="flex items-center gap-4">
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">BMI</div>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-2xl font-bold ${bmi.color}`}>{bmi.value}</span>
-                    <span className="text-sm text-gray-500">{bmi.category}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <PlusIcon className="h-5 w-5" />
-                  <span>Add Measurement</span>
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Body Measurements Tracker</h1>
+            <p className="text-gray-400 mt-1">Track and monitor your body measurements progress</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-2">
               <button
-                onClick={() => setSelectedMeasurement('all')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  selectedMeasurement === 'all'
-                    ? 'bg-gray-900 text-white shadow-md dark:bg-white dark:text-gray-900'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700'
+                onClick={() => setUnit('metric')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  unit === 'metric'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
-                All Measurements
+                Metric
               </button>
-              {Object.entries(measurementData.measurements).map(([key]) => (
-                <button
-                  key={key}
-                  onClick={() => setSelectedMeasurement(key)}
-                  className={`group relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                    selectedMeasurement === key
-                      ? 'text-white shadow-md'
-                      : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
-                  style={{
-                    backgroundColor: selectedMeasurement === key ? measurementColors[key as keyof typeof measurementColors] : ''
-                  }}
-                >
-                  <span className="relative z-10">{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                  {selectedMeasurement !== key && (
-                    <span
-                      className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-10 transition-opacity duration-200"
-                      style={{
-                        backgroundColor: measurementColors[key as keyof typeof measurementColors]
-                      }}
-                    />
-                  )}
-                </button>
-              ))}
+              <button
+                onClick={() => setUnit('imperial')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  unit === 'imperial'
+                    ? 'bg-blue-500 text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Imperial
+              </button>
             </div>
-          </div>
-          
-          <div className="h-[600px] p-4">
-            <Line data={getChartData(selectedMeasurement)} options={chartOptions} className="!w-full !h-full" />
-          </div>
-
-          {/* Latest Measurements Table */}
-          <div className="mt-8">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Latest Measurements
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Measurement
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Current
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Previous
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Change
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {Object.entries(measurementData.measurements).map(([key, values]) => {
-                    const current = values[values.length - 1];
-                    const previous = values[values.length - 2];
-                    const change = current - previous;
-                    return (
-                      <tr key={key}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                          {key.charAt(0).toUpperCase() + key.slice(1)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                          {current}"
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                          {previous}"
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`${change < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {change > 0 ? '+' : ''}{change.toFixed(1)}"
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Add Measurement
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Add Measurement Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Measurement</h2>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        {/* Progress Highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {trends.map((trend) => (
+            <div key={trend.measurement} className="bg-gray-800 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {trend.trend === 'decreasing' ? (
+                    <ArrowTrendingDownIcon className="h-5 w-5 text-green-400" />
+                  ) : (
+                    <ArrowTrendingUpIcon className="h-5 w-5 text-blue-400" />
+                  )}
+                  <h3 className="text-sm font-medium text-white">{trend.measurement.charAt(0).toUpperCase() + trend.measurement.slice(1)}</h3>
+                </div>
+                <div className="flex items-center gap-1">
+                  <TrophyIcon className="h-4 w-4 text-yellow-400" />
+                  <span className="text-sm text-gray-400">{trend.consistency}% consistent</span>
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-bold text-white">
+                  {trend.percentChange}%
+                </div>
+                <p className="text-sm text-gray-400">Total change</p>
+              </div>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {measurementFields.map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {label}
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <button className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            <PhotoIcon className="h-5 w-5" />
+            Compare with Photos
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            <ChartPieIcon className="h-5 w-5" />
+            View Analytics
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors">
+            <CalendarIcon className="h-5 w-5" />
+            Set Measurement Schedule
+          </button>
+        </div>
+
+        {/* Measurement Graphs Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {Object.keys(measurementData.measurements).map((measurement) => {
+            const data = measurementData.measurements[measurement as keyof typeof measurementData.measurements];
+            const current = data[data.length - 1];
+            const previous = data[data.length - 2];
+            const change = current - previous;
+            const changeColor = change < 0 ? 'text-green-400' : 'text-red-400';
+            const trend = trends.find(t => t.measurement === measurement);
+
+            return (
+              <div key={measurement} className="bg-gray-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gray-700 rounded-lg">
+                      <ChartBarIcon className="h-5 w-5" style={{ color: measurementColors[measurement as keyof typeof measurementColors] }} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium text-white">{measurement.charAt(0).toUpperCase() + measurement.slice(1)}</h3>
+                      <p className="text-sm text-gray-400">
+                        {trend?.trend === 'decreasing' ? 'Trending down' : 'Trending up'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`flex items-center gap-1 ${changeColor}`}>
+                    {change < 0 ? (
+                      <ArrowDownIcon className="h-4 w-4" />
+                    ) : (
+                      <ArrowUpIcon className="h-4 w-4" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {Math.abs(change).toFixed(1)} {unit === 'metric' ? (measurement === 'weight' ? 'kg' : 'cm') : (measurement === 'weight' ? 'lbs' : '"')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-[200px] mb-4">
+                  <Line
+                    data={getIndividualChartData(measurement as keyof typeof measurementData.measurements)}
+                    options={{
+                      ...individualChartOptions,
+                      plugins: {
+                        ...individualChartOptions.plugins,
+                        title: {
+                          ...individualChartOptions.plugins.title,
+                          text: `${measurement.charAt(0).toUpperCase() + measurement.slice(1)} Progress`
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-sm text-gray-400 mb-1">Current</p>
+                    <p className="text-2xl font-bold text-white">
+                      {unit === 'metric' 
+                        ? `${current.toFixed(1)}${measurement === 'weight' ? ' kg' : ' cm'}`
+                        : `${(measurement === 'weight' ? current * 2.20462 : current * 0.393701).toFixed(1)}${measurement === 'weight' ? ' lbs' : '"'}`
+                      }
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-400 mb-1">Target</p>
+                    <p className="text-lg font-medium text-gray-300">
+                      {unit === 'metric'
+                        ? `${(data[0] * 0.9).toFixed(1)}${measurement === 'weight' ? ' kg' : ' cm'}`
+                        : `${(measurement === 'weight' ? data[0] * 2.20462 * 0.9 : data[0] * 0.393701 * 0.9).toFixed(1)}${measurement === 'weight' ? ' lbs' : '"'}`
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Progress Indicators */}
+                <div className="mt-4 pt-4 border-t border-gray-700">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-400">Total Change</p>
+                      <p className="text-lg font-semibold text-white">{trend?.percentChange}%</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-400">Consistency</p>
+                      <p className="text-lg font-semibold text-white">{trend?.consistency}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add Measurement Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-xl shadow-xl p-6 max-w-2xl w-full mx-4">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">Add New Measurement</h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleInputChange('date', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Weight ({unit === 'metric' ? 'kg' : 'lbs'})
                     </label>
                     <input
                       type="number"
                       step="0.1"
-                      value={newMeasurement[key]}
-                      onChange={(e) => setNewMeasurement(prev => ({
-                        ...prev,
-                        [key]: parseFloat(e.target.value) || 0
-                      }))}
-                      className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white"
+                      value={formData.weight}
+                      onChange={(e) => handleInputChange('weight', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
                       required
                     />
                   </div>
-                ))}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Chest ({unit === 'metric' ? 'cm' : 'inches'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.chest}
+                      onChange={(e) => handleInputChange('chest', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Waist ({unit === 'metric' ? 'cm' : 'inches'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.waist}
+                      onChange={(e) => handleInputChange('waist', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Hips ({unit === 'metric' ? 'cm' : 'inches'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.hips}
+                      onChange={(e) => handleInputChange('hips', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Biceps ({unit === 'metric' ? 'cm' : 'inches'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.biceps}
+                      onChange={(e) => handleInputChange('biceps', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Thighs ({unit === 'metric' ? 'cm' : 'inches'})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={formData.thighs}
+                      onChange={(e) => handleInputChange('thighs', e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Height (cm)
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Notes (optional)
                   </label>
-                  <input
-                    type="number"
-                    value={height}
-                    onChange={(e) => setHeight(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white"
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                    rows={3}
+                    placeholder="Add any notes about your measurements..."
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Body Fat % (optional)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white"
-                  />
+
+                <div className="flex justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Save Measurement
+                  </button>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Notes (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white"
-                  rows={3}
-                />
-              </div>
-              <div className="flex justify-end gap-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Save Measurement
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 } 

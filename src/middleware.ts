@@ -9,24 +9,20 @@ const protectedRoutes = {
 };
 
 export async function middleware(request: NextRequest) {
-  // Get the pathname from the URL
-  const path = request.nextUrl.pathname;
-
-  // Development mode: Allow all access based on URL path
-  // This is ONLY for development - proper authentication should be implemented in production
-  if (path.startsWith('/admin') || path.startsWith('/coach') || path.startsWith('/client')) {
-    return NextResponse.next();
-  }
-
+  // Allow all access in development mode
   return NextResponse.next();
 }
 
-// Update matcher to include all protected routes
+// Configure which paths the middleware should run on
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/coach/:path*',
-    '/client/:path*',
-    '/login'
-  ]
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };

@@ -9,25 +9,21 @@ export interface UploadedPhoto {
 export async function uploadPhoto(
   file: File,
   userId: string,
-  type: 'front' | 'side' | 'back'
+  type: string
 ): Promise<UploadedPhoto> {
   try {
-    // Create a unique filename
-    const timestamp = Date.now();
-    const filename = `${userId}/${type}/${timestamp}-${file.name}`;
-    
-    // Create a reference to the file location
-    const storageRef = ref(storage, filename);
-    
+    // Create a storage reference
+    const storageRef = ref(storage, `progress-photos/${userId}/${Date.now()}_${type}`);
+
     // Upload the file
     const snapshot = await uploadBytes(storageRef, file);
-    
+
     // Get the download URL
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
+    const url = await getDownloadURL(snapshot.ref);
+
     return {
-      url: downloadURL,
-      path: filename
+      url,
+      path: snapshot.ref.fullPath
     };
   } catch (error) {
     console.error('Error uploading photo:', error);

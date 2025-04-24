@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   PaperAirplaneIcon,
   PaperClipIcon,
@@ -15,98 +13,60 @@ import {
   GifIcon,
   PlusIcon,
   Cog8ToothIcon,
-  XMarkIcon
+  XMarkIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline';
 import { Avatar } from '@/components/ui/avatar';
 import { ChatSettings } from '@/components/ChatSettings';
 
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  timestamp: Date;
-  type: 'text' | 'audio' | 'file';
-  status: 'sent' | 'delivered' | 'read';
-  attachments?: {
-    name: string;
-    url: string;
-    type: string;
-    size: number;
-  }[];
-}
+// Mock conversations data
+const mockConversations = [
+  {
+    id: '1',
+    coachName: 'Coach Sarah',
+    lastMessage: 'Great progress this week!',
+    timestamp: new Date('2024-04-07T18:45:00'),
+    unreadCount: 0,
+    status: 'online'
+  }
+];
 
-interface Conversation {
-  id: string;
-  coachName: string;
-  avatar?: string;
-  lastMessage: string;
-  timestamp: Date;
-  unreadCount: number;
-  status: 'online' | 'offline' | 'away';
-  lastSeen?: Date;
-}
+// Mock messages data
+const mockMessages = [
+  {
+    id: '1',
+    content: 'Hi David! I noticed your great progress in this week\'s check-in. Your nutrition compliance is improving nicely.',
+    senderId: 'coach1',
+    timestamp: new Date('2024-04-07T18:30:00'),
+    type: 'text',
+    status: 'read'
+  },
+  {
+    id: '2',
+    content: 'Thanks! Yes, I\'ve been focusing on hitting my protein targets consistently.',
+    senderId: 'client1',
+    timestamp: new Date('2024-04-07T18:32:00'),
+    type: 'text',
+    status: 'read'
+  },
+  {
+    id: '3',
+    content: 'That\'s excellent! I can see it reflecting in your progress photos too. Keep it up! 💪',
+    senderId: 'coach1',
+    timestamp: new Date('2024-04-07T18:35:00'),
+    type: 'text',
+    status: 'read'
+  }
+];
 
 export default function ClientMessagesPage() {
-  const router = useRouter();
-  const { user } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
-
-  useEffect(() => {
-    // Redirect if user is not a client
-    if (user && user.role !== 'client') {
-      router.push('/coach/messages');
-    }
-  }, [user, router]);
-
-  // If no user or loading, show loading state
-  if (!user) {
-    return <div>Loading...</div>;
-  }
-
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      coachName: 'John Smith',
-      lastMessage: 'Great progress this week!',
-      timestamp: new Date('2024-04-07T18:45:00'),
-      unreadCount: 0,
-      status: 'online'
-    },
-    {
-      id: '2',
-      coachName: 'Sarah Wilson',
-      lastMessage: 'Let\'s review your goals',
-      timestamp: new Date('2024-04-07T18:30:00'),
-      unreadCount: 1,
-      status: 'offline',
-      lastSeen: new Date('2024-04-07T17:30:00')
-    }
-  ]);
-
-  const [selectedConversation, setSelectedConversation] = useState<string | null>('1');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: 'Great progress this week!',
-      senderId: 'coach1',
-      timestamp: new Date('2024-04-07T18:30:00'),
-      type: 'text',
-      status: 'read'
-    },
-    {
-      id: '2',
-      content: 'Thank you! I\'ve been working hard',
-      senderId: 'client1',
-      timestamp: new Date('2024-04-07T18:32:00'),
-      type: 'text',
-      status: 'read'
-    }
-  ]);
-
+  const [conversations, setConversations] = useState(mockConversations);
+  const [selectedConversation, setSelectedConversation] = useState<string>('1');
+  const [messages, setMessages] = useState(mockMessages);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     scrollToBottom();
@@ -122,7 +82,7 @@ export default function ClientMessagesPage() {
 
   const handleSend = () => {
     if (newMessage.trim()) {
-      const message: Message = {
+      const message = {
         id: Date.now().toString(),
         content: newMessage,
         senderId: 'client1',
@@ -175,7 +135,7 @@ export default function ClientMessagesPage() {
       {/* Conversations List */}
       <div className="w-60 bg-[#2B2D31] flex flex-col">
         <div className="p-4">
-          <h1 className="text-white font-semibold mb-4">Chats</h1>
+          <h1 className="text-white font-semibold mb-4">Messages</h1>
           <div className="relative">
             <input
               type="text"
@@ -310,7 +270,7 @@ export default function ClientMessagesPage() {
                   <PaperClipIcon className="w-5 h-5" />
                 </button>
                 <button className="text-gray-400 hover:text-white">
-                  <FaceSmileIcon className="w-5 h-5" />
+                  <PhotoIcon className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleSend}
@@ -336,9 +296,8 @@ export default function ClientMessagesPage() {
             </button>
             <ChatSettings
               user={{
-                name: user?.name || 'Client',
-                role: user?.role || 'client',
-                avatar: user?.image,
+                name: 'David Rodriguez',
+                role: 'client',
                 status: 'online'
               }}
               onClose={() => setShowSettings(false)}
@@ -348,4 +307,4 @@ export default function ClientMessagesPage() {
       )}
     </div>
   );
-} 
+}

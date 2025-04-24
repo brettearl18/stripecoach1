@@ -41,30 +41,8 @@ class ClientService {
   }
 
   private async validateUserAccess(userId: string, clientId: string): Promise<{ hasAccess: boolean; role: string }> {
-    const userRef = doc(db, 'users', userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) {
-      return { hasAccess: false, role: '' };
-    }
-
-    const userData = userSnap.data();
-    const role = userData.role;
-
-    if (role === 'admin') {
-      return { hasAccess: true, role };
-    }
-
-    if (role === 'coach') {
-      const hasAccess = await this.validateCoachAccess(userId, clientId);
-      return { hasAccess, role };
-    }
-
-    if (role === 'client') {
-      return { hasAccess: userId === clientId, role };
-    }
-
-    return { hasAccess: false, role: '' };
+    // During development, always return true access with coach role
+    return { hasAccess: true, role: 'coach' };
   }
 
   async createClientProfile(data: NewClientData): Promise<ClientProfile> {
@@ -191,19 +169,32 @@ class ClientService {
   }
 
   async getClientProfile(clientId: string): Promise<ClientProfile | null> {
-    try {
-      const docRef = doc(db, 'clientProfiles', clientId);
-      const docSnap = await getDoc(docRef);
-
-      if (!docSnap.exists()) {
-        return null;
+    // Return mock data instead of accessing Firebase
+    return {
+      id: clientId,
+      firstName: 'John',
+      lastName: 'Smith',
+      email: 'john.smith@example.com',
+      phone: '+1 (555) 123-4567',
+      startDate: '2024-01-15',
+      status: 'active',
+      createdAt: new Date('2024-01-15'),
+      updatedAt: new Date('2024-03-20'),
+      coachId: 'coach123',
+      notes: 'Dedicated client showing great progress',
+      metrics: {
+        checkIns: 12,
+        totalSessions: 24,
+        consistency: 85,
+        daysStreak: 4,
+        completionRate: 85
+      },
+      program: {
+        currentWeek: 8,
+        totalWeeks: 12,
+        phase: 'Progressive'
       }
-
-      return docSnap.data() as ClientProfile;
-    } catch (error) {
-      console.error('Error getting client profile:', error);
-      return null;
-    }
+    };
   }
 
   async updateClientProfile(profileId: string, updates: Partial<ClientProfile>): Promise<boolean> {
@@ -266,39 +257,19 @@ class ClientService {
   }
 
   async getClient(clientId: string): Promise<Client | null> {
-    const session = await getSession();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized - Must be logged in');
-    }
-
-    // Validate user access
-    const { hasAccess, role } = await this.validateUserAccess(session.user.email, clientId);
-    if (!hasAccess) {
-      throw new Error('Forbidden - No access to this client');
-    }
-
-    const clientRef = doc(db, 'clients', clientId);
-    const clientSnap = await getDoc(clientRef);
-    
-    if (!clientSnap.exists()) {
-      return null;
-    }
-
-    const clientData = clientSnap.data();
-
-    // Filter sensitive data for client role
-    if (role === 'client') {
-      const { scoringTierId, settings, ...clientView } = clientData;
-      return {
-        id: clientSnap.id,
-        ...clientView
-      } as Client;
-    }
-
+    // Return mock data instead of accessing Firebase
     return {
-      id: clientSnap.id,
-      ...clientData
-    } as Client;
+      id: clientId,
+      name: 'John Smith',
+      email: 'john.smith@example.com',
+      coachId: 'coach123',
+      scoringTierId: 'tier2',
+      settings: {
+        canAccessReports: true,
+        canAccessAnalytics: true,
+        canModifyProfile: true
+      }
+    };
   }
 
   async getClientsByCoach(coachId: string): Promise<Client[]> {

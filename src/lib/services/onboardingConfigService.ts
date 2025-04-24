@@ -128,4 +128,55 @@ export const onboardingConfigService = {
       updatedAt: config.data().updatedAt.toDate(),
     } as OnboardingConfig;
   },
-}; 
+};
+
+interface OnboardingProgress {
+  userId: string;
+  profile: any;
+  goals: string[];
+  assessment: any;
+  completedAt: string;
+}
+
+export async function saveOnboardingProgress(
+  userId: string,
+  data: Omit<OnboardingProgress, 'userId'>
+): Promise<boolean> {
+  try {
+    const onboardingRef = doc(db, 'onboarding', userId);
+    await setDoc(onboardingRef, {
+      ...data,
+      userId,
+      updatedAt: new Date().toISOString()
+    });
+    return true;
+  } catch (error) {
+    console.error('Error saving onboarding progress:', error);
+    return false;
+  }
+}
+
+export async function getOnboardingProgress(userId: string): Promise<OnboardingProgress | null> {
+  try {
+    const onboardingRef = doc(db, 'onboarding', userId);
+    const docSnap = await getDoc(onboardingRef);
+    
+    if (docSnap.exists()) {
+      return docSnap.data() as OnboardingProgress;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting onboarding progress:', error);
+    return null;
+  }
+}
+
+export async function isOnboardingComplete(userId: string): Promise<boolean> {
+  try {
+    const progress = await getOnboardingProgress(userId);
+    return progress !== null && progress.completedAt !== undefined;
+  } catch (error) {
+    console.error('Error checking onboarding status:', error);
+    return false;
+  }
+} 
