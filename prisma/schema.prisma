@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(CLIENT)
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  clients       User[]    @relation("CoachToClient")
+  coach         User?     @relation("CoachToClient", fields: [coachId], references: [id])
+  coachId       String?
+  
+  // Coach specific relations
+  checkIns      CheckIn[] @relation("CoachCheckIns")
+  clientCheckIns CheckIn[] @relation("ClientCheckIns")
+  messages      Message[]
+  clientAlerts  Alert[]   @relation("AlertToClient")
+  coachAlerts   Alert[]   @relation("AlertToCoach")
+  payments      Payment[]
+}
+
+model CheckIn {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  status      CheckInStatus @default(PENDING)
+  
+  // Relations
+  coach       User     @relation("CoachCheckIns", fields: [coachId], references: [id])
+  coachId     String
+  client      User     @relation("ClientCheckIns", fields: [clientId], references: [id])
+  clientId    String
+  
+  // Check-in data
+  weight      Float?
+  bodyFat     Float?
+  mood        Int?     // Scale of 1-5
+  energy      Int?     // Scale of 1-5
+  sleep       Int?     // Hours
+  nutrition   Int?     // Scale of 1-5
+  notes       String?  @db.Text
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  content   String   @db.Text
+  read      Boolean  @default(false)
+  
+  // Relations
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  String
+}
+
+model Alert {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  message   String
+  type      AlertType @default(INFO)
+  
+  // Relations
+  client    User      @relation("AlertToClient", fields: [clientId], references: [id])
+  clientId  String
+  coach     User?     @relation("AlertToCoach", fields: [coachId], references: [id])
+  coachId   String?
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  amount    Float
+  currency  String   @default("USD")
+  status    PaymentStatus @default(PENDING)
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+}
+
+enum Role {
+  ADMIN
+  COACH
+  CLIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum CheckInStatus {
+  PENDING
+  COMPLETED
+  MISSED
+}
+
+enum AlertType {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+} 

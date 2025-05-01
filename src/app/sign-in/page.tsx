@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { loginWithEmail } from '@/lib/firebase/auth';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -19,15 +19,11 @@ export default function SignInPage() {
     setError('');
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError(result.error);
-      } else {
+      const { user, error: authError } = await loginWithEmail(email, password);
+      
+      if (authError) {
+        setError(authError);
+      } else if (user) {
         const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
         router.push(callbackUrl);
       }

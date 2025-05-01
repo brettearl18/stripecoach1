@@ -103,7 +103,7 @@ export default function CheckInReview() {
   };
 
   const addQuickResponse = (response: string) => {
-    setFeedback(prev => prev ? \`\${prev}\\n\${response}\` : response);
+    setFeedback(prev => prev ? `${prev}\n${response}` : response);
   };
 
   const addTask = (task: string) => {
@@ -144,41 +144,41 @@ export default function CheckInReview() {
         <div className="flex space-x-6 mt-6">
           <button
             onClick={() => setSelectedTab('overview')}
-            className={\`px-4 py-2 text-sm font-medium \${
+            className={`px-4 py-2 text-sm font-medium ${
               selectedTab === 'overview'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-gray-500 dark:text-gray-400'
-            }\`}
+            }`}
           >
             Overview
           </button>
           <button
             onClick={() => setSelectedTab('responses')}
-            className={\`px-4 py-2 text-sm font-medium \${
+            className={`px-4 py-2 text-sm font-medium ${
               selectedTab === 'responses'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-gray-500 dark:text-gray-400'
-            }\`}
+            }`}
           >
             Responses
           </button>
           <button
             onClick={() => setSelectedTab('photos')}
-            className={\`px-4 py-2 text-sm font-medium \${
+            className={`px-4 py-2 text-sm font-medium ${
               selectedTab === 'photos'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-gray-500 dark:text-gray-400'
-            }\`}
+            }`}
           >
             Photos
           </button>
           <button
             onClick={() => setSelectedTab('metrics')}
-            className={\`px-4 py-2 text-sm font-medium \${
+            className={`px-4 py-2 text-sm font-medium ${
               selectedTab === 'metrics'
                 ? 'text-blue-500 border-b-2 border-blue-500'
                 : 'text-gray-500 dark:text-gray-400'
-            }\`}
+            }`}
           >
             Metrics
           </button>
@@ -199,7 +199,7 @@ export default function CheckInReview() {
                 <div className="grid grid-cols-4 gap-4">
                   {Object.entries(mockCheckIn.complianceScores).map(([key, score]) => (
                     <div key={key} className="text-center">
-                      <div className={\`text-2xl font-bold \${getComplianceColor(score)}\`}>
+                      <div className={`text-2xl font-bold ${getComplianceColor(score)}`}>
                         {score}%
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">
@@ -224,7 +224,7 @@ export default function CheckInReview() {
                         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           {data.question}
                         </h3>
-                        <span className={\`text-sm font-medium \${getComplianceColor(data.score)}\`}>
+                        <span className={`text-sm font-medium ${getComplianceColor(data.score)}`}>
                           {data.score}%
                         </span>
                       </div>
@@ -267,33 +267,33 @@ export default function CheckInReview() {
                 <div className="grid grid-cols-3 gap-4">
                   <button
                     onClick={() => setResponseType('text')}
-                    className={\`flex flex-col items-center justify-center p-4 rounded-lg border \${
+                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
                       responseType === 'text'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
                         : 'border-gray-200 dark:border-gray-700'
-                    }\`}
+                    }`}
                   >
                     <DocumentTextIcon className="h-6 w-6 text-gray-400" />
                     <span className="mt-2 text-sm font-medium">Text</span>
                   </button>
                   <button
                     onClick={() => setResponseType('audio')}
-                    className={\`flex flex-col items-center justify-center p-4 rounded-lg border \${
+                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
                       responseType === 'audio'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
                         : 'border-gray-200 dark:border-gray-700'
-                    }\`}
+                    }`}
                   >
                     <MicrophoneIcon className="h-6 w-6 text-gray-400" />
                     <span className="mt-2 text-sm font-medium">Voice</span>
                   </button>
                   <button
                     onClick={() => setResponseType('video')}
-                    className={\`flex flex-col items-center justify-center p-4 rounded-lg border \${
+                    className={`flex flex-col items-center justify-center p-4 rounded-lg border ${
                       responseType === 'video'
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
                         : 'border-gray-200 dark:border-gray-700'
-                    }\`}
+                    }`}
                   >
                     <VideoCameraIcon className="h-6 w-6 text-gray-400" />
                     <span className="mt-2 text-sm font-medium">Video</span>

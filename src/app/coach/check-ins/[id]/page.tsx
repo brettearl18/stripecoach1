@@ -34,7 +34,7 @@ const mockCheckIns = [
       { question: 'Sleep quality', answer: '4/5', type: 'scale' }
     ],
     progressPhotos: ['/mock/progress1.jpg', '/mock/progress2.jpg'],
-    metrics: {
+  metrics: {
       weight: '68 kg',
       bodyFat: '22%',
       energy: '4/5',
@@ -151,7 +151,7 @@ export default function CheckInDetail() {
           </Link>
           
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-gray-800 flex items-center justify-center text-xl font-medium">
                 {checkIn.clientName.charAt(0)}
               </div>
@@ -163,11 +163,11 @@ export default function CheckInDetail() {
             <div className="flex items-center gap-3">
               <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(checkIn.status)}`}>
                 {checkIn.status}
-              </span>
+            </span>
               <span className={`flex items-center gap-1 ${getUrgencyColor(checkIn.urgency)}`}>
                 <ExclamationTriangleIcon className="h-5 w-5" />
                 {checkIn.urgency} priority
-              </span>
+            </span>
             </div>
           </div>
         </div>
@@ -195,8 +195,8 @@ export default function CheckInDetail() {
               <CameraIcon className="h-6 w-6 text-green-500" />
             </div>
             <div className="text-3xl font-bold">{checkIn.progressPhotos?.length || 0}</div>
-          </div>
-        </div>
+                      </div>
+                    </div>
 
         <div className="space-y-6">
           <div className="bg-gray-800 rounded-xl p-6">
@@ -224,8 +224,8 @@ export default function CheckInDetail() {
                   <div key={key} className="bg-gray-900/50 rounded-lg p-4">
                     <p className="text-gray-400 text-sm mb-1">{key.charAt(0).toUpperCase() + key.slice(1)}</p>
                     <p className="text-lg font-medium">{value}</p>
-                  </div>
-                ))}
+                    </div>
+                  ))}
               </div>
             </div>
           )}

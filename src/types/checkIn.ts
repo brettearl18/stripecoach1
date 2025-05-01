@@ -45,6 +45,45 @@ export interface CheckInPhoto {
   notes?: string;
 }
 
+export type MetricValue = 1 | 2 | 3 | 4 | 5;
+
+export interface DailyMetrics {
+  weight?: number;
+  weightUnit?: 'kg' | 'lbs';
+  sleep?: number; // hours
+  energy?: MetricValue;
+  mood?: MetricValue;
+  stress?: MetricValue;
+  water?: number; // glasses
+  steps?: number;
+}
+
+export interface ProgressUpdate {
+  goals: {
+    id: string;
+    name: string;
+    status: 'completed' | 'in-progress' | 'not-started';
+    notes?: string;
+  }[];
+  achievements: {
+    id: string;
+    description: string;
+    date: string;
+  }[];
+  challenges: {
+    id: string;
+    description: string;
+    impact: 'high' | 'medium' | 'low';
+  }[];
+}
+
+export interface Photo {
+  id: string;
+  file: File;
+  preview: string;
+  uploaded: boolean;
+}
+
 export interface CheckInForm {
   id: string;
   templateId: string;
@@ -53,9 +92,12 @@ export interface CheckInForm {
   description: string;
   questions: Question[];
   answers: CheckInAnswer[];
-  metrics: CheckInMetrics;
-  status: CheckInStatus;
-  photos?: CheckInPhoto[];
+  metrics: DailyMetrics;
+  progress: ProgressUpdate;
+  status: 'draft' | 'submitted';
+  photos: Photo[];
+  notes: string;
+  lastSaved?: string;
   dueDate: string;
   completedAt?: string;
   coachFeedback?: {

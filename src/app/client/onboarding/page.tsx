@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/hooks/useAuth';
 import { saveOnboardingProgress } from '@/lib/services/onboardingConfigService';
 import { UserIcon, ClipboardDocumentCheckIcon, CheckCircleIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 import ProfileSetup from '@/components/onboarding/ProfileSetup';
@@ -38,6 +38,10 @@ export default function OnboardingPage() {
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Calculate progress percentage
+  const currentStepIndex = steps.findIndex(step => step.id === currentStep);
+  const progress = ((currentStepIndex + 1) / steps.length) * 100;
+
   const handleProfileComplete = async (data: any) => {
     setProfileData(data);
     setCurrentStep('goals');
@@ -69,47 +73,66 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-900 py-12">
+      <div className="max-w-4xl mx-auto px-4">
+        {/* Enhanced Progress UI */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Your Journey</h1>
-          <p className="text-gray-400">Let's set up your personalized program</p>
-        </div>
-
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            {steps.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <div className={`
-                  w-8 h-8 rounded-full flex items-center justify-center
-                  ${currentStep === step.id
-                    ? 'bg-blue-500 text-white'
-                    : currentStep === 'complete' || steps.findIndex(s => s.id === currentStep) > index
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-700 text-gray-400'
-                  }
-                `}>
-                  <step.icon className="w-5 h-5" />
-                </div>
-                {index < steps.length - 1 && (
-                  <div className={`
-                    flex-1 h-1 mx-2
-                    ${currentStep === 'complete' || steps.findIndex(s => s.id === currentStep) > index
-                      ? 'bg-green-500'
-                      : 'bg-gray-700'
-                    }
-                  `} />
-                )}
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-2xl font-bold text-white">Getting Started</h2>
+            <div className="text-sm font-medium text-gray-400">
+              Step {currentStepIndex + 1} of {steps.length}
+            </div>
           </div>
-          <div className="flex justify-between text-sm text-gray-400">
-            {steps.map(step => (
-              <div key={step.id} className="text-center">
-                <div className="font-medium">{step.title}</div>
-                <div>{step.description}</div>
+          
+          {/* Visual Progress Bar */}
+          <div className="relative pt-1">
+            <div className="flex mb-2 items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                  {steps[currentStepIndex].title}
+                </span>
               </div>
-            ))}
+              <div className="text-right">
+                <span className="text-xs font-semibold inline-block text-blue-600">
+                  {progress.toFixed(0)}%
+                </span>
+              </div>
+            </div>
+            <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-700">
+              <div
+                style={{ width: `${progress}%` }}
+                className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"
+              />
+            </div>
+          </div>
+
+          {/* Step Indicators */}
+          <div className="grid grid-cols-3 gap-2">
+            {steps.map((step, index) => {
+              const isActive = index === currentStepIndex;
+              const isCompleted = index < currentStepIndex;
+              return (
+                <div
+                  key={step.id}
+                  className={`flex items-center ${
+                    isCompleted ? 'text-green-500' : isActive ? 'text-blue-500' : 'text-gray-600'
+                  }`}
+                >
+                  <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full border-2 
+                    ${isCompleted ? 'border-green-500 bg-green-500/10' : 
+                      isActive ? 'border-blue-500 bg-blue-500/10' : 
+                      'border-gray-600 bg-gray-600/10'}`}
+                  >
+                    {isCompleted ? (
+                      <CheckCircleIcon className="w-5 h-5" />
+                    ) : (
+                      <span className="text-sm">{index + 1}</span>
+                    )}
+                  </div>
+                  <span className="ml-2 text-sm font-medium">{step.title}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

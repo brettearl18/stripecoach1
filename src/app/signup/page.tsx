@@ -1,22 +1,62 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClientProfileModal } from '@/components/checkIn/ClientProfileModal';
-import { InitialAssessment } from '@/components/onboarding/InitialAssessment';
+import dynamic from 'next/dynamic';
+import { motion } from 'framer-motion';
+import { saveAssessmentProgress, getAssessmentProgress, deleteAssessmentProgress } from '@/lib/services/assessmentService';
+import { getAuth } from 'firebase/auth';
 
-export default function SignUpPage() {
+// Dynamically import InitialAssessment with no SSR
+const InitialAssessment = dynamic(
+  () => import('@/components/onboarding/InitialAssessment'),
+  { ssr: false }
+);
+
+const SignUpPage = () => {
   const router = useRouter();
-  const { signUpWithEmail, signInWithGoogle } = useAuth();
+  const searchParams = useSearchParams();
+  const inviteId = searchParams.get('invite');
+  const { signUpWithEmail, signInWithGoogle, error: authError, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAssessment, setShowAssessment] = useState(false);
+  const [assessmentData, setAssessmentData] = useState<any>(null);
+
+  // DEVELOPMENT ONLY: Auto-bypass auth
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Development mode: Bypassing authentication');
+      setShowProfileModal(true);
+    }
+  }, []);
+
+  // Placeholder coach info (in a real app, fetch from inviteId)
+  const coachName = 'Your Coach';
+  const coachPhoto = 'https://app.vanahealth.com/logo.png';
+  const primaryColor = '#4F46E5';
+
+  // Clear any existing assessment data when component mounts
+  useEffect(() => {
+    const cleanup = async () => {
+      try {
+        const auth = getAuth();
+        if (auth.currentUser) {
+          await deleteAssessmentProgress(auth.currentUser.uid);
+        }
+      } catch (error) {
+        console.error('Error cleaning up assessment data:', error);
+      }
+    };
+    cleanup();
+  }, []);
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +67,7 @@ export default function SignUpPage() {
     }
 
     try {
-      setError('');
+      setError(null);
       setLoading(true);
       console.log('Starting email signup...');
       await signUpWithEmail(email, password);
@@ -35,14 +75,14 @@ export default function SignUpPage() {
       setShowProfileModal(true);
     } catch (error: any) {
       console.error('Signup error:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to sign up. Please try again.');
       setLoading(false);
     }
   };
 
   const handleGoogleSignUp = async () => {
     try {
-      setError('');
+      setError(null);
       setLoading(true);
       console.log('Starting Google signup...');
       await signInWithGoogle();
@@ -50,14 +90,14 @@ export default function SignUpPage() {
       setShowProfileModal(true);
     } catch (error: any) {
       console.error('Google signup error:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to sign in with Google. Please try again.');
       setLoading(false);
     }
   };
 
   const handleTestSignUp = async () => {
     try {
-      setError('');
+      setError(null);
       setLoading(true);
       console.log('Starting test signup...');
       // Use a test email and password
@@ -66,41 +106,93 @@ export default function SignUpPage() {
       setShowProfileModal(true);
     } catch (error: any) {
       console.error('Test signup error:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to create test account. Please try again.');
       setLoading(false);
     }
   };
 
-  const handleProfileComplete = async (profile: any) => {
+  const handleProfileComplete = async (profileData: any) => {
     try {
-      console.log('Profile completed:', profile);
+      console.log('Profile completed:', profileData);
+      setError(null);
+      setLoading(true);
+      
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user found');
+      }
+
       // Save profile data
+      await saveAssessmentProgress(auth.currentUser.uid, {
+        profile: profileData,
+        timestamp: new Date().toISOString()
+      });
+
       setShowProfileModal(false);
       console.log('Profile modal closed, showing assessment');
       setShowAssessment(true);
     } catch (error: any) {
       console.error('Profile completion error:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to save profile. Please try again.');
+      setLoading(false);
     }
   };
 
-  const handleAssessmentComplete = async (assessment: any) => {
+  const handleAssessmentComplete = async (assessmentData: any) => {
     try {
-      console.log('Assessment completed:', assessment);
+      console.log('Assessment completed:', assessmentData);
+      setError(null);
+      setLoading(true);
+      
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user found');
+      }
+
       // Save assessment data
+      await saveAssessmentProgress(auth.currentUser.uid, {
+        ...assessmentData,
+        timestamp: new Date().toISOString()
+      });
+
       setShowAssessment(false);
       setLoading(false);
       console.log('Redirecting to dashboard');
       router.replace('/client/dashboard');
     } catch (error: any) {
       console.error('Assessment completion error:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to save assessment. Please try again.');
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="max-w-md w-full space-y-8 p-8 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
+        {inviteId && (
+          <div className="mb-6 rounded-xl overflow-hidden shadow" style={{ background: '#fff' }}>
+            <div style={{ background: primaryColor, padding: '20px 0', textAlign: 'center' }}>
+              <img src={coachPhoto} alt="Vana Health Logo" style={{ height: 48, borderRadius: '50%', background: '#fff', padding: 4, margin: '0 auto 8px' }} />
+              <h2 style={{ color: '#fff', margin: 0, fontSize: '1.4rem', fontWeight: 700 }}>Welcome to Vana Health!</h2>
+            </div>
+            <div style={{ padding: '20px 20px 10px 20px', color: '#222' }}>
+              <p style={{ fontWeight: 500, marginBottom: 8 }}>You've been invited to join a coaching program.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <img src={coachPhoto} alt="Coach Avatar" style={{ width: 32, height: 32, borderRadius: '50%', background: '#f3f4f6' }} />
+                <span style={{ fontWeight: 600 }}>{coachName}</span>
+              </div>
+              <div style={{ margin: '12px 0 0 0' }}>
+                <b>What to expect:</b>
+                <ul style={{ margin: '8px 0 0 20px', color: '#444', fontSize: '0.97rem' }}>
+                  <li>Set up your profile and preferences</li>
+                  <li>Choose your health and fitness goals</li>
+                  <li>Connect with your coach for personalized support</li>
+                  <li>Track your progress and celebrate wins!</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
             Create your account
@@ -218,17 +310,23 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      <ClientProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        onProfileComplete={handleProfileComplete}
-      />
+      {showProfileModal && (
+        <ClientProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          onProfileComplete={handleProfileComplete}
+        />
+      )}
 
-      <InitialAssessment
-        isOpen={showAssessment}
-        onClose={() => setShowAssessment(false)}
-        onComplete={handleAssessmentComplete}
-      />
+      {showAssessment && (
+        <InitialAssessment
+          isOpen={showAssessment}
+          onClose={() => setShowAssessment(false)}
+          onComplete={handleAssessmentComplete}
+        />
+      )}
     </div>
   );
-} 
+};
+
+export default SignUpPage; 

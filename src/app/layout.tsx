@@ -1,7 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from '@/components/ui/toaster'
 import ClientProviders from './client-providers'
 import { SessionProvider } from '@/providers/SessionProvider'
 import { ThemeProvider } from '@/components/ThemeProvider'
@@ -34,7 +34,7 @@ export default function RootLayout({
             </ClientProviders>
           </ThemeProvider>
         </SessionProvider>
-        <Toaster position="top-right" />
+        <Toaster />
       </body>
     </html>
   )

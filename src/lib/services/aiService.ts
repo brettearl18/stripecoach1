@@ -4,7 +4,8 @@ import {
   CheckInMetrics, 
   AIAnalysis, 
   SentimentMetric, 
-  GroupInsight 
+  GroupInsight,
+  Question
 } from '@/types/checkIn';
 
 export class AIService {
@@ -224,4 +225,99 @@ export class AIService {
     const relevantMetrics = checkIns.map(ci => metricMappings[category](ci.metrics));
     return relevantMetrics.reduce((sum, val) => sum + val, 0) / relevantMetrics.length;
   }
-} 
+
+  async generateQuestions(topic: string, count: number = 5): Promise<Question[]> {
+    try {
+      const prompt = `Generate ${count} questions about ${topic} for a fitness check-in form. 
+      Each question should be clear, specific, and help assess the client's progress or challenges.
+      Format the response as a JSON array of questions with the following structure:
+      {
+        "id": "unique_id",
+        "type": "text" | "scale" | "multipleChoice" | "number" | "yesNo",
+        "question": "the question text",
+        "required": true | false,
+        "helpText": "optional help text",
+        "options": ["option1", "option2"] (for multipleChoice),
+        "validation": { "min": number, "max": number } (for number or scale),
+        "weight": number (1-5),
+        "isNegative": true | false (if higher values indicate worse outcomes)
+      }`;
+
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: "You are an AI fitness coach assistant creating check-in questions." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      });
+
+      const response = completion.choices[0].message.content || '[]';
+      const questions = JSON.parse(response);
+
+      // Validate and transform the questions
+      return questions.map((q: any) => ({
+        id: q.id || Math.random().toString(36).substr(2, 9),
+        type: this.validateQuestionType(q.type) || 'text',
+        question: this.validateString(q.question) || 'Invalid question',
+        required: Boolean(q.required),
+        helpText: this.validateString(q.helpText),
+        options: Array.isArray(q.options) ? q.options.map(this.validateString).filter(Boolean) : undefined,
+        validation: this.validateValidation(q.validation),
+        weight: this.validateNumber(q.weight) || 1,
+        isNegative: Boolean(q.isNegative)
+      }));
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      return this.getDefaultQuestions(topic, count);
+    }
+  }
+
+  private validateQuestionType(value: any): 'text' | 'scale' | 'multipleChoice' | 'number' | 'yesNo' | null {
+    return ['text', 'scale', 'multipleChoice', 'number', 'yesNo'].includes(value) ? value : null;
+  }
+
+  private validateValidation(value: any): { min: number; max: number } | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const min = this.validateNumber(value.min);
+    const max = this.validateNumber(value.max);
+    if (min === null || max === null) return undefined;
+    return { min, max };
+  }
+
+  private getDefaultQuestions(topic: string, count: number): Question[] {
+    return [
+      {
+        id: '1',
+        type: 'scale',
+        question: `How would you rate your ${topic} this week?`,
+        required: true,
+        helpText: 'Rate from 1 (poor) to 10 (excellent)',
+        validation: { min: 1, max: 10 },
+        weight: 3
+      },
+      {
+        id: '2',
+        type: 'text',
+        question: `What were your main challenges with ${topic} this week?`,
+        required: false,
+        weight: 2
+      },
+      {
+        id: '3',
+        type: 'yesNo',
+        question: `Did you achieve your ${topic} goals this week?`,
+        required: true,
+        weight: 3
+      }
+    ].slice(0, count);
+  }
+}
+
+// Export a singleton instance
+export const aiService = new AIService();
+
+// Export the generateQuestions function directly
+export const generateQuestions = (topic: string, count: number = 5) => 
+  aiService.generateQuestions(topic, count); 

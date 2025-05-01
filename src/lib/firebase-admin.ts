@@ -26,6 +26,7 @@ if (!getApps().length) {
 export const adminAuth = getApps().length ? getAuth() : null;
 export const adminDb = getApps().length ? getFirestore() : null;
 export const adminStorage = getApps().length ? getStorage() : null;
+export const db = adminDb;
 
 // Helper function to check initialization status
 export function isFirebaseAdminInitialized() {
@@ -34,6 +35,30 @@ export function isFirebaseAdminInitialized() {
     auth: !!adminAuth,
     db: !!adminDb,
     storage: !!adminStorage,
+  };
+}
+
+// Export initialization function
+export async function initializeFirebaseAdmin() {
+  if (!getApps().length) {
+    try {
+      const serviceAccountPath = path.join(process.cwd(), 'stripe-coach-firebase-adminsdk-fbsvc-212fe97e98.json');
+      const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+
+      initializeApp({
+        credential: cert(serviceAccount as ServiceAccount),
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      });
+    } catch (error) {
+      console.error('Firebase Admin initialization error:', error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+  return {
+    auth: getAuth(),
+    db: getFirestore(),
+    storage: getStorage()
   };
 }
 

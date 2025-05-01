@@ -16,7 +16,7 @@ interface InitialAssessmentProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (data: any) => void;
-  selectedGoals: string[];
+  selectedGoals?: string[];
 }
 
 const goalSpecificQuestions = {
@@ -140,7 +140,7 @@ const goalSpecificQuestions = {
   ]
 };
 
-export default function InitialAssessment({ isOpen, onClose, onComplete, selectedGoals }: InitialAssessmentProps) {
+const InitialAssessment: React.FC<InitialAssessmentProps> = ({ isOpen, onClose, onComplete, selectedGoals = [] }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,11 +150,52 @@ export default function InitialAssessment({ isOpen, onClose, onComplete, selecte
   const auth = getAuth();
 
   // Get all questions for selected goals
-  const questions = selectedGoals.flatMap(goal => 
+  const questions = (selectedGoals || []).flatMap(goal => 
     goalSpecificQuestions[goal as keyof typeof goalSpecificQuestions] || []
   );
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  // Add check for no questions
+  if (!questions.length) {
+    return (
+      <div className="w-full">
+        <div className="bg-gray-800/50 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-medium text-white mb-4">
+            No assessment questions available
+          </h3>
+          <p className="text-gray-300">
+            Please select at least one goal to begin the assessment.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Add check for currentQuestion being undefined
+  if (!currentQuestion) {
+    return (
+      <div className="w-full">
+        <div className="bg-gray-800/50 rounded-lg p-6 mb-8">
+          <h3 className="text-lg font-medium text-white mb-4">
+            Assessment Complete
+          </h3>
+          <p className="text-gray-300">
+            You have completed all questions. Please click the Complete Assessment button below.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex items-center px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          >
+            {isSubmitting ? 'Submitting...' : 'Complete Assessment'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Check for saved progress on mount
   useEffect(() => {
@@ -449,4 +490,6 @@ export default function InitialAssessment({ isOpen, onClose, onComplete, selecte
       </div>
     </div>
   );
-} 
+};
+
+export default InitialAssessment; 

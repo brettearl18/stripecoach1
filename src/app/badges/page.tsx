@@ -14,7 +14,7 @@ import { BadgeFormModal } from '@/components/badges/BadgeFormModal';
 import { toast } from 'sonner';
 import {
   TrophyIcon,
-  MedalIcon,
+  AcademicCapIcon as MedalIcon,
   BoltIcon,
   HeartIcon,
   FireIcon,

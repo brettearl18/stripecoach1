@@ -1,12 +1,13 @@
 // This configuration is public and can be exposed to the client
 export const firebaseConfig = {
-  apiKey: "AIzaSyBE1BCq88eQQ-fCl3sU4AMV3isWi2ywVtU",
-  authDomain: "hubvana-checkin.firebaseapp.com",
-  projectId: "hubvana-checkin",
-  storageBucket: "hubvana-checkin.firebasestorage.app",
-  messagingSenderId: "412607859652",
-  appId: "1:412607859652:web:0d429ddd23972350d03291",
-  measurementId: "G-FQRJ857NSV"
+  apiKey: "AIzaSyD6GqvsWAFpUNbiMYiSJaGOmqUZC1R_x_U",
+  authDomain: "stripe-coach.firebaseapp.com",
+  projectId: "stripe-coach",
+  storageBucket: "stripe-coach.firebasestorage.app",
+  messagingSenderId: "94281208704",
+  appId: "1:94281208704:web:9c4778d06c0961ce09196",
+  measurementId: "G-WLPGHMJQ4K",
+  databaseURL: "https://stripe-coach-default-rtdb.asia-southeast1.firebasedatabase.app"
 };
 
 // Validate the configuration

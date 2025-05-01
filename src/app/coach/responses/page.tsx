@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DashboardNav } from '@/components/DashboardNav';
+import DashboardNav from '@/components/DashboardNav';
 import { io, Socket } from 'socket.io-client';
 import {
   ChatBubbleLeftRightIcon,

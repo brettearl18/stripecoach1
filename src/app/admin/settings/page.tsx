@@ -36,6 +36,7 @@ import { encrypt, decrypt } from '@/lib/utils/encryption';
 import { getCommunicationSettings, saveCommunicationSettings, addQuickResponse, removeQuickResponse } from '@/lib/services/communicationsService';
 import { CommunicationSettings } from '@/lib/services/communicationsService';
 import { useSecuritySettings } from '@/hooks/useSecuritySettings';
+import BillingSection from './BillingSection';
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ');
@@ -63,9 +64,9 @@ const sections = [
     description: 'Manage client-related settings and defaults'
   },
   {
-    name: 'Payment Settings',
+    name: 'Billing & Payments',
     icon: <CreditCardIcon className="h-5 w-5" />,
-    description: 'Configure payment methods and billing preferences'
+    description: 'Manage subscription, billing, and payment settings'
   },
   {
     name: 'Communication',
@@ -1370,165 +1371,9 @@ export default function SettingsPage() {
                     </div>
           </div>
         );
-      case 6: // AI Settings
-        return (
-          <div className="space-y-8">
-            {saveMessage && (
-              <div className={`p-4 rounded-lg ${
-                saveMessage.type === 'success' ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'
-              }`}>
-                {saveMessage.text}
-              </div>
-            )}
-            
-                      <div>
-              <h3 className="text-lg font-medium text-white mb-4">AI Communication Settings</h3>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Business Tone
-                  </label>
-                  <select 
-                    value={aiSettings.businessTone}
-                    onChange={(e) => handleAISettingChange('businessTone', e.target.value)}
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="professional">Professional</option>
-                    <option value="friendly">Friendly</option>
-                    <option value="motivational">Motivational</option>
-                    <option value="casual">Casual</option>
-                    <option value="formal">Formal</option>
-                  </select>
-                      </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Communication Style
-                  </label>
-                  <select 
-                    value={aiSettings.communicationStyle}
-                    onChange={(e) => handleAISettingChange('communicationStyle', e.target.value)}
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="direct">Direct</option>
-                    <option value="empathetic">Empathetic</option>
-                    <option value="encouraging">Encouraging</option>
-                    <option value="technical">Technical</option>
-                    <option value="simple">Simple</option>
-                  </select>
-                    </div>
-              </div>
-            </div>
-
-                      <div>
-              <h3 className="text-lg font-medium text-white mb-4">Key Brand Messages</h3>
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Add a key brand message"
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddMessage}
-                    className="self-end px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300"
-                  >
-                    + Add Message
-                  </button>
-                      </div>
-                
-                <div className="bg-[#13141A] rounded-lg border border-gray-800">
-                  {aiSettings.keyBrandMessages?.map((message, index) => (
-                    <div key={index} className={`p-4 ${
-                      index !== aiSettings.keyBrandMessages!.length - 1 ? 'border-b border-gray-800' : ''
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <p className="text-white">{message}</p>
-                        <button 
-                          onClick={() => handleRemoveMessage(index)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Remove
-                        </button>
-                    </div>
-                  </div>
-                  ))}
-                  {aiSettings.keyBrandMessages?.length === 0 && (
-                    <div className="p-4 text-gray-500 text-center">
-                      No brand messages added yet
-                  </div>
-                )}
-                </div>
-              </div>
-              </div>
-
-            <div>
-              <h3 className="text-lg font-medium text-white mb-4">Additional Settings</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Specific Guidelines
-                  </label>
-                  <textarea
-                    value={aiSettings.specificGuidelines}
-                    onChange={(e) => handleAISettingChange('specificGuidelines', e.target.value)}
-                    rows={4}
-                    placeholder="Enter specific guidelines for AI communication..."
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Target Audience
-                  </label>
-                  <input
-                    type="text"
-                    value={aiSettings.targetAudience}
-                    onChange={(e) => handleAISettingChange('targetAudience', e.target.value)}
-                    placeholder="Describe your target audience..."
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Industry Context
-                  </label>
-                  <input
-                    type="text"
-                    value={aiSettings.industryContext}
-                    onChange={(e) => handleAISettingChange('industryContext', e.target.value)}
-                    placeholder="Describe your industry context..."
-                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={handleResetAISettings}
-                className="px-4 py-2 text-sm font-medium text-gray-300 bg-transparent border border-gray-700 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-              >
-                Reset to Defaults
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveAISettings}
-                disabled={isSaving}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {isSaving ? 'Saving...' : 'Save Settings'}
-              </button>
-            </div>
-          </div>
-        );
-      case 5: // Changed from 'communications' to 5 since we're using numeric indices
+      case 4: // Billing & Payments
+        return <BillingSection />;
+      case 5: // Communication
         return (
           <div className="space-y-6">
             {saveMessage && (
@@ -1908,7 +1753,165 @@ export default function SettingsPage() {
             </div>
           </div>
         );
-      case 7: // Security Settings
+      case 6: // AI Settings
+        return (
+          <div className="space-y-8">
+            {saveMessage && (
+              <div className={`p-4 rounded-lg ${
+                saveMessage.type === 'success' ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'
+              }`}>
+                {saveMessage.text}
+              </div>
+            )}
+            
+                      <div>
+              <h3 className="text-lg font-medium text-white mb-4">AI Communication Settings</h3>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Business Tone
+                  </label>
+                  <select 
+                    value={aiSettings.businessTone}
+                    onChange={(e) => handleAISettingChange('businessTone', e.target.value)}
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="professional">Professional</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="motivational">Motivational</option>
+                    <option value="casual">Casual</option>
+                    <option value="formal">Formal</option>
+                  </select>
+                      </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Communication Style
+                  </label>
+                  <select 
+                    value={aiSettings.communicationStyle}
+                    onChange={(e) => handleAISettingChange('communicationStyle', e.target.value)}
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="direct">Direct</option>
+                    <option value="empathetic">Empathetic</option>
+                    <option value="encouraging">Encouraging</option>
+                    <option value="technical">Technical</option>
+                    <option value="simple">Simple</option>
+                  </select>
+                    </div>
+              </div>
+            </div>
+
+                      <div>
+              <h3 className="text-lg font-medium text-white mb-4">Key Brand Messages</h3>
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Add a key brand message"
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddMessage}
+                    className="self-end px-4 py-2 text-sm font-medium text-blue-400 hover:text-blue-300"
+                  >
+                    + Add Message
+                  </button>
+                      </div>
+                
+                <div className="bg-[#13141A] rounded-lg border border-gray-800">
+                  {aiSettings.keyBrandMessages?.map((message, index) => (
+                    <div key={index} className={`p-4 ${
+                      index !== aiSettings.keyBrandMessages!.length - 1 ? 'border-b border-gray-800' : ''
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <p className="text-white">{message}</p>
+                        <button 
+                          onClick={() => handleRemoveMessage(index)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </button>
+                    </div>
+                  </div>
+                  ))}
+                  {aiSettings.keyBrandMessages?.length === 0 && (
+                    <div className="p-4 text-gray-500 text-center">
+                      No brand messages added yet
+                  </div>
+                )}
+                </div>
+              </div>
+              </div>
+
+            <div>
+              <h3 className="text-lg font-medium text-white mb-4">Additional Settings</h3>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Specific Guidelines
+                  </label>
+                  <textarea
+                    value={aiSettings.specificGuidelines}
+                    onChange={(e) => handleAISettingChange('specificGuidelines', e.target.value)}
+                    rows={4}
+                    placeholder="Enter specific guidelines for AI communication..."
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Target Audience
+                  </label>
+                  <input
+                    type="text"
+                    value={aiSettings.targetAudience}
+                    onChange={(e) => handleAISettingChange('targetAudience', e.target.value)}
+                    placeholder="Describe your target audience..."
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Industry Context
+                  </label>
+                  <input
+                    type="text"
+                    value={aiSettings.industryContext}
+                    onChange={(e) => handleAISettingChange('industryContext', e.target.value)}
+                    placeholder="Describe your industry context..."
+                    className="w-full bg-[#13141A] border border-gray-700 rounded-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={handleResetAISettings}
+                className="px-4 py-2 text-sm font-medium text-gray-300 bg-transparent border border-gray-700 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Reset to Defaults
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAISettings}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </div>
+        );
+      case 7: // Security
         return (
           <div className="space-y-8">
             {/* Authentication Settings */}
@@ -2200,7 +2203,7 @@ export default function SettingsPage() {
           </div>
         );
       default:
-        return <div className="text-gray-400">Content for {sections[selectedSection].name}</div>;
+        return null;
     }
   };
 

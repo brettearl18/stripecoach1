@@ -25,7 +25,11 @@ import {
   DocumentDuplicateIcon,
   TagIcon,
   ArchiveBoxIcon,
-  XMarkIcon
+  XMarkIcon,
+  EnvelopeIcon,
+  CalendarIcon,
+  ClipboardDocumentCheckIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { getClients } from '@/lib/services/firebaseService';
@@ -33,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { toast } from 'react-hot-toast';
+import { format } from 'date-fns';
 
 interface WeeklyCheckIn {
   week: number;
@@ -60,6 +65,11 @@ interface Client {
   checkInDeadline: Date;
   currentWeek: number;
   phase: string;
+  startDate: string;
+  status: 'active' | 'pending' | 'paused';
+  progress: number;
+  nextCheckIn: string;
+  complianceRate: number;
 }
 
 interface BulkAction {
@@ -258,7 +268,12 @@ const MOCK_CLIENTS: Client[] = [
     aiSummary: "Consistently high performer, showing excellent adherence to program",
     checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     currentWeek: 12,
-    phase: 'Phase 1'
+    phase: 'Phase 1',
+    startDate: '2024-01-15',
+    status: 'active',
+    progress: 75,
+    nextCheckIn: '2024-04-27',
+    complianceRate: 92,
   },
   {
     id: '2',
@@ -277,7 +292,12 @@ const MOCK_CLIENTS: Client[] = [
     aiSummary: "Recent decline in check-in scores, may need additional support",
     checkInDeadline: new Date(Date.now() + (2 * 60 * 60 * 1000)),
     currentWeek: 20,
-    phase: 'Phase 2'
+    phase: 'Phase 2',
+    startDate: '2024-01-15',
+    status: 'active',
+    progress: 75,
+    nextCheckIn: '2024-04-27',
+    complianceRate: 75,
   },
   {
     id: '3',
@@ -295,7 +315,12 @@ const MOCK_CLIENTS: Client[] = [
     aiSummary: "Struggling with consistency, missed last check-in",
     checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     currentWeek: 8,
-    phase: 'Phase 1'
+    phase: 'Phase 1',
+    startDate: '2024-01-15',
+    status: 'active',
+    progress: 75,
+    nextCheckIn: '2024-04-27',
+    complianceRate: 65,
   },
   {
     id: '4',
@@ -314,7 +339,12 @@ const MOCK_CLIENTS: Client[] = [
     aiSummary: "Strong recovery after missed check-in, back on track",
     checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     currentWeek: 16,
-    phase: 'Phase 1'
+    phase: 'Phase 1',
+    startDate: '2024-01-15',
+    status: 'active',
+    progress: 75,
+    nextCheckIn: '2024-04-27',
+    complianceRate: 88,
   },
   {
     id: '5',
@@ -333,7 +363,12 @@ const MOCK_CLIENTS: Client[] = [
     aiSummary: "Moderate performance with room for improvement",
     checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
     currentWeek: 4,
-    phase: 'Phase 1'
+    phase: 'Phase 1',
+    startDate: '2024-01-15',
+    status: 'active',
+    progress: 75,
+    nextCheckIn: '2024-04-27',
+    complianceRate: 80,
   }
 ];
 
@@ -624,7 +659,7 @@ const ClientsPage = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm"
           />
-            </div>
+        </div>
 
         {/* Sort Dropdown */}
         <div className="flex items-center gap-2">
@@ -646,16 +681,19 @@ const ClientsPage = () => {
           >
             {sortOrder === 'asc' ? '↑' : '↓'}
           </button>
-                </div>
+        </div>
 
         {/* Status Filter */}
-        <select className="px-3 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 bg-gray-800 rounded-lg border border-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200 text-sm"
+        >
           <option value="all">All Clients</option>
-          <option value="pending">Pending Review</option>
-          <option value="at-risk">At Risk</option>
-          <option value="on-track">On Track</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
         </select>
-                </div>
+      </div>
 
       {/* Enhanced Bulk Actions */}
       {selectedClients.size > 0 && (
@@ -710,18 +748,16 @@ const ClientsPage = () => {
               </button>
               <div className="absolute left-0 mt-1 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
                 <div className="py-1">
-                  {['on_track', 'needs_attention', 'at_risk'].map((status) => (
+                  {['active', 'paused'].map((status) => (
                     <button
                       key={status}
                       onClick={() => handleBulkAction({ type: 'status', clientIds: Array.from(selectedClients), data: { status } })}
                       className="w-full px-4 py-2 text-xs text-left text-gray-300 hover:bg-gray-700 flex items-center gap-2"
                     >
                       <span className={`w-2 h-2 rounded-full ${
-                        status === 'on_track' ? 'bg-green-500' :
-                        status === 'needs_attention' ? 'bg-yellow-500' :
-                        'bg-red-500'
+                        status === 'active' ? 'bg-green-500' : 'bg-gray-500'
                       }`} />
-                      {status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -735,8 +771,8 @@ const ClientsPage = () => {
               <ArchiveBoxIcon className="w-3.5 h-3.5" />
               Archive
             </button>
-                </div>
-              </div>
+          </div>
+        </div>
       )}
 
       {/* Clients Table with Updated Layout */}
@@ -752,7 +788,7 @@ const ClientsPage = () => {
                 indeterminate={selectedClients.size > 0 && selectedClients.size < clients.length}
               />
             </button>
-          </div>
+                </div>
           <div className="pr-2">CLIENT</div>
           <div>PROGRESS</div>
           <div>CHECK-IN HISTORY</div>
@@ -775,8 +811,8 @@ const ClientsPage = () => {
                 >
                   <Checkbox checked={selectedClients.has(client.id)} />
                 </button>
-              </div>
-
+            </div>
+            
               {/* Client Info - with smaller right padding */}
               <div className="flex items-center gap-2 pr-2">
                 {client.avatar ? (
@@ -801,18 +837,18 @@ const ClientsPage = () => {
                   >
                     {client.name}
                   </button>
-            </div>
-          </div>
+                </div>
+              </div>
 
               {/* Progress */}
               <div className="flex flex-col items-start">
                 <div className="text-sm font-medium text-white">
                   Week {client.currentWeek}
-                      </div>
+            </div>
                 <div className="text-xs text-gray-400">
                   {client.phase}
-                      </div>
-                    </div>
+                </div>
+              </div>
 
               {/* Check-in History */}
               <div className="flex gap-1.5">
@@ -833,29 +869,19 @@ const ClientsPage = () => {
                     title={`Week ${checkIn.week}: ${checkIn.score}% - ${checkIn.status}`}
                   >
                     {checkIn.status === 'pending' ? '?' : checkIn.score}
-                  </div>
+              </div>
                 ))}
-                    </div>
+          </div>
 
               {/* Status */}
-                      <div>
-                {client.hasPendingCheckIn ? (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <ClockIcon className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-blue-400">Pending Review</span>
-                  </div>
-                ) : (
-                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
-                    ${client.currentCompliance >= 85 ? 'bg-green-500/20 text-green-400' :
-                      client.currentCompliance >= 70 ? 'bg-orange-500/20 text-orange-400' :
-                      'bg-red-500/20 text-red-400'}`}>
-                    {client.currentCompliance}%
-                  </div>
-                )}
-              </div>
-
-              {/* Action Button */}
               <div>
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(client.complianceRate)}`}>
+                  {client.status.charAt(0).toUpperCase() + client.status.slice(1)}
+                    </span>
+                  </div>
+                  
+              {/* Action Button */}
+                    <div>
                 {client.hasPendingCheckIn && isWithinReminderWindow(client.checkInDeadline) ? (
                   <button
                     onClick={() => {/* Send reminder handler */}}
@@ -873,20 +899,20 @@ const ClientsPage = () => {
                     View
                   </button>
                 )}
-          </div>
+                      </div>
 
               {/* AI Summary */}
               <div className="min-w-0 max-w-full">
                 <AISummary 
                   summary={client.aiSummary}
                   clientName={client.name}
-                />
-              </div>
-            </div>
+                        />
+                      </div>
+                    </div>
           ))}
-        </div>
-      </div>
-
+                  </div>
+                </div>
+                
       {/* Empty State - Optimized */}
       {clients.length === 0 && !loading && (
         <div className="text-center py-8">

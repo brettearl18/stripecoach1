@@ -17,8 +17,7 @@ import {
   ExclamationTriangleIcon,
   HeartIcon
 } from '@heroicons/react/24/outline';
-import { getCoaches, getClientsByCoach } from '@/lib/services/firebaseService';
-import type { Coach } from '@/types/coach';
+import { getCoaches, getClientsByCoach, Coach } from '@/lib/services/firebaseService';
 import {
   Chart as ChartJS,
   CategoryScale,

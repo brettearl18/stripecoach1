@@ -1,7 +1,12 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
 import Stripe from 'stripe';
+import { db } from '@/lib/db';
+import { SUBSCRIPTION_PLANS } from '@/config/subscription-plans';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
+});
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -13,58 +18,64 @@ export async function POST(req: Request) {
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(
-        body,
-        signature,
-        webhookSecret
-      );
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (err) {
       console.error('Webhook signature verification failed:', err);
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
+      return new NextResponse('Webhook signature verification failed', { status: 400 });
     }
 
-    // Handle different event types
+    const subscription = event.data.object as Stripe.Subscription;
+    const organizationId = subscription.metadata.organizationId;
+
+    if (!organizationId) {
+      console.error('No organizationId found in subscription metadata');
+      return new NextResponse('No organizationId found in subscription metadata', { status: 400 });
+    }
+
     switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log('Payment succeeded:', paymentIntent.id);
-        // Add your payment success logic here
-        break;
-
-      case 'payment_intent.payment_failed':
-        const failedPayment = event.data.object as Stripe.PaymentIntent;
-        console.log('Payment failed:', failedPayment.id);
-        // Add your payment failure logic here
-        break;
-
       case 'customer.subscription.created':
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription created:', subscription.id);
-        // Add your subscription creation logic here
-        break;
-
       case 'customer.subscription.updated':
-        const updatedSubscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription updated:', updatedSubscription.id);
-        // Add your subscription update logic here
+        // Get the price ID from the subscription
+        const priceId = subscription.items.data[0].price.id;
+        
+        // Map price ID to plan type
+        let planType = 'FREE';
+        if (priceId === process.env.STRIPE_PRO_PRICE_ID) {
+          planType = 'PRO';
+        } else if (priceId === process.env.STRIPE_ELITE_PRICE_ID) {
+          planType = 'ELITE';
+        }
+
+        // Update organization subscription details
+        await db.organization.update({
+          where: { id: organizationId },
+          data: {
+            subscriptionId: subscription.id,
+            customerId: subscription.customer as string,
+            subscriptionStatus: subscription.status,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            planType: planType
+          }
+        });
         break;
 
       case 'customer.subscription.deleted':
-        const deletedSubscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription cancelled:', deletedSubscription.id);
-        // Add your subscription cancellation logic here
+        // Revert to FREE plan when subscription is cancelled
+        await db.organization.update({
+          where: { id: organizationId },
+          data: {
+            subscriptionId: null,
+            subscriptionStatus: 'canceled',
+            currentPeriodEnd: null,
+            planType: 'FREE'
+          }
+        });
         break;
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
     }
 
-    return NextResponse.json({ received: true });
-  } catch (err) {
-    console.error('Webhook error:', err);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    );
+    return new NextResponse('Webhook processed successfully', { status: 200 });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
   }
 } 

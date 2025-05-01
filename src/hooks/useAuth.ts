@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User } from 'firebase/auth';
+import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { getUserRole } from '@/lib/services/firebaseService';
 
@@ -12,17 +12,25 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (firebaseUser) {
-        const role = await getUserRole(firebaseUser.uid);
-        setUser({
-          ...firebaseUser,
-          role
-        });
-      } else {
+    if (typeof window === 'undefined') return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          const role = await getUserRole(firebaseUser.uid);
+          setUser({
+            ...firebaseUser,
+            role
+          });
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error in auth state change:', error);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

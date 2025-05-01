@@ -16,7 +16,8 @@ import {
   HomeIcon,
   CheckCircleIcon,
   XCircleIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 // List of implemented pages
@@ -69,9 +70,39 @@ export default function Home() {
       
       <div className="container mx-auto px-4 py-16">
         <h1 className="text-4xl font-bold text-center mb-4">Welcome to Checkin.io</h1>
-        <p className="text-xl text-center text-gray-300 mb-12">Select a section to get started</p>
+        <p className="text-xl text-center text-gray-300 mb-6">Select a section to get started</p>
+        
+        {/* Add Client Sign Up Button */}
+        <div className="flex justify-center mb-12">
+          <Link
+            href="/signup"
+            className="inline-flex items-center px-8 py-3 text-lg font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow-lg hover:from-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200"
+          >
+            <UserCircleIcon className="h-6 w-6 mr-2" />
+            Client Sign Up
+          </Link>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+          {/* Stripe Coach Admin Portal */}
+          <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+            <div className="flex items-center mb-4">
+              <BuildingOfficeIcon className="h-8 w-8 text-indigo-500 mr-3" />
+              <h2 className="text-2xl font-semibold">Stripe Coach Admin</h2>
+            </div>
+            <p className="text-gray-400 mb-6">Platform-wide administration and management</p>
+            <Link
+              href="/admin/subscriptions"
+              className={`block w-full py-2 px-4 text-center rounded ${
+                user?.role === 'admin'
+                  ? 'bg-indigo-500 hover:bg-indigo-600'
+                  : 'bg-gray-700 cursor-not-allowed'
+              }`}
+            >
+              {user?.role === 'admin' ? 'Access Admin Portal' : 'Admin Access Only'}
+            </Link>
+          </div>
+
           {/* Admin Portal */}
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
             <div className="flex items-center mb-4">

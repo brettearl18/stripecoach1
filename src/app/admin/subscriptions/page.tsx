@@ -1,173 +1,337 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeftIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
-import { CurrencyDollarIcon, UserGroupIcon, ChartBarIcon, CalendarIcon } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import { subscriptionMetrics, testSubscriptions } from '@/lib/test-data';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2, Search, Filter, RefreshCw, CreditCard } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { getCompanies } from '@/lib/services/companyService';
+import { 
+  getCompanySubscription, 
+  Plan, 
+  getPlans,
+  cancelSubscription,
+  updateSubscription 
+} from '@/lib/services/subscriptionService';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface CompanyWithSubscription {
+  id: string;
+  name: string;
+  email: string;
+  subscription: {
+    planId: string;
+    status: string;
+    currentPeriodEnd: string;
+  } | null;
+}
 
 export default function SubscriptionsPage() {
+  const router = useRouter();
+  const [companies, setCompanies] = useState<CompanyWithSubscription[]>([]);
+  const [filteredCompanies, setFilteredCompanies] = useState<CompanyWithSubscription[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [planFilter, setPlanFilter] = useState('all');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const filteredSubscriptions = testSubscriptions.filter(sub => {
-    const matchesSearch = 
-      sub.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sub.clientEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || sub.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const MetricCard = ({ title, value, icon: Icon, trend = null, trendValue = null }) => (
-    <div className="bg-white rounded-xl p-6 shadow-[0_4px_20px_-4px_rgba(16,24,40,0.08)]">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-600">{title}</p>
-          <p className="text-2xl font-semibold text-slate-900 mt-2">{value}</p>
-          {trend && (
-            <div className={`flex items-center mt-2 text-sm ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-              {trend === 'up' ? <ArrowUpIcon className="w-4 h-4 mr-1" /> : <ArrowDownIcon className="w-4 h-4 mr-1" />}
-              <span>{trendValue}%</span>
-            </div>
-          )}
-        </div>
-        <div className="p-3 bg-indigo-50 rounded-lg">
-          <Icon className="w-5 h-5 text-indigo-600" />
-        </div>
+  useEffect(() => {
+    filterCompanies();
+  }, [companies, searchTerm, statusFilter, planFilter]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [companiesData, plansData] = await Promise.all([
+        getCompanies(),
+        getPlans()
+      ]);
+
+      const companiesWithSubs = await Promise.all(
+        companiesData.map(async (company) => {
+          const subscription = await getCompanySubscription(company.id);
+          return {
+            ...company,
+            subscription: subscription ? {
+              planId: subscription.planId,
+              status: subscription.status,
+              currentPeriodEnd: subscription.currentPeriodEnd,
+            } : null,
+          };
+        })
+      );
+
+      setCompanies(companiesWithSubs);
+      setPlans(plansData);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to load subscription data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterCompanies = () => {
+    let filtered = [...companies];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(company => 
+        company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(company => 
+        company.subscription?.status === statusFilter
+      );
+    }
+
+    // Plan filter
+    if (planFilter !== 'all') {
+      filtered = filtered.filter(company => 
+        company.subscription?.planId === planFilter
+      );
+    }
+
+    setFilteredCompanies(filtered);
+  };
+
+  const getPlanName = (planId: string) => {
+    const plan = plans.find(p => p.id === planId);
+    return plan ? plan.name : 'Unknown Plan';
+  };
+
+  const handleCancelSubscription = async (companyId: string) => {
+    try {
+      setActionLoading(companyId);
+      await cancelSubscription(companyId);
+      await loadData(); // Refresh data
+      toast({
+        title: 'Success',
+        description: 'Subscription cancelled successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to cancel subscription',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleViewDetails = (companyId: string) => {
+    router.push(`/admin/subscriptions/${companyId}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-[200px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link 
-            href="/admin"
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition-colors"
-          >
-            <ArrowLeftIcon className="w-5 h-5" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <h1 className="text-2xl font-bold text-slate-700">Subscriptions Overview</h1>
-          <span className="text-slate-500">
-            {testSubscriptions.length} total subscriptions
-          </span>
+    <div className="space-y-6 p-6 bg-background text-foreground min-h-screen">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Subscriptions</h1>
+          <p className="text-muted-foreground mt-2">Manage company subscriptions and billing</p>
         </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => loadData()}
+          disabled={loading}
+          className="hover:bg-accent"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Monthly Recurring Revenue"
-            value={`$${subscriptionMetrics.totalRevenue.toLocaleString()}`}
-            icon={CurrencyDollarIcon}
-            trend="up"
-            trendValue={subscriptionMetrics.revenueGrowth}
-          />
-          <MetricCard
-            title="Active Subscriptions"
-            value={subscriptionMetrics.activeSubscriptions}
-            icon={UserGroupIcon}
-          />
-          <MetricCard
-            title="Average Subscription Value"
-            value={`$${subscriptionMetrics.averageSubscriptionValue}`}
-            icon={ChartBarIcon}
-          />
-          <MetricCard
-            title="Monthly Churn Rate"
-            value={`${subscriptionMetrics.churnRate}%`}
-            icon={CalendarIcon}
-            trend="down"
-            trendValue={subscriptionMetrics.churnRate}
-          />
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Active</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {companies.filter(c => c.subscription?.status === 'active').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Active subscriptions
+            </p>
+          </CardContent>
+        </Card>
+        {/* Add more summary cards as needed */}
+      </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-xl p-4 mb-6 shadow-[0_4px_20px_-4px_rgba(16,24,40,0.08)]">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Search by client name or email..."
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex gap-4 items-center mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search companies..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="pl-8 bg-background border-border"
               />
             </div>
-            <div className="sm:w-48">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="past_due">Past Due</option>
-                <option value="canceled">Canceled</option>
-              </select>
-            </div>
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="canceled">Canceled</SelectItem>
+                <SelectItem value="past_due">Past Due</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={planFilter}
+              onValueChange={setPlanFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by plan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Plans</SelectItem>
+                {plans.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id}>
+                    {plan.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        {/* Subscriptions Table */}
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Client</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Plan</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Amount</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Start Date</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Next Billing</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Payment Method</th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredSubscriptions.map((subscription) => (
-                      <tr key={subscription.id}>
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                          <div className="font-medium text-gray-900">{subscription.clientName}</div>
-                          <div className="text-gray-500">{subscription.clientEmail}</div>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{subscription.plan}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${subscription.amount}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            ${subscription.status === 'Active' ? 'bg-green-100 text-green-800' :
-                              subscription.status === 'Past_due' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'}`}>
-                            {subscription.status}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{subscription.startDate}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{subscription.nextBilling}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{subscription.paymentMethod}</td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <Link
-                            href={`/admin/subscriptions/${subscription.id}`}
-                            className="text-indigo-600 hover:text-indigo-900"
+          <div className="rounded-md border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-muted/50">
+                  <TableHead className="font-medium">Company</TableHead>
+                  <TableHead className="font-medium">Email</TableHead>
+                  <TableHead className="font-medium">Plan</TableHead>
+                  <TableHead className="font-medium">Status</TableHead>
+                  <TableHead className="font-medium">Renewal Date</TableHead>
+                  <TableHead className="font-medium">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCompanies.length === 0 ? (
+                  <TableRow>
+                    <TableCell 
+                      colSpan={6} 
+                      className="text-center py-8 text-muted-foreground"
+                    >
+                      No subscriptions found matching your filters
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredCompanies.map((company) => (
+                    <TableRow key={company.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{company.email}</TableCell>
+                      <TableCell>
+                        <span className="font-medium">
+                          {company.subscription 
+                            ? getPlanName(company.subscription.planId)
+                            : 'No Plan'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                            !company.subscription
+                              ? 'bg-secondary text-secondary-foreground'
+                              : company.subscription.status === 'active'
+                              ? 'bg-green-500/15 text-green-500'
+                              : company.subscription.status === 'canceled'
+                              ? 'bg-red-500/15 text-red-500'
+                              : 'bg-yellow-500/15 text-yellow-500'
+                          }`}
+                        >
+                          {company.subscription?.status || 'Inactive'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {company.subscription?.currentPeriodEnd
+                          ? new Date(company.subscription.currentPeriodEnd).toLocaleDateString()
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(company.id)}
+                            className="hover:bg-accent"
                           >
                             View Details
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          </Button>
+                          {company.subscription?.status === 'active' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleCancelSubscription(company.id)}
+                              disabled={actionLoading === company.id}
+                              className="hover:bg-destructive/90"
+                            >
+                              {actionLoading === company.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                'Cancel'
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

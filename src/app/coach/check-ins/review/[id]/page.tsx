@@ -500,7 +500,7 @@ export default function CheckInReview() {
       {/* Top Navigation Bar */}
       <div className="bg-gray-800/50 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
             <Link
               href="/coach/check-ins"
               className="inline-flex items-center text-gray-400 hover:text-white"
@@ -541,13 +541,13 @@ export default function CheckInReview() {
             <div className="flex items-center gap-4 mb-2">
               <h1 className="text-2xl font-bold">Check-in Review</h1>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                checkIn.status === 'pending' 
+              checkIn.status === 'pending'
                   ? 'bg-yellow-900/20 text-yellow-400 border border-yellow-800/20'
                   : 'bg-green-900/20 text-green-400 border border-green-800/20'
-              }`}>
-                {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
-              </span>
-            </div>
+            }`}>
+              {checkIn.status.charAt(0).toUpperCase() + checkIn.status.slice(1)}
+            </span>
+          </div>
             <p className="text-gray-400">
               Submitted on {format(new Date(checkIn.date), 'MMMM d, yyyy')} at {format(new Date(checkIn.date), 'h:mm a')}
             </p>
@@ -595,8 +595,8 @@ export default function CheckInReview() {
                 Send Message
               </Link>
             </div>
-          </div>
-        </div>
+                              </div>
+                            </div>
 
         <div className="grid grid-cols-3 gap-8">
           {/* Main Content - Left Column */}
@@ -609,7 +609,7 @@ export default function CheckInReview() {
                     <div className="flex items-center">
                       <div className="p-2 bg-gray-700 rounded-lg mr-3">
                         {getMetricIcon(key)}
-                      </div>
+                        </div>
                       <span className="text-sm font-medium capitalize">{key}</span>
                     </div>
                   </div>
@@ -675,7 +675,7 @@ export default function CheckInReview() {
                           >
                             <DocumentTextIcon className="h-4 w-4" />
                           </button>
-                          <button
+                  <button
                             onClick={() => {
                               const currentResponse = responses[response.id] || {};
                               setResponseType('audio');
@@ -691,8 +691,8 @@ export default function CheckInReview() {
                             }`}
                           >
                             <MicrophoneIcon className="h-4 w-4" />
-                          </button>
-                          <button
+                  </button>
+                  <button
                             onClick={() => {
                               const currentResponse = responses[response.id] || {};
                               setResponseType('video');
@@ -708,8 +708,8 @@ export default function CheckInReview() {
                             }`}
                           >
                             <VideoCameraIcon className="h-4 w-4" />
-                          </button>
-                          <button
+                  </button>
+                  <button
                             onClick={() => {
                               const currentResponse = responses[response.id] || {};
                               setResponseType('link');
@@ -725,14 +725,14 @@ export default function CheckInReview() {
                             }`}
                           >
                             <PaperClipIcon className="h-4 w-4" />
-                          </button>
+                  </button>
                         </div>
-                      </div>
+                </div>
 
                       {/* Response Input Based on Type */}
                       <div className="mt-2 space-y-3">
                         {(responses[response.id]?.type || responseType) === 'text' && (
-                          <textarea
+                    <textarea
                             placeholder="Type your feedback..."
                             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                             rows={3}
@@ -801,11 +801,11 @@ export default function CheckInReview() {
                                 Start Recording
                               </button>
                             )}
-                          </div>
-                        )}
+                  </div>
+                )}
 
                         {(responses[response.id]?.type || responseType) === 'video' && (
-                          <button 
+                      <button
                             onClick={() => {
                               // Implement video recording
                               setResponses(prev => ({
@@ -970,11 +970,11 @@ export default function CheckInReview() {
                           <div className="w-full h-full bg-gray-700/30 rounded-lg flex flex-col items-center justify-center">
                             <CameraIcon className="h-8 w-8 text-gray-500 mb-2" />
                             <span className="text-sm text-gray-500 capitalize">{view} view</span>
-                          </div>
-                        )}
+                  </div>
+                )}
                       </div>
                     ))}
-                  </div>
+                    </div>
                 ) : (
                   <div className="bg-gray-700/30 rounded-lg p-6 text-center">
                     <CameraIcon className="h-8 w-8 text-gray-500 mx-auto mb-2" />
@@ -1013,9 +1013,9 @@ export default function CheckInReview() {
                   </div>
                 )}
               </div>
+              </div>
             </div>
           </div>
-        </div>
 
         {/* Add the new Weekly Progress Analysis section at the bottom */}
         <div className="grid grid-cols-2 gap-8 mt-8">
@@ -1025,7 +1025,7 @@ export default function CheckInReview() {
               <ClockIcon className="h-5 w-5 text-blue-400" />
               Latest Check-in Summary
             </h3>
-            <div className="space-y-4">
+                <div className="space-y-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm text-gray-400">
                   Week {checkIn.weekNumber} • {format(new Date(checkIn.date), 'MMM d, yyyy')}
@@ -1038,8 +1038,8 @@ export default function CheckInReview() {
                     : 'bg-yellow-900/20 text-yellow-400 border border-yellow-800/20'
                 }`}>
                   Score: {checkIn.score}%
-                </span>
-              </div>
+                        </span>
+                      </div>
               
               <div className="bg-gray-700/30 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">Key Points</h4>
@@ -1054,16 +1054,16 @@ export default function CheckInReview() {
                     <CheckCircleIcon className="h-4 w-4 text-green-400 mt-1 flex-shrink-0" />
                     <span className="text-sm text-gray-300">
                       Sleep quality improved to 7.8 hours average
-                    </span>
+                        </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <ExclamationCircleIcon className="h-4 w-4 text-yellow-400 mt-1 flex-shrink-0" />
                     <span className="text-sm text-gray-300">
                       Stress levels slightly elevated due to work
-                    </span>
+                        </span>
                   </li>
                 </ul>
-              </div>
+                      </div>
 
               <div className="bg-gray-700/20 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">Previous Feedback</h4>
@@ -1086,7 +1086,7 @@ export default function CheckInReview() {
                 <p className="text-sm text-gray-300">
                   Client has maintained consistent progress over {checkIn.weekNumber} weeks of coaching. Average compliance score of 85% shows strong commitment to the program. Notable improvements in sleep quality and workout consistency.
                 </p>
-              </div>
+            </div>
 
               <div className="bg-gray-700/30 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">Key Achievements</h4>
@@ -1110,7 +1110,7 @@ export default function CheckInReview() {
                     </span>
                   </li>
                 </ul>
-              </div>
+                </div>
 
               <div className="bg-gray-700/20 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">Focus Areas</h4>

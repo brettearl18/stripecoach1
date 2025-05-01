@@ -7,10 +7,8 @@ const nextConfig = {
       buildDependencies: {
         config: [__filename],
       },
-      cacheDirectory: '.next/cache/webpack',
       name: isServer ? 'server' : 'client',
-      version: '1.0.0', // Change this to invalidate cache
-      compression: false, // Disable compression to avoid header check issues
+      version: '1.0.0',
     };
 
     // Optimize module resolution
@@ -20,6 +18,36 @@ const nextConfig = {
       net: false,
       tls: false,
     };
+
+    // Add rule for undici
+    config.module.rules.push({
+      test: /node_modules\/undici\/.*\.js$/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          presets: ['@babel/preset-env'],
+          plugins: ['@babel/plugin-proposal-private-methods', '@babel/plugin-proposal-class-properties']
+        }
+      }
+    });
+
+    // Optimize client-side rendering
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
+      };
+    }
 
     // Disable cache in development to avoid stale data
     if (dev) {
@@ -32,11 +60,18 @@ const nextConfig = {
   output: 'standalone',
   // Increase build timeout
   staticPageGenerationTimeout: 120,
-  // Enable experimental features if needed
+  // Enable experimental features
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000', 'localhost:3005']
-    }
+    serverActions: true,
+    // Enable modern features
+    optimizeCss: true,
+    scrollRestoration: true,
+    workerThreads: true
+  },
+  // Compiler options
+  compiler: {
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === 'production',
   },
   images: {
     domains: ['images.unsplash.com'],
@@ -47,6 +82,8 @@ const nextConfig = {
       },
     ],
   },
+  // Enable React strict mode
+  reactStrictMode: true,
 }
 
 module.exports = nextConfig

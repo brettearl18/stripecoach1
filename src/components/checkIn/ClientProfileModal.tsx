@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { UserIcon } from '@heroicons/react/24/outline';
@@ -160,6 +160,23 @@ export function ClientProfileModal({ isOpen, onClose, onProfileComplete }: Clien
     }
     return false;
   };
+
+  // Add development auto-complete
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Development mode: Auto-completing profile');
+      onProfileComplete({
+        name: 'Test User',
+        age: 30,
+        gender: 'prefer-not-to-say',
+        goals: ['sleep', 'stress', 'energy'],
+        preferences: {
+          notifications: true,
+          reminders: true
+        }
+      });
+    }
+  }, [onProfileComplete]);
 
   return (
     <Transition appear show={isOpen} as={Fragment}>

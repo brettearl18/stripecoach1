@@ -18,7 +18,8 @@ import {
   DocumentData,
   QueryDocumentSnapshot,
   Query,
-  CollectionReference
+  CollectionReference,
+  orderBy
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from 'firebase/auth';
 
@@ -97,68 +98,6 @@ export interface ClientUser extends User {
   isActive: boolean;
 }
 
-// Mock data and functions for development
-let mockCoaches: Coach[] = [
-  {
-    id: '1',
-    name: 'Michael Chen',
-    email: 'michael.c@stripecoach.com',
-    specialties: ['Strength Training', 'Nutrition'],
-    experience: '10 years',
-    lastLoginAt: Timestamp.now()
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah.j@stripecoach.com',
-    specialties: ['Yoga', 'Meditation'],
-    experience: '8 years',
-    lastLoginAt: Timestamp.fromDate(new Date(Date.now() - 86400000)) // 1 day ago
-  },
-  {
-    id: '3',
-    name: 'Coach Silvi',
-    email: 'silvi@vanahealth.com.au',
-    specialties: ['HIIT', 'Weight Loss'],
-    experience: '12 years',
-    lastLoginAt: Timestamp.fromDate(new Date(Date.now() - 172800000)) // 2 days ago
-  }
-];
-
-let mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'Sarah Wilson',
-    email: 'sarah.w@example.com',
-    coachId: '1',
-    goals: ['Weight Loss', 'Muscle Tone', 'Better Energy'],
-    lastLoginAt: Timestamp.fromDate(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), // 2 days ago
-    lastCheckIn: Timestamp.fromDate(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)), // 3 days ago
-    isActive: true
-  },
-  {
-    id: '2',
-    name: 'Mike Johnson',
-    email: 'mike.j@example.com',
-    coachId: '1',
-    goals: ['Strength Training', 'Nutrition Planning'],
-    lastLoginAt: Timestamp.fromDate(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)), // 5 days ago
-    lastCheckIn: Timestamp.fromDate(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)), // 15 days ago (overdue)
-    isActive: true
-  },
-  {
-    id: '3',
-    name: 'Emma Davis',
-    email: 'emma.d@example.com',
-    coachId: '1',
-    goals: ['Stress Management', 'Flexibility'],
-    lastLoginAt: Timestamp.fromDate(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)), // 1 day ago
-    lastCheckIn: Timestamp.fromDate(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)), // 1 day ago
-    isActive: true
-  }
-];
-
-// Check-in functions
 export interface CheckIn {
   id: string;
   coachId: string;
@@ -228,101 +167,240 @@ export interface CheckInResponse {
   status: 'completed' | 'partial' | 'missed';
 }
 
-const CHECKIN_FORMS_COLLECTION = 'checkInForms';
-const CHECKIN_RESPONSES_COLLECTION = 'checkInResponses';
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: Date;
+  readAt?: Date;
+  responseTime?: number;
+}
 
-export const getCheckInForms = async (options?: { 
+export interface Alert {
+  id: string;
+  clientId: string;
+  coachId?: string;
+  message: string;
+  type: 'error' | 'warning' | 'info';
+  createdAt: Date;
+  isResolved: boolean;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  status: 'pending' | 'completed' | 'failed';
+  createdAt: Date;
+  updatedAt: Date;
+  companyId: string;
+  description: string;
+}
+
+// Coach related functions
+export async function getCoaches(): Promise<Coach[]> {
+  const coachesRef = collection(db, 'coaches');
+  const snapshot = await getDocs(coachesRef);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...convertTimestampsToDates(doc.data() as Coach)
+  }));
+}
+
+export async function getCoach(coachId: string): Promise<Coach | null> {
+  const coachRef = doc(db, 'coaches', coachId);
+  const coachDoc = await getDoc(coachRef);
+  if (!coachDoc.exists()) return null;
+  return {
+    id: coachDoc.id,
+    ...convertTimestampsToDates(coachDoc.data() as Coach)
+  };
+}
+
+export async function getClientsByCoach(coachId: string): Promise<Client[]> {
+  const clientsRef = collection(db, 'clients');
+  const q = query(clientsRef, where('coachId', '==', coachId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...convertTimestampsToDates(doc.data() as Client)
+  }));
+}
+
+export async function getUnassignedClients(): Promise<Client[]> {
+  const clientsRef = collection(db, 'clients');
+  const q = query(clientsRef, where('coachId', '==', null));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...convertTimestampsToDates(doc.data() as Client)
+  }));
+}
+
+export async function assignClientsToCoach(clientIds: string[], coachId: string): Promise<void> {
+  const batch = writeBatch(db);
+  clientIds.forEach(clientId => {
+    const clientRef = doc(db, 'clients', clientId);
+    batch.update(clientRef, { coachId });
+  });
+  await batch.commit();
+}
+
+export async function unassignClientFromCoach(clientId: string): Promise<void> {
+  const clientRef = doc(db, 'clients', clientId);
+  await updateDoc(clientRef, { coachId: null });
+}
+
+export async function updateCoach(coachId: string, data: Partial<Coach>): Promise<void> {
+  const coachRef = doc(db, 'coaches', coachId);
+  await updateDoc(coachRef, convertDatesToTimestamps(data));
+}
+
+export async function createTestCoach(): Promise<string> {
+  const coachRef = await addDoc(collection(db, 'coaches'), {
+    name: 'Test Coach',
+    email: 'test.coach@example.com',
+    specialties: ['Test Specialty'],
+    experience: '5 years',
+    lastLoginAt: serverTimestamp()
+  });
+  return coachRef.id;
+}
+
+export async function deleteCoach(coachId: string): Promise<void> {
+  const coachRef = doc(db, 'coaches', coachId);
+  await deleteDoc(coachRef);
+}
+
+export async function createTestData(): Promise<void> {
+  // Create test coach
+  const coachRef = await addDoc(collection(db, 'coaches'), {
+    name: 'Test Coach',
+    email: 'test.coach@example.com',
+    specialties: ['Test Specialty'],
+    experience: '5 years',
+    lastLoginAt: serverTimestamp()
+  });
+
+  // Create test client
+  await addDoc(collection(db, 'clients'), {
+    name: 'Test Client',
+    email: 'test.client@example.com',
+    coachId: coachRef.id,
+    goals: ['Test Goal'],
+    lastLoginAt: serverTimestamp(),
+    isActive: true
+  });
+}
+
+// Form submission related functions
+export async function getFormSubmissions(formId: string): Promise<CheckInResponse[]> {
+  const responsesRef = collection(db, 'checkInResponses');
+  const q = query(responsesRef, where('formId', '==', formId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...convertTimestampsToDates(doc.data() as CheckInResponse)
+  }));
+}
+
+export async function saveFormSubmission(submission: CheckInResponse): Promise<string> {
+  const responsesRef = collection(db, 'checkInResponses');
+  const docRef = await addDoc(responsesRef, convertDatesToTimestamps(submission));
+  return docRef.id;
+}
+
+// Client related functions
+export async function updateClient(clientId: string, data: Partial<Client>): Promise<void> {
+  const clientRef = doc(db, 'clients', clientId);
+  await updateDoc(clientRef, convertDatesToTimestamps(data));
+}
+
+export async function getClient(clientId: string): Promise<Client | null> {
+  const clientRef = doc(db, 'clients', clientId);
+  const clientDoc = await getDoc(clientRef);
+  if (!clientDoc.exists()) return null;
+  return {
+    id: clientDoc.id,
+    ...convertTimestampsToDates(clientDoc.data() as Client)
+  };
+}
+
+// Check-in related functions
+export async function getCheckInForms(options?: { 
   isTemplate?: boolean; 
   status?: CheckInForm['status'];
   createdBy?: string;
-}): Promise<CheckInForm[]> => {
+}): Promise<CheckInForm[]> {
   try {
-    const formsRef = collection(db, CHECKIN_FORMS_COLLECTION);
-    let formsQuery = query(formsRef);
-    const conditions = [];
-
+    const formsRef = collection(db, 'checkInForms');
+    let q = formsRef;
+    
     if (options?.isTemplate !== undefined) {
-      conditions.push(where('isTemplate', '==', options.isTemplate));
+      q = query(q, where('isTemplate', '==', options.isTemplate));
     }
+    
     if (options?.status) {
-      conditions.push(where('status', '==', options.status));
+      q = query(q, where('status', '==', options.status));
     }
+    
     if (options?.createdBy) {
-      conditions.push(where('createdBy', '==', options.createdBy));
+      q = query(q, where('createdBy', '==', options.createdBy));
     }
-
-    if (conditions.length > 0) {
-      formsQuery = query(formsRef, ...conditions);
-    }
-
-    const querySnapshot = await getDocs(formsQuery);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as CheckInForm[];
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CheckInForm[];
   } catch (error) {
-    console.error('Error getting check-in forms:', error);
-    throw error;
+    console.error('Error fetching check-in forms:', error);
+    return [];
   }
-};
+}
 
-export const getClientResponses = async (clientId: string, formId?: string): Promise<CheckInResponse[]> => {
+export async function getClientResponses(clientId: string, formId?: string): Promise<CheckInResponse[]> {
   try {
-    const responsesRef = collection(db, CHECKIN_RESPONSES_COLLECTION);
-    let responsesQuery = query(responsesRef);
-    const conditions = [where('clientId', '==', clientId)];
+    const responsesRef = collection(db, 'checkInResponses');
+    let q = query(responsesRef, where('clientId', '==', clientId));
     
     if (formId) {
-      conditions.push(where('formId', '==', formId));
+      q = query(q, where('formId', '==', formId));
     }
-
-    responsesQuery = query(responsesRef, ...conditions);
-    const querySnapshot = await getDocs(responsesQuery);
     
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        submittedAt: data.submittedAt instanceof Timestamp ? data.submittedAt : Timestamp.now(),
-        status: data.status || 'completed'
-      } as CheckInResponse;
-    });
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CheckInResponse[];
   } catch (error) {
-    console.error('Error getting client responses:', error);
-    throw error;
+    console.error('Error fetching client responses:', error);
+    return [];
   }
-};
+}
 
-// Client functions
-export const getClients = async (coachId: string): Promise<Client[]> => {
+export async function getClients(coachId: string): Promise<Client[]> {
   try {
-    // For development, return mock clients
-    return mockClients.filter(client => client.coachId === coachId);
+    const clientsRef = collection(db, 'clients');
+    const q = query(clientsRef, where('coachId', '==', coachId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Client[];
   } catch (error) {
-    console.error('Error getting clients:', error);
-    throw error;
+    console.error('Error fetching clients:', error);
+    return [];
   }
-};
+}
 
-// Check-in form functions
-export const saveCheckInForm = async (formData: CheckInForm, clientIds: string[] = []): Promise<string> => {
+export async function saveCheckInForm(formData: CheckInForm, clientIds: string[] = []): Promise<string> {
   try {
-    const formRef = collection(db, 'checkInForms');
-    const docRef = await addDoc(formRef, {
+    const formsRef = collection(db, 'checkInForms');
+    const docRef = await addDoc(formsRef, {
       ...formData,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      assignedClients: clientIds
+      updatedAt: serverTimestamp()
     });
     return docRef.id;
   } catch (error) {
     console.error('Error saving check-in form:', error);
     throw error;
   }
-};
+}
 
-export const createFromTemplate = async (templateId: string): Promise<string> => {
+export async function createFromTemplate(templateId: string): Promise<string> {
   try {
     const templateRef = doc(db, 'checkInForms', templateId);
     const templateDoc = await getDoc(templateRef);
@@ -330,17 +408,15 @@ export const createFromTemplate = async (templateId: string): Promise<string> =>
     if (!templateDoc.exists()) {
       throw new Error('Template not found');
     }
-
-    const templateData = templateDoc.data() as CheckInForm;
+    
+    const templateData = templateDoc.data();
     const newFormData = {
       ...templateData,
-      id: undefined,
       isTemplate: false,
-      status: 'draft',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-
+    
     const formRef = collection(db, 'checkInForms');
     const docRef = await addDoc(formRef, newFormData);
     return docRef.id;
@@ -348,7 +424,7 @@ export const createFromTemplate = async (templateId: string): Promise<string> =>
     console.error('Error creating from template:', error);
     throw error;
   }
-};
+}
 
 export async function getCheckIns(clientId?: string): Promise<CheckIn[]> {
   try {
@@ -400,5 +476,88 @@ export async function getUserRole(userId: string): Promise<string | null> {
   } catch (error) {
     console.error('Error fetching user role:', error);
     return null;
+  }
+}
+
+export async function getUsers(role: 'COACH' | 'CLIENT' | 'ADMIN', status: 'ACTIVE' | 'INACTIVE'): Promise<User[]> {
+  try {
+    const usersRef = collection(db, 'users');
+    const q = query(
+      usersRef,
+      where('role', '==', role.toLowerCase()),
+      where('status', '==', status.toLowerCase())
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+    })) as User[];
+  } catch (error) {
+    console.error('Error getting users:', error);
+    throw error;
+  }
+}
+
+export async function getPayments(status?: string): Promise<Payment[]> {
+  try {
+    const paymentsRef = collection(db, 'payments');
+    let q = paymentsRef;
+    
+    if (status) {
+      q = query(paymentsRef, where('status', '==', status));
+    }
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+    })) as Payment[];
+  } catch (error) {
+    console.error('Error getting payments:', error);
+    throw error;
+  }
+}
+
+export async function getMessages(userId: string): Promise<Message[]> {
+  try {
+    const messagesRef = collection(db, 'messages');
+    const q = query(messagesRef, where('senderId', '==', userId));
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      readAt: doc.data().readAt?.toDate(),
+    })) as Message[];
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    throw error;
+  }
+}
+
+export async function getAlerts(isResolved: boolean): Promise<Alert[]> {
+  try {
+    const alertsRef = collection(db, 'alerts');
+    const q = query(
+      alertsRef,
+      where('isResolved', '==', isResolved),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+    })) as Alert[];
+  } catch (error) {
+    console.error('Error getting alerts:', error);
+    throw error;
   }
 } 

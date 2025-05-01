@@ -12,6 +12,9 @@ import {
   BellAlertIcon
 } from '@heroicons/react/24/outline';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import DashboardMetricsGrid from './components/dashboard/DashboardMetricsGrid';
+import CoachPerformanceTable from './components/dashboard/CoachPerformanceTable';
+import ClientAlertsPanel from './components/dashboard/ClientAlertsPanel';
 
 export default function AdminDashboard() {
   const [topCoaches] = useState([
@@ -161,158 +164,26 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#13141A] text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-          <p className="text-gray-400">Platform overview and key metrics</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-700">
+          A high-level overview of your coaching platform's performance and key metrics.
+        </p>
+      </div>
+
+      {/* Metrics Grid */}
+      <DashboardMetricsGrid />
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Coach Performance Table */}
+        <div className="lg:col-span-2">
+          <CoachPerformanceTable />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Revenue</p>
-                <h3 className="text-2xl font-bold text-white mt-1">$24,500</h3>
-                <p className="text-green-500 text-sm mt-1">+12.5% from last month</p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <ChartBarIcon className="h-6 w-6 text-blue-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Active Coaches</p>
-                <h3 className="text-2xl font-bold text-white mt-1">12</h3>
-                <p className="text-green-500 text-sm mt-1">+2 this week</p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <UserGroupIcon className="h-6 w-6 text-purple-500" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Clients</p>
-                <h3 className="text-2xl font-bold text-white mt-1">156</h3>
-                <p className="text-green-500 text-sm mt-1">+8 this week</p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <UserGroupIcon className="h-6 w-6 text-green-500" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#1a1b1e] rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6">Coach Leaderboard</h2>
-          <DataTable
-            columns={columns}
-            data={topCoaches}
-            actions={(coach) => (
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
-                View Dashboard →
-              </button>
-            )}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Client Progress Chart */}
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
-              <ArrowTrendingUpIcon className="h-5 w-5 mr-2 text-blue-500" />
-              Client Progress Overview
-            </h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={progressData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2b2e" />
-                  <XAxis dataKey="month" stroke="#6b7280" />
-                  <YAxis stroke="#6b7280" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1a1b1e', 
-                      border: '1px solid #2a2b2e',
-                      borderRadius: '8px'
-                    }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="activeClients" 
-                    stroke="#3b82f6" 
-                    name="Active Clients"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="completionRate" 
-                    stroke="#10b981" 
-                    name="Completion Rate"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Alerts and Notifications */}
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
-              <BellAlertIcon className="h-5 w-5 mr-2 text-yellow-500" />
-              Recent Alerts
-            </h2>
-            <div className="space-y-4">
-              {clientAlerts.map((alert, index) => (
-                <div key={index} className="flex items-start p-3 rounded-lg bg-[#13141A]">
-                  <div className={`
-                    h-8 w-8 rounded-full flex items-center justify-center mr-3
-                    ${alert.severity === 'high' ? 'bg-red-500/10 text-red-500' : 
-                      alert.severity === 'medium' ? 'bg-yellow-500/10 text-yellow-500' : 
-                      'bg-blue-500/10 text-blue-500'}
-                  `}>
-                    <ExclamationTriangleIcon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-white">{alert.clientName}</h3>
-                      <span className="text-sm text-gray-400">{alert.date}</span>
-                    </div>
-                    <p className="text-sm text-gray-400 mt-1">{alert.message}</p>
-                    <p className="text-sm text-gray-500 mt-1">Coach: {alert.coachName}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Client Achievements */}
-        <div className="bg-[#1a1b1e] rounded-lg p-6 mb-8">
-          <h2 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <TrophyIcon className="h-5 w-5 mr-2 text-yellow-500" />
-            Recent Achievements
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {clientWins.map((win, index) => (
-              <div key={index} className="p-4 rounded-lg bg-[#13141A] border border-[#2a2b2e]">
-                <div className="flex items-center mb-3">
-                  <div className="h-8 w-8 rounded-full bg-yellow-500/10 flex items-center justify-center mr-3">
-                    <TrophyIcon className="h-4 w-4 text-yellow-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-white">{win.clientName}</h3>
-                    <p className="text-sm text-gray-400">Coach: {win.coachName}</p>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-300">{win.achievement}</p>
-                <p className="text-xs text-gray-500 mt-2">{win.date}</p>
-              </div>
-            ))}
-          </div>
+        {/* Client Alerts Panel */}
+        <div className="lg:col-span-2">
+          <ClientAlertsPanel />
         </div>
       </div>
     </div>

@@ -1,9 +1,19 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
+import FacebookProvider from 'next-auth/providers/facebook';
 import { authService } from './services/authService';
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
@@ -49,10 +59,37 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/error',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      if (account?.provider === 'google' || account?.provider === 'facebook') {
+        try {
+          // Check if user exists
+          const existingUser = await authService.getUserByEmail(user.email!);
+          
+          if (!existingUser) {
+            // Create new user with social login info
+            await authService.createUser({
+              email: user.email!,
+              name: user.name!,
+              role: 'client', // Default role for social login
+              provider: account.provider,
+              providerId: account.providerAccountId,
+            });
+          }
+          return true;
+        } catch (error) {
+          console.error('Error in social login:', error);
+          return false;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, account }) {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        if (account) {
+          token.provider = account.provider;
+        }
       }
       return token;
     },
@@ -60,6 +97,7 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.role = token.role;
         session.user.id = token.id;
+        session.user.provider = token.provider;
       }
       return session;
     },

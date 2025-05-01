@@ -115,4 +115,13 @@ function determineInitialProgramType(goals: string[]): string {
     return 'Strength Training';
   }
   return 'General Fitness';
-} 
+}
+
+// Create a service object with all the functions
+const clientProfileService = {
+  getClientProfile,
+  updateClientProfile,
+  createClientProfile
+};
+
+export default clientProfileService; 

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { onboardingConfigService } from '@/lib/services/onboardingConfigService';
-import { clientProfileService } from '@/lib/services/clientProfileService';
+import clientProfileService from '@/lib/services/clientProfileService';
 import { toast } from 'sonner';
 
 interface FormData {

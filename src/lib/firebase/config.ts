@@ -9,6 +9,7 @@ import {
   getFirestore as getExistingFirestore
 } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { firebaseConfig } from './firebaseConfig';
 import { getPerformance } from 'firebase/performance';
 
@@ -16,6 +17,7 @@ import { getPerformance } from 'firebase/performance';
 let app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 let db;
 let auth = getAuth(app);
+let storage = getStorage(app);
 let performance;
 
 const initializeFirebaseApp = async () => {
@@ -70,4 +72,4 @@ if (typeof window !== 'undefined') {
   initializeFirebaseApp();
 }
 
-export { app, db, auth, performance }; 
+export { app, db, auth, storage, performance }; 

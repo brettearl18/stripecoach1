@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { 
-  createTestCoach, 
-  createTestClient, 
-  createTestCheckInForm,
-  createTestFormSubmission,
+  createTestCoach,
   type Coach,
   type Client,
   type CheckInForm,
@@ -16,6 +13,7 @@ import {
   updateClientAnalytics,
   generateAndSaveAISuggestions
 } from '@/lib/services/firebaseService';
+import { createTestClient, createTestCheckInForm, createTestFormSubmission } from '@/lib/services/firebaseService.test';
 
 export default function TestSetup() {
   const [isLoading, setIsLoading] = useState(false);

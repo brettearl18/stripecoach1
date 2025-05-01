@@ -6,7 +6,7 @@ import { getCoaches, getClientsByCoach, type Client, type Coach } from '@/lib/se
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { DashboardNav } from '@/components/DashboardNav';
+import DashboardNav from '@/components/DashboardNav';
 import {
   CalendarIcon,
   ChartBarIcon,
