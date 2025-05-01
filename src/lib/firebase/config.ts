@@ -1,75 +1,30 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  connectFirestoreEmulator, 
-  enableMultiTabIndexedDbPersistence,
-  enableIndexedDbPersistence,
-  CACHE_SIZE_UNLIMITED,
-  initializeFirestore,
-  getFirestore as getExistingFirestore
-} from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { firebaseConfig } from './firebaseConfig';
-import { getPerformance } from 'firebase/performance';
+import { getAnalytics } from 'firebase/analytics';
 
-// Initialize Firebase
-let app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-let db;
-let auth = getAuth(app);
-let storage = getStorage(app);
-let performance;
-
-const initializeFirebaseApp = async () => {
-  try {
-    // Initialize Firestore only if it hasn't been initialized
-    try {
-      db = getExistingFirestore();
-    } catch {
-      db = initializeFirestore(app, {
-        cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-        experimentalForceLongPolling: false,
-        experimentalAutoDetectLongPolling: true,
-        ignoreUndefinedProperties: true,
-      });
-    }
-
-    // Enable offline persistence
-    if (typeof window !== 'undefined') {
-      try {
-        await enableMultiTabIndexedDbPersistence(db);
-      } catch (err) {
-        if (err.code === 'failed-precondition') {
-          await enableIndexedDbPersistence(db);
-        } else if (err.code === 'unimplemented') {
-          console.warn('Browser doesn\'t support persistence');
-        }
-      }
-    }
-
-    // Initialize Performance Monitoring in production
-    if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
-      performance = getPerformance(app);
-    }
-
-    // Connect to emulators in development
-    if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-      try {
-        connectFirestoreEmulator(db, 'localhost', 8080);
-        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-        console.log('Connected to Firebase emulators');
-      } catch (error) {
-        console.warn('Failed to connect to Firebase emulators:', error);
-      }
-    }
-  } catch (error) {
-    console.error('Error initializing Firebase:', error);
-  }
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase on the client side only
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// Initialize Analytics only on client side
+let analytics = null;
 if (typeof window !== 'undefined') {
-  initializeFirebaseApp();
+  analytics = getAnalytics(app);
 }
 
-export { app, db, auth, storage, performance }; 
+export { app, auth, db, storage, analytics }; 
