@@ -31,19 +31,6 @@ service cloud.firestore {
       );
     }
 
-    function isWithinPlanLimits(orgId) {
-      let org = get(/databases/$(database)/documents/organizations/$(orgId));
-      let plan = org.data.plan;
-      let clientCount = getAggregateCount(/databases/$(database)/documents/organizations/$(orgId)/clients);
-      let coachCount = getAggregateCount(/databases/$(database)/documents/organizations/$(orgId)/coaches);
-      
-      return (
-        (plan == 'free' && clientCount < 5 && coachCount == 1) ||
-        (plan == 'pro' && clientCount < 30 && coachCount == 1) ||
-        plan == 'enterprise'
-      );
-    }
-
     // Organization rules
     match /organizations/{orgId} {
       allow read: if isOrgMember(orgId);
@@ -65,7 +52,7 @@ service cloud.firestore {
       // Clients subcollection
       match /clients/{clientId} {
         allow read: if isOrgMember(orgId);
-        allow create: if (isOrgOwner(orgId) || hasOrgPermission(orgId, 'manageClients')) && isWithinPlanLimits(orgId);
+        allow create: if isOrgOwner(orgId) || hasOrgPermission(orgId, 'manageClients');
         allow update: if isOrgOwner(orgId) || hasOrgPermission(orgId, 'manageClients');
         allow delete: if isOrgOwner(orgId) || hasOrgPermission(orgId, 'manageClients');
       }

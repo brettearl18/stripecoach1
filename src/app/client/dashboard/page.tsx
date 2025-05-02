@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BoltIcon,
   SparklesIcon,
@@ -28,18 +28,6 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { ProgramTimeline } from './components/ProgramTimeline';
 import { WeeklyProgress } from './components/WeeklyProgress';
 import { CheckInButton } from './components/CheckInButton';
-
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
 
 // Mock data for the past 30 days
 const generateMockData = () => {
@@ -243,7 +231,7 @@ const ProgressRing = ({ value, max, label, color }) => {
   const circumference = 2 * Math.PI * 38; // radius = 38
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  return (
+    return (
     <div className="flex flex-col items-center">
       <div className="relative">
         <svg className="w-24 h-24 transform -rotate-90">
@@ -272,8 +260,8 @@ const ProgressRing = ({ value, max, label, color }) => {
         </div>
       </div>
       <span className="mt-2 text-sm text-gray-400">{label}</span>
-    </div>
-  );
+      </div>
+    );
 };
 
 // Coach Card Component
@@ -286,14 +274,14 @@ const CoachCard = ({ coach }: { coach: Coach | null }) => {
       <div className="flex items-start gap-4">
         <div className="h-12 w-12 rounded-full bg-gray-700 flex items-center justify-center text-xl font-medium text-white">
           {coach.name.charAt(0)}
-        </div>
+              </div>
         <div className="flex-1">
           <div className="flex items-start justify-between">
-            <div>
+              <div>
               <h3 className="text-white font-medium">{coach.name}</h3>
               <p className="text-sm text-gray-400">{coach.specialties.join(' • ')}</p>
             </div>
-          </div>
+              </div>
           <div className="mt-4 space-y-3">
             <button className="w-full flex items-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors">
               <CalendarIcon className="w-4 h-4" />
@@ -303,7 +291,7 @@ const CoachCard = ({ coach }: { coach: Coach | null }) => {
               <ChatBubbleLeftRightIcon className="w-4 h-4" />
               Send Message
             </button>
-          </div>
+              </div>
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="flex items-center gap-2 text-sm">
               <ClockIcon className="w-4 h-4 text-gray-400" />
@@ -312,29 +300,79 @@ const CoachCard = ({ coach }: { coach: Coach | null }) => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
-  );
+    );
 };
 
 export default function ClientDashboard() {
-  return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-8">
-            <ProfileOverview profile={clientProfile} />
-            <WeeklyProgress data={mockData} options={chartOptions} />
-            <ProgramTimeline />
-          </div>
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isChartInitialized, setIsChartInitialized] = useState(false);
 
-          {/* Right Column */}
-          <div className="space-y-8">
-            <CheckInButton clientData={mockClientData} />
-            <HabitsCell habits={weeklyHabits} />
-            <ActivityFeed activities={activityFeed} />
-          </div>
+  // Initialize ChartJS
+  useEffect(() => {
+    try {
+      ChartJS.register(
+        CategoryScale,
+        LinearScale,
+        PointElement,
+        LineElement,
+        Title,
+        Tooltip,
+        Legend,
+        Filler
+      );
+      setIsChartInitialized(true);
+    } catch (error) {
+      console.error('Error initializing ChartJS:', error);
+      setError(error as Error);
+    }
+  }, []);
+
+  // Data loading simulation
+  useEffect(() => {
+    try {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
+    } catch (err) {
+      setError(err as Error);
+      setIsLoading(false);
+    }
+  }, []);
+
+  if (error) {
+    return (
+      <div className="p-4 text-red-500">
+        Error loading dashboard: {error.message}
+      </div>
+    );
+  }
+
+  if (isLoading || !isChartInitialized) {
+    return (
+      <div className="p-4">
+        Loading...
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column */}
+        <div className="lg:col-span-8 space-y-6">
+          <ProfileOverview />
+          <WeeklyProgress />
+          <ProgramTimeline />
+        </div>
+
+        {/* Right Column */}
+        <div className="lg:col-span-4 space-y-6">
+          <CheckInButton client={mockClientData} />
+          <HabitsCell habits={weeklyHabits} />
+          <ActivityFeed activities={activityFeed} />
         </div>
       </div>
     </div>

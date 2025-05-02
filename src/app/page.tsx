@@ -19,6 +19,7 @@ import {
   UserCircleIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
+import { useState } from 'react';
 
 // List of implemented pages
 const implementedPages = [
@@ -63,6 +64,27 @@ interface NavigationSection {
 
 export default function Home() {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  // Handler for the test AI button
+  const handleTestAI = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/test-ai-recipe', { method: 'POST' });
+      const data = await res.json();
+      if (data.recipe) {
+        alert(data.recipe);
+      } else if (data.error) {
+        alert('Error: ' + data.error);
+      } else {
+        alert('No recipe returned.');
+      }
+    } catch (err) {
+      alert('Failed to fetch recipe.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
@@ -73,7 +95,7 @@ export default function Home() {
         <p className="text-xl text-center text-gray-300 mb-6">Select a section to get started</p>
         
         {/* Add Client Sign Up Button */}
-        <div className="flex justify-center mb-12">
+        <div className="flex flex-col items-center mb-12 gap-4">
           <Link
             href="/signup"
             className="inline-flex items-center px-8 py-3 text-lg font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg shadow-lg hover:from-purple-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200"
@@ -81,6 +103,13 @@ export default function Home() {
             <UserCircleIcon className="h-6 w-6 mr-2" />
             Client Sign Up
           </Link>
+          <button
+            onClick={handleTestAI}
+            disabled={loading}
+            className="mt-2 px-8 py-3 text-lg font-medium text-white bg-gradient-to-r from-pink-500 to-yellow-500 rounded-lg shadow-lg hover:from-pink-600 hover:to-yellow-600 transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+          >
+            {loading ? 'Generating Recipe...' : 'Test AI Recipe'}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">

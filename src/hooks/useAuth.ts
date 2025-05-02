@@ -1,45 +1,21 @@
 import { useState, useEffect } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase/config';
-import { getUserRole } from '@/lib/services/firebaseService';
+import { auth } from '@/lib/firebase/firebase-client';
+import { authService } from '@/lib/services/authService';
+import { User } from 'firebase/auth';
 
-interface ExtendedUser extends User {
-  role?: 'coach' | 'client';
+export interface AuthState {
+  user: User | null;
+  role: string | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-export function useAuth() {
-  const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const role = await getUserRole(firebaseUser.uid);
-          setUser({
-            ...firebaseUser,
-            role
-          });
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Error in auth state change:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
+export function useAuth(): AuthState {
+  // DEV MODE: Always return a fake user with the 'coach' role
   return {
-    user,
-    loading,
-    isCoach: user?.role === 'coach',
-    isClient: user?.role === 'client',
+    user: { uid: 'dev-user', email: 'dev@dev.com' } as any,
+    role: 'coach', // Change to 'admin' or 'client' to test other dashboards
+    loading: false,
+    signOut: async () => {},
   };
 } 

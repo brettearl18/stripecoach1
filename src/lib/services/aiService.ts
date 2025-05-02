@@ -12,9 +12,17 @@ export class AIService {
   private openai: OpenAI;
 
   constructor() {
+    // Prevent usage on the client (browser)
+    if (typeof window !== 'undefined') {
+      throw new Error('AIService must only be used server-side. Never expose your OpenAI API key to the browser.');
+    }
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is missing. Add it to your .env.local and deployment environment.');
+    }
     this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY,
-      dangerouslyAllowBrowser: true
+      apiKey,
+      // dangerouslyAllowBrowser: true // Do NOT enable this in production
     });
   }
 

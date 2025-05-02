@@ -1,118 +1,157 @@
-import { Redis } from '@upstash/redis';
-import { cacheGet, cacheSet, cacheDelete, withCache, invalidateCache } from '../cache';
+import { Cache } from '../cache';
+import { Redis } from 'ioredis';
 
-// Mock Redis client
-jest.mock('@upstash/redis', () => {
-  return {
-    Redis: jest.fn().mockImplementation(() => ({
-      get: jest.fn(),
-      set: jest.fn(),
-      del: jest.fn(),
-      keys: jest.fn(),
-    })),
-  };
-});
+jest.mock('ioredis');
 
-describe('Cache Utility', () => {
+describe('Cache', () => {
+  let cache: Cache;
   let mockRedis: jest.Mocked<Redis>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRedis = new Redis({} as any) as jest.Mocked<Redis>;
+    mockRedis = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(),
+      expire: jest.fn(),
+      exists: jest.fn(),
+      keys: jest.fn(),
+      flushall: jest.fn()
+    } as unknown as jest.Mocked<Redis>;
+
+    (Redis as jest.Mock).mockImplementation(() => mockRedis);
+    cache = new Cache();
   });
 
-  describe('cacheGet', () => {
-    it('should return cached data when available', async () => {
-      const mockData = { foo: 'bar' };
-      mockRedis.get.mockResolvedValueOnce(mockData);
+  describe('get', () => {
+    it('should return cached value', async () => {
+      const mockValue = { data: 'test' };
+      mockRedis.get.mockResolvedValueOnce(JSON.stringify(mockValue));
 
-      const result = await cacheGet('test-key');
-      expect(result).toEqual(mockData);
+      const result = await cache.get('test-key');
+
+      expect(result).toEqual(mockValue);
       expect(mockRedis.get).toHaveBeenCalledWith('test-key');
     });
 
-    it('should return null when cache error occurs', async () => {
-      mockRedis.get.mockRejectedValueOnce(new Error('Cache error'));
+    it('should return null for non-existent key', async () => {
+      mockRedis.get.mockResolvedValueOnce(null);
 
-      const result = await cacheGet('test-key');
+      const result = await cache.get('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle invalid JSON', async () => {
+      mockRedis.get.mockResolvedValueOnce('invalid-json');
+
+      const result = await cache.get('invalid-key');
+
       expect(result).toBeNull();
     });
   });
 
-  describe('cacheSet', () => {
-    it('should set cache with default TTL', async () => {
-      const data = { foo: 'bar' };
-      await cacheSet('test-key', data);
+  describe('set', () => {
+    it('should set value with default TTL', async () => {
+      const value = { data: 'test' };
+      await cache.set('test-key', value);
 
-      expect(mockRedis.set).toHaveBeenCalledWith('test-key', data, { ex: 3600 });
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        'test-key',
+        JSON.stringify(value)
+      );
+      expect(mockRedis.expire).toHaveBeenCalledWith('test-key', 3600);
     });
 
-    it('should set cache with custom TTL and prefix', async () => {
-      const data = { foo: 'bar' };
-      await cacheSet('test-key', data, { ttl: 60, prefix: 'custom' });
+    it('should set value with custom TTL', async () => {
+      const value = { data: 'test' };
+      const ttl = 1800;
+      await cache.set('test-key', value, ttl);
 
-      expect(mockRedis.set).toHaveBeenCalledWith('custom:test-key', data, { ex: 60 });
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        'test-key',
+        JSON.stringify(value)
+      );
+      expect(mockRedis.expire).toHaveBeenCalledWith('test-key', ttl);
+    });
+
+    it('should handle set errors', async () => {
+      mockRedis.set.mockRejectedValueOnce(new Error('Redis error'));
+
+      await expect(cache.set('test-key', 'value'))
+        .rejects
+        .toThrow('Redis error');
     });
   });
 
-  describe('cacheDelete', () => {
-    it('should delete cache key', async () => {
-      await cacheDelete('test-key');
+  describe('delete', () => {
+    it('should delete key', async () => {
+      await cache.delete('test-key');
+
       expect(mockRedis.del).toHaveBeenCalledWith('test-key');
     });
 
-    it('should delete cache key with prefix', async () => {
-      await cacheDelete('test-key', 'custom');
-      expect(mockRedis.del).toHaveBeenCalledWith('custom:test-key');
+    it('should handle delete errors', async () => {
+      mockRedis.del.mockRejectedValueOnce(new Error('Redis error'));
+
+      await expect(cache.delete('test-key'))
+        .rejects
+        .toThrow('Redis error');
     });
   });
 
-  describe('withCache', () => {
-    it('should return cached data when available', async () => {
-      const mockData = { foo: 'bar' };
-      mockRedis.get.mockResolvedValueOnce(mockData);
+  describe('exists', () => {
+    it('should return true for existing key', async () => {
+      mockRedis.exists.mockResolvedValueOnce(1);
 
-      const fetchFn = jest.fn();
-      const result = await withCache('test-key', fetchFn);
+      const result = await cache.exists('test-key');
 
-      expect(result).toEqual(mockData);
-      expect(fetchFn).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+      expect(mockRedis.exists).toHaveBeenCalledWith('test-key');
     });
 
-    it('should fetch and cache data when not in cache', async () => {
-      const mockData = { foo: 'bar' };
-      mockRedis.get.mockResolvedValueOnce(null);
-      const fetchFn = jest.fn().mockResolvedValueOnce(mockData);
+    it('should return false for non-existent key', async () => {
+      mockRedis.exists.mockResolvedValueOnce(0);
 
-      const result = await withCache('test-key', fetchFn);
+      const result = await cache.exists('non-existent');
 
-      expect(result).toEqual(mockData);
-      expect(fetchFn).toHaveBeenCalled();
-      expect(mockRedis.set).toHaveBeenCalledWith('test-key', mockData, { ex: 3600 });
+      expect(result).toBe(false);
     });
   });
 
-  describe('invalidateCache', () => {
-    beforeEach(() => {
-      mockRedis.keys.mockResolvedValue(['key1', 'key2']);
+  describe('clear', () => {
+    it('should clear all keys', async () => {
+      await cache.clear();
+
+      expect(mockRedis.flushall).toHaveBeenCalled();
     });
 
-    it('should invalidate coach clients cache', async () => {
-      await invalidateCache.coachClients('coach-123');
-      expect(mockRedis.keys).toHaveBeenCalledWith('coach:coach-123:clients:*');
-      expect(mockRedis.del).toHaveBeenCalledWith(['key1', 'key2']);
+    it('should handle clear errors', async () => {
+      mockRedis.flushall.mockRejectedValueOnce(new Error('Redis error'));
+
+      await expect(cache.clear())
+        .rejects
+        .toThrow('Redis error');
+    });
+  });
+
+  describe('getKeys', () => {
+    it('should return all keys matching pattern', async () => {
+      const mockKeys = ['key1', 'key2'];
+      mockRedis.keys.mockResolvedValueOnce(mockKeys);
+
+      const result = await cache.getKeys('test-*');
+
+      expect(result).toEqual(mockKeys);
+      expect(mockRedis.keys).toHaveBeenCalledWith('test-*');
     });
 
-    it('should invalidate client cache', async () => {
-      await invalidateCache.client('client-123');
-      expect(mockRedis.keys).toHaveBeenCalledWith('client:client-123:*');
-      expect(mockRedis.del).toHaveBeenCalledWith(['key1', 'key2']);
-    });
+    it('should return empty array when no keys match', async () => {
+      mockRedis.keys.mockResolvedValueOnce([]);
 
-    it('should invalidate template cache', async () => {
-      await invalidateCache.template('template-123');
-      expect(mockRedis.keys).toHaveBeenCalledWith('template:template-123:*');
-      expect(mockRedis.del).toHaveBeenCalledWith(['key1', 'key2']);
+      const result = await cache.getKeys('non-existent-*');
+
+      expect(result).toEqual([]);
     });
   });
 }); 

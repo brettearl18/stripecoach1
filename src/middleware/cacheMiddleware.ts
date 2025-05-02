@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { cacheGet, cacheSet } from '@/lib/cache';
+import { NextRequest, NextResponse } from 'next/server';
+import { Cache } from '@/lib/cache';
+
+const cache = new Cache();
 
 // Routes that should be cached
 const CACHEABLE_ROUTES = [
@@ -17,49 +18,71 @@ const CACHE_CONFIG = {
 };
 
 export async function cacheMiddleware(request: NextRequest) {
-  // Only cache GET requests
+  // Skip caching for non-GET requests
   if (request.method !== 'GET') {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('X-Cache', 'BYPASS');
+    return response;
+  }
+
+  // Skip caching if cache-control header is set to no-cache
+  const cacheControl = request.headers.get('cache-control');
+  if (cacheControl?.includes('no-cache')) {
+    const response = NextResponse.next();
+    response.headers.set('X-Cache', 'BYPASS');
+    return response;
+  }
+
+  // Skip caching for non-JSON responses
+  const contentType = request.headers.get('content-type');
+  if (contentType && !contentType.includes('application/json')) {
+    const response = NextResponse.next();
+    response.headers.set('X-Cache', 'BYPASS');
+    return response;
   }
 
   const pathname = request.nextUrl.pathname;
   
   // Check if route should be cached
   if (!CACHEABLE_ROUTES.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('X-Cache', 'BYPASS');
+    return response;
   }
 
-  // Generate cache key based on full URL (including query params)
-  const cacheKey = request.url;
-
   try {
-    // Try to get from cache
-    const cachedResponse = await cacheGet(cacheKey);
+    const cacheKey = request.url;
+    const cachedResponse = await cache.get(cacheKey);
+
     if (cachedResponse) {
-      return NextResponse.json(cachedResponse, {
-        headers: {
-          'X-Cache': 'HIT',
-          'Cache-Control': 'public, max-age=300', // 5 minutes browser cache
-        },
-      });
+      const response = NextResponse.json(cachedResponse);
+      response.headers.set('X-Cache', 'HIT');
+      return response;
     }
 
-    // If not in cache, proceed with request
+    // Get TTL from config or use default
+    const routeConfig = CACHEABLE_ROUTES.find(route => pathname.startsWith(route));
+    const ttl = routeConfig ? CACHE_CONFIG[routeConfig].ttl : 3600;
+
+    // Get the original response
     const response = await NextResponse.next();
-    const data = await response.json();
+    
+    try {
+      // Clone and cache the response
+      const clonedResponse = response.clone();
+      const responseData = await clonedResponse.json();
+      await cache.set(cacheKey, responseData, ttl);
+      response.headers.set('X-Cache', 'MISS');
+    } catch (error) {
+      console.error('Error caching response:', error);
+      response.headers.set('X-Cache', 'BYPASS');
+    }
 
-    // Cache the response
-    const config = CACHE_CONFIG[pathname as keyof typeof CACHE_CONFIG] || { ttl: 300 };
-    await cacheSet(cacheKey, data, config);
-
-    return NextResponse.json(data, {
-      headers: {
-        'X-Cache': 'MISS',
-        'Cache-Control': 'public, max-age=300',
-      },
-    });
+    return response;
   } catch (error) {
     console.error('Cache middleware error:', error);
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set('X-Cache', 'BYPASS');
+    return response;
   }
 } 

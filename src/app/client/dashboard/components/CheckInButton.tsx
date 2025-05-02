@@ -9,13 +9,18 @@ interface CheckInSchedule {
   startHour: number;
 }
 
-interface CheckInButtonProps {
-  clientData: {
-    checkInSchedule: CheckInSchedule;
-  };
+interface Client {
+  id: string;
+  name: string;
+  programType: string;
+  checkInSchedule: CheckInSchedule;
 }
 
-export function CheckInButton({ clientData }: CheckInButtonProps) {
+interface CheckInButtonProps {
+  client: Client;
+}
+
+export function CheckInButton({ client }: CheckInButtonProps) {
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [nextCheckIn, setNextCheckIn] = useState('');
 
@@ -26,9 +31,9 @@ export function CheckInButton({ clientData }: CheckInButtonProps) {
       const currentHour = now.getHours();
       
       // Find the next check-in day
-      const nextDay = clientData.checkInSchedule.days.find(day => 
-        day > currentDay || (day === currentDay && currentHour < clientData.checkInSchedule.startHour)
-      ) || clientData.checkInSchedule.days[0];
+      const nextDay = client.checkInSchedule.days.find(day => 
+        day > currentDay || (day === currentDay && currentHour < client.checkInSchedule.startHour)
+      ) || client.checkInSchedule.days[0];
 
       // Calculate days until next check-in
       const daysUntilNext = nextDay > currentDay 
@@ -37,14 +42,14 @@ export function CheckInButton({ clientData }: CheckInButtonProps) {
 
       // Set window open state
       setIsWindowOpen(
-        clientData.checkInSchedule.days.includes(currentDay) && 
-        currentHour >= clientData.checkInSchedule.startHour
+        client.checkInSchedule.days.includes(currentDay) && 
+        currentHour >= client.checkInSchedule.startHour
       );
 
       // Format next check-in date
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + daysUntilNext);
-      nextDate.setHours(clientData.checkInSchedule.startHour, 0, 0, 0);
+      nextDate.setHours(client.checkInSchedule.startHour, 0, 0, 0);
 
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       setNextCheckIn(`${dayNames[nextDay]}, ${nextDate.toLocaleTimeString([], { 
@@ -56,7 +61,7 @@ export function CheckInButton({ clientData }: CheckInButtonProps) {
     calculateCheckInWindow();
     const interval = setInterval(calculateCheckInWindow, 60000); // Update every minute
     return () => clearInterval(interval);
-  }, [clientData.checkInSchedule]);
+  }, [client.checkInSchedule]);
 
   return (
     <Link

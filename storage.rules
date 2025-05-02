@@ -5,13 +5,25 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
     
     function isAdmin() {
       return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isCoach() {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'coach';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     function hasValidIP() {
@@ -33,13 +45,35 @@ service firebase.storage {
       return size <= maxSize * 1024 * 1024; // Convert MB to bytes
     }
 
+    // Test directory - allow access for connection testing
+    match /test/{fileName} {
+      allow read, write: if isAuthenticated();
+    }
+
     // Profile images
-    match /users/{userId}/profile/{fileName} {
-      allow read: if isAuthenticated() && hasValidIP();
-      allow write: if isAuthenticated() && hasValidIP() && 
-        request.auth.uid == userId &&
-        isValidFileType(fileName) &&
-        isWithinSizeLimit(request.resource.size);
+    match /profiles/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwner(userId);
+    }
+
+    // Check-in attachments (photos, documents)
+    match /checkIns/{checkInId}/{fileName} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isCoach() || 
+        isOwner(resource.metadata.userId)
+      );
+      allow write: if isAuthenticated() && (
+        isAdmin() || 
+        isCoach() || 
+        isOwner(request.resource.metadata.userId)
+      );
+    }
+
+    // Program resources
+    match /programs/{programId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isCoach();
     }
 
     // Client documents

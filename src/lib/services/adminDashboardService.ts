@@ -104,8 +104,8 @@ export const getDashboardMetrics = cache(async () => {
 
     // Get coach counts
     const [activeCoaches, previousActiveCoaches] = await Promise.all([
-      getUsers('COACH', 'ACTIVE'),
-      getUsers('COACH', 'ACTIVE')
+      getUsers('coach', 'active'),
+      getUsers('coach', 'active')
     ]);
 
     const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7));
@@ -114,8 +114,8 @@ export const getDashboardMetrics = cache(async () => {
 
     // Get client counts
     const [activeClients, previousActiveClients] = await Promise.all([
-      getUsers('CLIENT', 'ACTIVE'),
-      getUsers('CLIENT', 'ACTIVE')
+      getUsers('client', 'active'),
+      getUsers('client', 'active')
     ]);
 
     const currentTotalClients = activeClients.length;
@@ -152,14 +152,14 @@ export const getDashboardMetrics = cache(async () => {
 // Cache coach performance data for 5 minutes
 export const getCoachPerformance = cache(async () => {
   try {
-    const coaches = await getUsers('COACH', 'ACTIVE');
+    const coaches = await getUsers('coach', 'active');
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const coachPerformance = await Promise.all(
       coaches.map(async (coach) => {
         const [clients, checkIns, messages] = await Promise.all([
-          getUsers('CLIENT', 'ACTIVE'),
+          getUsers('client', 'active'),
           getCheckIns(coach.id),
           getMessages(coach.id)
         ]);

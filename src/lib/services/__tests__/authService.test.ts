@@ -1,114 +1,154 @@
+import { AuthService } from '../authService';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { authService } from '../authService';
-import { db } from '../../firebase/config';
+import { db } from '@/lib/firebase';
 
-// Mock Firestore functions
+jest.mock('@/lib/firebase', () => ({
+  auth: {
+    currentUser: null,
+    signOut: jest.fn()
+  },
+  db: {}
+}));
+
+jest.mock('firebase/auth', () => ({
+  signInWithEmailAndPassword: jest.fn(),
+  signOut: jest.fn()
+}));
+
 jest.mock('firebase/firestore', () => ({
   doc: jest.fn(),
   getDoc: jest.fn(),
-  updateDoc: jest.fn(),
+  updateDoc: jest.fn()
 }));
 
-jest.mock('../../firebase/config', () => ({
-  db: {},
-}));
-
-describe('authService', () => {
+describe('AuthService', () => {
+  let authService: AuthService;
+  const mockEmail = 'test@example.com';
   const mockUserId = 'test-user-id';
-  const mockUserData = {
-    email: 'test@example.com',
-    role: 'coach',
-    lastLogin: null,
-  };
+  const mockRole = 'coach';
 
   beforeEach(() => {
     jest.clearAllMocks();
+    authService = new AuthService();
   });
 
   describe('authenticateUser', () => {
     it('should authenticate user with valid credentials', async () => {
-      const mockDocRef = { id: mockUserId };
-      const mockDocSnap = {
-        exists: () => true,
-        data: () => mockUserData,
+      const mockUser = {
+        uid: mockUserId,
+        email: mockEmail
       };
 
-      (doc as jest.Mock).mockReturnValue(mockDocRef);
-      (getDoc as jest.Mock).mockResolvedValue(mockDocSnap);
+      (signInWithEmailAndPassword as jest.Mock).mockResolvedValue({
+        user: mockUser
+      });
 
-      const result = await authService.authenticateUser('test@example.com', 'password123');
+      (doc as jest.Mock).mockReturnValue({});
+      (getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          role: mockRole,
+          lastLogin: new Date()
+        })
+      });
+
+      const result = await authService.authenticateUser(mockEmail, 'password123');
 
       expect(result).toEqual({
         id: mockUserId,
-        ...mockUserData,
+        email: mockEmail,
+        role: mockRole,
+        lastLogin: expect.any(Date)
       });
-      expect(doc).toHaveBeenCalledWith(db, 'users', 'test@example.com');
-      expect(getDoc).toHaveBeenCalledWith(mockDocRef);
+      expect(signInWithEmailAndPassword).toHaveBeenCalledWith(auth, mockEmail, 'password123');
+    });
+
+    it('should throw error for invalid credentials', async () => {
+      (signInWithEmailAndPassword as jest.Mock).mockRejectedValue(new Error('Authentication failed'));
+
+      await expect(authService.authenticateUser(mockEmail, 'wrong-password'))
+        .rejects
+        .toThrow('Authentication failed');
+    });
+  });
+
+  describe('getUser', () => {
+    it('should get user data', async () => {
+      (doc as jest.Mock).mockReturnValue({});
+      (getDoc as jest.Mock).mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: mockUserId,
+          email: mockEmail,
+          role: mockRole,
+          lastLogin: new Date()
+        })
+      });
+
+      const result = await authService.getUser(mockUserId);
+
+      expect(result).toEqual({
+        id: mockUserId,
+        email: mockEmail,
+        role: mockRole,
+        lastLogin: expect.any(Date)
+      });
+      expect(doc).toHaveBeenCalledWith(db, 'users', mockUserId);
     });
 
     it('should return null for non-existent user', async () => {
-      const mockDocRef = { id: mockUserId };
-      const mockDocSnap = {
-        exists: () => false,
-        data: () => null,
-      };
+      (doc as jest.Mock).mockReturnValue({});
+      (getDoc as jest.Mock).mockResolvedValue({
+        exists: () => false
+      });
 
-      (doc as jest.Mock).mockReturnValue(mockDocRef);
-      (getDoc as jest.Mock).mockResolvedValue(mockDocSnap);
-
-      const result = await authService.authenticateUser('nonexistent@example.com', 'password123');
-
+      const result = await authService.getUser(mockUserId);
       expect(result).toBeNull();
-      expect(doc).toHaveBeenCalledWith(db, 'users', 'nonexistent@example.com');
-      expect(getDoc).toHaveBeenCalledWith(mockDocRef);
-    });
-
-    it('should handle Firestore errors', async () => {
-      const mockDocRef = { id: mockUserId };
-      (doc as jest.Mock).mockReturnValue(mockDocRef);
-      (getDoc as jest.Mock).mockRejectedValue(new Error('Firestore error'));
-
-      const result = await authService.authenticateUser('test@example.com', 'password123');
-
-      expect(result).toBeNull();
-      expect(doc).toHaveBeenCalledWith(db, 'users', 'test@example.com');
-      expect(getDoc).toHaveBeenCalledWith(mockDocRef);
     });
   });
 
   describe('updateLastLogin', () => {
-    const mockRole = 'coach';
-
     it('should update last login timestamp', async () => {
-      const mockDocRef = { id: mockUserId };
-      (doc as jest.Mock).mockReturnValue(mockDocRef);
+      (doc as jest.Mock).mockReturnValue({});
       (updateDoc as jest.Mock).mockResolvedValue(undefined);
 
-      await authService.updateLastLogin(mockUserId, mockRole);
+      await authService.updateLastLogin(mockUserId);
 
-      expect(doc).toHaveBeenCalledWith(db, 'users', mockUserId);
-      expect(updateDoc).toHaveBeenCalledWith(mockDocRef, {
-        lastLogin: expect.any(Date),
-        role: mockRole,
-      });
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.any(Object),
+        {
+          lastLogin: expect.any(Date)
+        }
+      );
     });
 
-    it('should throw error on update failure', async () => {
-      const mockDocRef = { id: mockUserId };
-      const mockError = new Error('Update failed');
-      
-      (doc as jest.Mock).mockReturnValue(mockDocRef);
-      (updateDoc as jest.Mock).mockRejectedValue(mockError);
+    it('should throw error if update fails', async () => {
+      (doc as jest.Mock).mockReturnValue({});
+      (updateDoc as jest.Mock).mockRejectedValue(new Error('Update failed'));
 
-      await expect(authService.updateLastLogin(mockUserId, mockRole))
+      await expect(authService.updateLastLogin(mockUserId))
         .rejects
-        .toThrow(mockError);
+        .toThrow('Update failed');
+    });
+  });
 
-      expect(doc).toHaveBeenCalledWith(db, 'users', mockUserId);
-      expect(updateDoc).toHaveBeenCalledWith(mockDocRef, {
-        lastLogin: expect.any(Date),
-        role: mockRole,
-      });
+  describe('signOut', () => {
+    it('should sign out user', async () => {
+      (signOut as jest.Mock).mockResolvedValue(undefined);
+
+      await authService.signOut();
+
+      expect(signOut).toHaveBeenCalledWith(auth);
+    });
+
+    it('should throw error if sign out fails', async () => {
+      (signOut as jest.Mock).mockRejectedValue(new Error('Sign out failed'));
+
+      await expect(authService.signOut())
+        .rejects
+        .toThrow('Sign out failed');
     });
   });
 });

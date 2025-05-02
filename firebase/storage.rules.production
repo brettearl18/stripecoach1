@@ -1,0 +1,117 @@
+rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isCoach() {
+      return isAuthenticated() && 
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'coach';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasValidIP() {
+      return isAuthenticated() && (
+        isAdmin() ||
+        !firestore.get(/databases/(default)/documents/securitySettings/$(request.auth.uid)).data.accessControl.ipWhitelisting.enabled ||
+        firestore.get(/databases/(default)/documents/securitySettings/$(request.auth.uid)).data.accessControl.ipWhitelisting.allowedIPs.hasAny([request.ip])
+      );
+    }
+
+    function isValidFileType(fileName) {
+      let allowedTypes = firestore.get(/databases/(default)/documents/securitySettings/$(request.auth.uid)).data.fileUploadLimits.allowedTypes;
+      let extension = fileName.split('.').slice(-1)[0].toLowerCase();
+      return allowedTypes.hasAny([extension]);
+    }
+
+    function isWithinSizeLimit(size) {
+      let maxSize = firestore.get(/databases/(default)/documents/securitySettings/$(request.auth.uid)).data.fileUploadLimits.maxFileSize;
+      return size <= maxSize * 1024 * 1024; // Convert MB to bytes
+    }
+
+    // Profile images
+    match /profiles/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isOwner(userId);
+    }
+
+    // Check-in attachments
+    match /checkIns/{checkInId}/{fileName} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isCoach() || 
+        isOwner(resource.metadata.userId)
+      );
+      allow write: if isAuthenticated() && (
+        isAdmin() || 
+        isCoach() || 
+        isOwner(request.resource.metadata.userId)
+      );
+    }
+
+    // Program resources
+    match /programs/{programId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isCoach();
+    }
+
+    // Client documents
+    match /clients/{clientId}/documents/{fileName} {
+      allow read: if isAuthenticated() && hasValidIP() && (
+        isAdmin() ||
+        request.auth.uid == clientId ||
+        firestore.get(/databases/(default)/documents/clients/$(clientId)).data.managerId == request.auth.uid
+      );
+      allow write: if isAuthenticated() && hasValidIP() && (
+        isAdmin() ||
+        firestore.get(/databases/(default)/documents/clients/$(clientId)).data.managerId == request.auth.uid
+      ) &&
+      isValidFileType(fileName) &&
+      isWithinSizeLimit(request.resource.size);
+    }
+
+    // Coach resources
+    match /coaches/{coachId}/resources/{fileName} {
+      allow read: if isAuthenticated() && hasValidIP() && (
+        isAdmin() ||
+        request.auth.uid == coachId ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.managedClients.hasAny(
+          firestore.get(/databases/(default)/documents/coaches/$(coachId)).data.clients
+        )
+      );
+      allow write: if isAuthenticated() && hasValidIP() && (
+        isAdmin() ||
+        request.auth.uid == coachId
+      ) &&
+      isValidFileType(fileName) &&
+      isWithinSizeLimit(request.resource.size);
+    }
+
+    // System files (admin only)
+    match /system/{fileName} {
+      allow read: if isAdmin() && hasValidIP();
+      allow write: if isAdmin() && hasValidIP() &&
+        isValidFileType(fileName) &&
+        isWithinSizeLimit(request.resource.size);
+    }
+
+    // Default: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 

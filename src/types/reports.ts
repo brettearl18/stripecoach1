@@ -1,14 +1,18 @@
 import { Client } from './client';
 
-export type ReportCategory = 
-  | 'client-progress'
-  | 'coach-performance'
-  | 'compliance'
-  | 'time-analytics'
-  | 'nutrition'
-  | 'business';
+export enum ReportCategory {
+  CLIENT_PROGRESS = 'CLIENT_PROGRESS',
+  COACH_PERFORMANCE = 'COACH_PERFORMANCE',
+  BUSINESS_METRICS = 'BUSINESS_METRICS',
+  SYSTEM_HEALTH = 'SYSTEM_HEALTH'
+}
 
-export type ReportStatus = 'pending' | 'generating' | 'completed' | 'failed';
+export enum ReportStatus {
+  PENDING = 'PENDING',
+  GENERATING = 'GENERATING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED'
+}
 
 export type ReportType = 'client-progress' | 'coach-performance' | 'compliance' | 'time-analytics' | 'nutrition' | 'business';
 
@@ -94,6 +98,21 @@ export interface Report {
   cache: {
     expiresAt: string;
     version: number;
+  };
+  title: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
+  generatedBy: string;
+  downloadUrl?: string;
+  error?: string;
+  metadata?: {
+    timeRange?: {
+      start: Date;
+      end: Date;
+    };
+    filters?: Record<string, any>;
+    format?: 'PDF' | 'CSV' | 'EXCEL';
   };
 }
 

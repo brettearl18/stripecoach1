@@ -1,7 +1,7 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { firebaseConfig } from './firebaseConfig.js';
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, getDocs } = require('firebase/firestore');
+const { getAuth, signInAnonymously } = require('firebase/auth');
+const { firebaseConfig } = require('./firebaseConfig');
 
 async function testFirebaseConnection() {
   try {
@@ -45,14 +45,10 @@ async function testFirebaseConnection() {
 }
 
 // Run the test
-testFirebaseConnection()
-  .then(success => {
-    if (success) {
-      console.log('✅ Firebase connection test completed successfully');
-    } else {
-      console.log('❌ Firebase connection test failed');
-    }
-  })
-  .catch(error => {
-    console.error('Test execution failed:', error.message || error);
-  }); 
+testFirebaseConnection().then(success => {
+  if (success) {
+    console.log('✅ Firebase connection test completed successfully');
+  } else {
+    console.error('❌ Firebase connection test failed');
+  }
+}); 

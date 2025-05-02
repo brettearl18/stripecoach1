@@ -1,18 +1,142 @@
 'use client';
 
-import DashboardNav from '@/components/DashboardNav';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+
+const navigation = [
+  {
+    name: 'Dashboard',
+    href: '/coach',
+    icon: '📊'
+  },
+  {
+    name: 'Programs',
+    href: '/coach/programs',
+    icon: '📚',
+    children: [
+      { name: 'Templates', href: '/coach/programs/templates' },
+      { name: 'Active Programs', href: '/coach/programs/active' },
+      { name: 'Archived', href: '/coach/programs/archived' }
+    ]
+  },
+  {
+    name: 'Clients',
+    href: '/coach/clients',
+    icon: '👥'
+  },
+  {
+    name: 'Resources',
+    href: '/coach/resources',
+    icon: '📁'
+  },
+  {
+    name: 'Analytics',
+    href: '/coach/analytics',
+    icon: '📈'
+  }
+];
 
 export default function CoachLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const { user, loading } = useAuth();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  // DEV MODE: Always allow access
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     // Check if user has coach role
+  //     setIsAuthorized(user.role === 'coach');
+  //   }
+  // }, [user, loading]);
+
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <LoadingSpinner />
+  //     </div>
+  //   );
+  // }
+
+  // if (!isAuthorized) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <div className="text-center">
+  //         <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+  //         <p className="mt-2 text-gray-600">You don't have permission to access this area.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + '/');
+
   return (
-    <div className="flex min-h-screen bg-[#13141A]">
-      <DashboardNav />
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation */}
+        <nav className="fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 p-4">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900">Coach Portal</h2>
+            <p className="text-sm text-gray-500 mt-1">Welcome, {user?.displayName || 'Coach'}</p>
+          </div>
+
+          <div className="space-y-1">
+            {navigation.map((item) => (
+              <div key={item.name}>
+                <Link
+                  href={item.href}
+                  className={`
+                    group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                    ${isActive(item.href)
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {item.name}
+                </Link>
+
+                {/* Subnav */}
+                {item.children && (
+                  <div className="ml-8 mt-1 space-y-1">
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.name}
+                        href={child.href}
+                        className={`
+                          group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                          ${isActive(child.href)
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {child.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </nav>
+
+        {/* Main Content */}
+        <main className="pl-64">
+          <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </ErrorBoundary>
   );
 } 

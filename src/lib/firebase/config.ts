@@ -1,10 +1,15 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
+interface FirebaseConfig {
+  apiKey: string | undefined;
+  authDomain: string | undefined;
+  databaseURL: string | undefined;
+  projectId: string | undefined;
+  storageBucket: string | undefined;
+  messagingSenderId: string | undefined;
+  appId: string | undefined;
+  measurementId: string | undefined;
+}
 
-const firebaseConfig = {
+export const firebaseConfig: FirebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
@@ -15,16 +20,10 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Validate required Firebase configuration
+const requiredFields = ['apiKey', 'authDomain', 'projectId'] as const;
+const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
 
-// Initialize Analytics only on client side
-let analytics = null;
-if (typeof window !== 'undefined') {
-  analytics = getAnalytics(app);
-}
-
-export { app, auth, db, storage, analytics }; 
+if (missingFields.length > 0) {
+  throw new Error(`Missing required Firebase configuration fields: ${missingFields.join(', ')}`);
+} 

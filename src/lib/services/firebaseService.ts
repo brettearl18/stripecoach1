@@ -385,15 +385,29 @@ export async function getClients(coachId: string): Promise<Client[]> {
   }
 }
 
-export async function saveCheckInForm(formData: CheckInForm, clientIds: string[] = []): Promise<string> {
+export async function saveCheckInForm(formData: CheckInForm, clientIds: string[] = []): Promise<string[]> {
   try {
     const formsRef = collection(db, 'checkInForms');
-    const docRef = await addDoc(formsRef, {
-      ...formData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const createdIds: string[] = [];
+    if (clientIds.length > 0) {
+      for (const clientId of clientIds) {
+        const docRef = await addDoc(formsRef, {
+          ...formData,
+          clientId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        createdIds.push(docRef.id);
+      }
+    } else {
+      const docRef = await addDoc(formsRef, {
+        ...formData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      createdIds.push(docRef.id);
+    }
+    return createdIds;
   } catch (error) {
     console.error('Error saving check-in form:', error);
     throw error;
@@ -479,21 +493,19 @@ export async function getUserRole(userId: string): Promise<string | null> {
   }
 }
 
-export async function getUsers(role: 'COACH' | 'CLIENT' | 'ADMIN', status: 'ACTIVE' | 'INACTIVE'): Promise<User[]> {
+export async function getUsers(role: 'coach' | 'client' | 'admin', status: 'active' | 'inactive'): Promise<User[]> {
   try {
     const usersRef = collection(db, 'users');
     const q = query(
       usersRef,
-      where('role', '==', role.toLowerCase()),
-      where('status', '==', status.toLowerCase())
+      where('role', '==', role),
+      where('isActive', '==', status === 'active')
     );
-    
     const querySnapshot = await getDocs(q);
+    
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      updatedAt: doc.data().updatedAt?.toDate(),
+      ...convertTimestampsToDates(doc.data())
     })) as User[];
   } catch (error) {
     console.error('Error getting users:', error);
@@ -560,4 +572,4 @@ export async function getAlerts(isResolved: boolean): Promise<Alert[]> {
     console.error('Error getting alerts:', error);
     throw error;
   }
-} 
+}

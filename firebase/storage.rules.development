@@ -1,0 +1,19 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Test files directory - allow authenticated access
+    match /test-files/{userId}/{fileName} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 

@@ -6,8 +6,11 @@ import { headers } from 'next/headers';
 // Enhanced API key validation
 function validateOpenAIKey(apiKey: string | undefined): boolean {
   if (!apiKey) return false;
-  // OpenAI API keys start with 'sk-' and are 51 characters long
-  return apiKey.startsWith('sk-') && apiKey.length === 51;
+  // Accept both old and new OpenAI API key formats
+  // Old: sk- (51 chars), New: sk-proj- (variable, usually 48+ chars)
+  if (apiKey.startsWith('sk-') && apiKey.length === 51) return true;
+  if (apiKey.startsWith('sk-proj-') && apiKey.length >= 40) return true;
+  return false;
 }
 
 // Rate limiting configuration
