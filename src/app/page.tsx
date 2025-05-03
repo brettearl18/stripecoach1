@@ -172,6 +172,27 @@ export default function Home() {
             </Link>
           </div>
 
+          {/* Coach Dashboard V2 (AI) */}
+          <div className="bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-600 rounded-lg p-6 shadow-lg border border-gray-700">
+            <div className="flex items-center mb-4">
+              <ChartBarIcon className="h-8 w-8 text-yellow-300 mr-3" />
+              <h2 className="text-2xl font-semibold">Coach Dashboard V2 (AI)</h2>
+            </div>
+            <p className="text-gray-200 mb-6">Next-gen AI-powered dashboard for coaches. Try the new experience!</p>
+            <Link
+              href="/coach/dashboardv2"
+              className={`block w-full py-2 px-4 text-center rounded ${
+                ['admin', 'coach'].includes(user?.role || '')
+                  ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-300'
+                  : 'bg-gray-700 cursor-not-allowed text-gray-400'
+              }`}
+            >
+              {['admin', 'coach'].includes(user?.role || '')
+                ? 'Try AI Dashboard'
+                : 'Coach Access Only'}
+            </Link>
+          </div>
+
           {/* Client Portal */}
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
             <div className="flex items-center mb-4">
