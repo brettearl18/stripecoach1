@@ -8,6 +8,8 @@ import { CalendarDateRangePicker } from '@/components/date-range-picker';
 import { LineChart, BarChart, DonutChart } from '@tremor/react';
 import { Download, RefreshCcw } from 'lucide-react';
 import { useState } from 'react';
+import CategoryComparisonChart from '@/components/analytics/CategoryComparisonChart';
+import SentimentHighlights from '@/components/analytics/SentimentHighlights';
 
 const chartdata = [
   { date: '2024-01', "Client Progress": 63, "Check-ins": 40 },
@@ -116,6 +118,23 @@ export default function AnalyticsPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Analytics Summary Section */}
+      <div className="mt-8 space-y-6">
+        <h2 className="text-2xl font-bold mb-6">Analytics Summary</h2>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Category Comparison Chart */}
+          <div className="bg-[#1A1A1A] rounded-lg p-6">
+            <CategoryComparisonChart />
+          </div>
+
+          {/* Sentiment Highlights */}
+          <div className="bg-[#1A1A1A] rounded-lg p-6">
+            <SentimentHighlights />
+          </div>
+        </div>
       </div>
 
       <Tabs defaultValue="progress" className="space-y-6">
