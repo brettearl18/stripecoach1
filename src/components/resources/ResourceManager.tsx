@@ -222,49 +222,50 @@ export default function ResourceManager() {
               <div>Loading resources...</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {resources.map(resource => (
-                  <Card key={resource.id}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        {resourceTypes.find(t => t.id === resource.type)?.icon && (
-                          <resourceTypes.find(t => t.id === resource.type)!.icon className="h-5 w-5" />
-                        )}
-                        {resource.title}
-                      </CardTitle>
-                      <CardDescription>{resource.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {resource.tags.map(tag => (
-                          <span
-                            key={tag}
-                            className="px-2 py-1 bg-gray-100 rounded-full text-sm"
+                {resources.map(resource => {
+                  const Icon = resourceTypes.find(t => t.id === resource.type)?.icon;
+                  return (
+                    <Card key={resource.id}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          {Icon && <Icon className="h-5 w-5" />}
+                          {resource.title}
+                        </CardTitle>
+                        <CardDescription>{resource.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {(resource.tags || []).map(tag => (
+                            <span
+                              key={tag}
+                              className="px-2 py-1 bg-gray-100 rounded-full text-sm"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(resource)}
                           >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(resource)}
-                        >
-                          <PencilIcon className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(resource.id)}
-                        >
-                          <TrashIcon className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                            <PencilIcon className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(resource.id)}
+                          >
+                            <TrashIcon className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

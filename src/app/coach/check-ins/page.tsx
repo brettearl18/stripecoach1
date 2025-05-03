@@ -18,6 +18,9 @@ import {
   CameraIcon,
   ChevronUpIcon,
   ArrowTrendingUpIcon,
+  SparklesIcon,
+  TrophyIcon,
+  PhotoIcon,
 } from '@heroicons/react/24/outline';
 import { getCheckIns, getClientById, type CheckIn, type Client } from '@/lib/services/firebaseService';
 import { DataTable } from '@/components/admin/DataTable';
@@ -166,6 +169,27 @@ export default function CoachCheckIns() {
   const [sortField, setSortField] = useState<'date' | 'urgency' | 'compliance'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'responses' | 'templates'>('responses');
+  const [aiInsights, setAiInsights] = useState({
+    businessOverview: {
+      health: 'positive',
+      trends: ['Client engagement up 15%', 'Average compliance at 85%'],
+      alerts: ['3 clients at risk of missing check-ins']
+    },
+    clientOverview: {
+      segmentation: {
+        active: 12,
+        atRisk: 3,
+        new: 2,
+        topPerformers: 5
+      },
+      trends: ['Nutrition compliance improving', 'Workout consistency stable']
+    },
+    clientOfTheWeek: {
+      name: 'Sarah Johnson',
+      achievement: '4-week streak of perfect compliance',
+      summary: 'Showing exceptional dedication to nutrition and training'
+    }
+  });
 
   useEffect(() => {
     if (user) {
@@ -296,126 +320,203 @@ export default function CoachCheckIns() {
             <p className="text-gray-400">Monitor and review your client check-ins</p>
           </div>
           <div className="flex gap-4">
-            <input
-              type="text"
-              placeholder="Search check-ins..."
-              className="px-4 py-2 rounded-lg bg-[#1a1b1e] border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <select
-              className="px-4 py-2 rounded-lg bg-[#1a1b1e] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+            <button
+              onClick={() => setActiveTab('responses')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'responses'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="reviewed">Reviewed</option>
-              <option value="completed">Completed</option>
-            </select>
+              Responses
+            </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'templates'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Templates
+            </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total Check-Ins</p>
-                <h3 className="text-2xl font-bold text-white mt-1">{totalCheckIns}</h3>
-                <p className="text-green-500 text-sm mt-1">
-                  +{checkIns.filter(c => new Date(c.submittedAt).toDateString() === new Date().toDateString()).length} today
-                </p>
+          <div className="bg-[#1a1b1e] rounded-xl p-6 border border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Business Overview</h3>
+              <SparklesIcon className="h-5 w-5 text-blue-500" />
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className={`h-2 w-2 rounded-full ${
+                  aiInsights.businessOverview.health === 'positive' ? 'bg-green-500' : 'bg-yellow-500'
+                }`} />
+                <span className="text-sm text-gray-400">Overall Health</span>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <CheckCircleIcon className="h-6 w-6 text-blue-500" />
+              <div className="space-y-2">
+                {aiInsights.businessOverview.trends.map((trend, index) => (
+                  <p key={index} className="text-sm text-gray-300">{trend}</p>
+                ))}
               </div>
+              {aiInsights.businessOverview.alerts.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-800">
+                  <p className="text-sm text-red-400 font-medium">Alerts</p>
+                  <ul className="mt-2 space-y-1">
+                    {aiInsights.businessOverview.alerts.map((alert, index) => (
+                      <li key={index} className="text-sm text-red-400">{alert}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Pending Review</p>
-                <h3 className="text-2xl font-bold text-white mt-1">
-                  {pendingReviews}
-                </h3>
-                <p className="text-yellow-500 text-sm mt-1">Requires attention</p>
-              </div>
-              <div className="h-12 w-12 rounded-lg bg-yellow-500/10 flex items-center justify-center">
-                <ClockIcon className="h-6 w-6 text-yellow-500" />
-              </div>
+          <div className="bg-[#1a1b1e] rounded-xl p-6 border border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Client Overview</h3>
+              <UserGroupIcon className="h-5 w-5 text-blue-500" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(aiInsights.clientOverview.segmentation).map(([key, value]) => (
+                <div key={key} className="bg-[#23242a] rounded-lg p-3">
+                  <p className="text-sm text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                  <p className="text-xl font-semibold text-white mt-1">{value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-800">
+              <p className="text-sm text-gray-400 mb-2">Recent Trends</p>
+              <ul className="space-y-1">
+                {aiInsights.clientOverview.trends.map((trend, index) => (
+                  <li key={index} className="text-sm text-gray-300">{trend}</li>
+                ))}
+              </ul>
             </div>
           </div>
 
-          <div className="bg-[#1a1b1e] rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Average Score</p>
-                <h3 className="text-2xl font-bold text-white mt-1">{averageCompliance}/100</h3>
-                <p className="text-green-500 text-sm mt-1">+5.3 this week</p>
+          <div className="bg-[#1a1b1e] rounded-xl p-6 border border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Client of the Week</h3>
+              <TrophyIcon className="h-5 w-5 text-yellow-500" />
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-xl font-medium">
+                  {aiInsights.clientOfTheWeek.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-medium text-white">{aiInsights.clientOfTheWeek.name}</p>
+                  <p className="text-sm text-gray-400">{aiInsights.clientOfTheWeek.achievement}</p>
+                </div>
               </div>
-              <div className="h-12 w-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <ArrowTrendingUpIcon className="h-6 w-6 text-green-500" />
-              </div>
+              <p className="text-sm text-gray-300">{aiInsights.clientOfTheWeek.summary}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-[#1a1b1e] rounded-lg p-6">
-          <DataTable
-            columns={[
-              {
-                header: 'Client',
-                key: 'client',
-                render: (client, checkIn) => (
-                  <div className="flex items-center">
-                    <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white mr-3">
-                      <UserCircleIcon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-white">{client?.name || 'Unknown Client'}</div>
-                      <div className="text-sm text-gray-400">{checkIn.summary}</div>
-                    </div>
-                  </div>
-                )
-              },
-              {
-                header: 'Date',
-                key: 'date',
-                render: (date) => (
-                  <span className="text-gray-300">{new Date(date).toLocaleDateString()}</span>
-                )
-              },
-              {
-                header: 'Status',
-                key: 'status',
-                render: (status) => (
-                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(status)}`}>
-                    {status}
-                  </span>
-                )
-              }
-            ]}
-            data={filteredCheckIns}
-            actions={(checkIn) => (
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => window.location.href = `/coach/check-ins/${checkIn.id}`}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
-                >
-                  View Details
-                </button>
-                {checkIn.status === 'pending' && (
-                  <button 
-                    onClick={() => {/* TODO: Implement mark as reviewed */}}
-                    className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700"
-                  >
-                    Mark as Reviewed
-                  </button>
-                )}
-              </div>
-            )}
-          />
+        <div className="bg-[#1a1b1e] rounded-xl p-6 border border-gray-800">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex gap-4">
+              <input
+                type="text"
+                placeholder="Search check-ins..."
+                className="px-4 py-2 rounded-lg bg-[#23242a] border border-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <select
+                className="px-4 py-2 rounded-lg bg-[#23242a] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <button
+              onClick={() => {/* TODO: Implement refresh */}}
+              className="p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <ArrowPathIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left border-b border-gray-800">
+                  <th className="pb-4 text-sm font-medium text-gray-400">Client</th>
+                  <th className="pb-4 text-sm font-medium text-gray-400">Date</th>
+                  <th className="pb-4 text-sm font-medium text-gray-400">Status</th>
+                  <th className="pb-4 text-sm font-medium text-gray-400">Urgency</th>
+                  <th className="pb-4 text-sm font-medium text-gray-400">Compliance</th>
+                  <th className="pb-4 text-sm font-medium text-gray-400">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {filteredCheckIns.map((checkIn) => (
+                  <tr key={checkIn.id} className="hover:bg-[#23242a] transition-colors">
+                    <td className="py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                          {checkIn.clientName.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-white">{checkIn.clientName}</p>
+                          <p className="text-sm text-gray-400">{checkIn.summary}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 text-gray-300">
+                      {new Date(checkIn.submittedAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(checkIn.status)}`}>
+                        {checkIn.status}
+                      </span>
+                    </td>
+                    <td className="py-4">
+                      <span className={`flex items-center gap-1 ${getUrgencyColor(checkIn.urgency)}`}>
+                        <ExclamationTriangleIcon className="h-4 w-4" />
+                        {checkIn.urgency}
+                      </span>
+                    </td>
+                    <td className="py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${checkIn.compliance}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-300">{checkIn.compliance}%</span>
+                      </div>
+                    </td>
+                    <td className="py-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/coach/check-ins/review/${checkIn.id}`}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                        >
+                          Review
+                        </Link>
+                        {checkIn.hasPhotos && (
+                          <button className="p-1.5 text-gray-400 hover:text-white transition-colors">
+                            <PhotoIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

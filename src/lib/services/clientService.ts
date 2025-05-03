@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, getDocs, query, where, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { generateInviteToken } from '../utils/tokens';
 import { ClientProfile, ClientInvite } from '@/types/client';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -197,17 +197,20 @@ class ClientService {
     };
   }
 
-  async updateClientProfile(profileId: string, updates: Partial<ClientProfile>): Promise<boolean> {
+  async updateClientProfile(clientId: string, data: {
+    assessment?: any;
+    onboardingCompleted?: boolean;
+    [key: string]: any;
+  }) {
     try {
-      const docRef = doc(db, 'clientProfiles', profileId);
-      await updateDoc(docRef, {
-        ...updates,
-        updatedAt: Timestamp.now()
+      const clientRef = doc(db, 'clients', clientId);
+      await updateDoc(clientRef, {
+        ...data,
+        updatedAt: serverTimestamp(),
       });
-      return true;
     } catch (error) {
       console.error('Error updating client profile:', error);
-      return false;
+      throw error;
     }
   }
 

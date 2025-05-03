@@ -12,6 +12,8 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
 } from '@heroicons/react/24/outline';
+import { clientService } from '@/lib/services/clientService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OnboardingStep {
   title: string;
@@ -39,7 +41,9 @@ const steps: OnboardingStep[] = [
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -73,13 +77,26 @@ export default function NewClientPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
-      // TODO: Implement client creation logic
-      toast.success('Client created successfully!');
+      // Create client profile and send invitation
+      const invite = await clientService.createClientInvite({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        startDate: formData.startDate,
+        notes: formData.notes,
+        coachId: user?.id || '',
+      });
+
+      toast.success('Client created and invitation sent successfully!');
       router.push('/coach/clients');
     } catch (error) {
       toast.error('Failed to create client');
       console.error('Error creating client:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -197,69 +214,75 @@ export default function NewClientPage() {
           <p className="text-gray-400">Create a new client profile and start their coaching journey</p>
         </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex justify-between">
-            {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`flex-1 ${
-                  index !== steps.length - 1 ? 'border-r border-gray-700' : ''
-                }`}
-              >
-                <div className="relative flex flex-col items-center">
+        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => (
+                <div key={step.title} className="flex items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      index <= currentStep ? 'bg-blue-600' : 'bg-gray-700'
+                    className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                      index <= currentStep
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-700 text-gray-400'
                     }`}
                   >
                     {index + 1}
                   </div>
-                  <div className="mt-2 text-center">
+                  <div className="ml-2">
                     <div className="text-sm font-medium text-white">{step.title}</div>
                     <div className="text-xs text-gray-400">{step.description}</div>
                   </div>
+                  {index < steps.length - 1 && (
+                    <div className="w-12 h-0.5 bg-gray-700 mx-4" />
+                  )}
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-6 mb-8">
-          {renderStep()}
-        </form>
+          {/* Form Content */}
+          <div className="mb-6">
+            {renderStep()}
+          </div>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <button
-            type="button"
-            onClick={handleBack}
-            disabled={currentStep === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-gray-700 rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ArrowLeftIcon className="h-5 w-5 inline-block mr-2" />
-            Back
-          </button>
-          
-          {currentStep === steps.length - 1 ? (
-            <button
-              type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500"
-            >
-              Complete Setup
-            </button>
-          ) : (
+          {/* Navigation Buttons */}
+          <div className="flex justify-between">
             <button
               type="button"
-              onClick={handleNext}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-500"
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              className={`px-4 py-2 rounded-md ${
+                currentStep === 0
+                  ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-700 text-white hover:bg-gray-600'
+              }`}
             >
-              Next
-              <ArrowRightIcon className="h-5 w-5 inline-block ml-2" />
+              <ArrowLeftIcon className="h-5 w-5 inline-block mr-2" />
+              Back
             </button>
-          )}
-        </div>
+            {currentStep < steps.length - 1 ? (
+              <button
+                type="button"
+                onClick={handleNext}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                Next
+                <ArrowRightIcon className="h-5 w-5 inline-block ml-2" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`px-4 py-2 bg-blue-500 text-white rounded-md ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'
+                }`}
+              >
+                {isLoading ? 'Creating...' : 'Create Client'}
+              </button>
+            )}
+          </div>
+        </form>
       </div>
     </div>
   );

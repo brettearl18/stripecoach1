@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -18,26 +19,30 @@ const protectedRoutes = {
 };
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const token = await getToken({ req: request });
+  const isClientRoute = request.nextUrl.pathname.startsWith('/client');
+  const isOnboardingRoute = request.nextUrl.pathname === '/client/onboarding';
 
   // Allow access to public routes
-  if (publicRoutes.some(route => pathname.startsWith(route))) {
+  if (publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
     return NextResponse.next();
   }
 
-  // Check for authentication token
-  const token = request.cookies.get('auth-token');
-  
-  // If no token is present and trying to access a protected route,
-  // redirect to sign-in page
+  // If user is not authenticated, redirect to login
   if (!token) {
-    const signInUrl = new URL('/sign-in', request.url);
-    signInUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(signInUrl);
+    return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
-  // For now, allow access if token exists
-  // In production, you would verify the token and check roles
+  // If user is a client and hasn't completed onboarding
+  if (isClientRoute && !isOnboardingRoute && token.role === 'client' && !token.onboardingCompleted) {
+    return NextResponse.redirect(new URL('/client/onboarding', request.url));
+  }
+
+  // If user has completed onboarding and tries to access onboarding page
+  if (isOnboardingRoute && token.onboardingCompleted) {
+    return NextResponse.redirect(new URL('/client/dashboard', request.url));
+  }
+
   return NextResponse.next();
 }
 
@@ -52,5 +57,8 @@ export const config = {
      * - favicon.ico (favicon file)
      */
     '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/client/:path*',
+    '/coach/:path*',
+    '/admin/:path*',
   ],
 };

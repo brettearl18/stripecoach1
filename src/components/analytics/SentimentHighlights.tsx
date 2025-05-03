@@ -1,41 +1,75 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { analyticsService } from '@/lib/services/database';
+import { useAuth } from '@/hooks/useAuth';
 
-// Mock data for sentiment highlights
-const winningStatements = [
-  { text: "I hit my nutrition goal every day!", client: "Sarah J.", week: 12 },
-  { text: "Best week yet!", client: "Emma W.", week: 8 },
-  { text: "Feeling stronger than ever!", client: "John D.", week: 15 },
-];
+interface SentimentData {
+  text: string;
+  client: string;
+  week: number;
+}
 
-const cautiousStatements = [
-  { text: "Struggling to stay motivated.", client: "Michael C.", week: 20 },
-  { text: "Missed 2 workouts this week.", client: "Lisa T.", week: 4 },
-  { text: "Need to improve sleep habits.", client: "Alex R.", week: 10 },
-];
+interface SentimentHighlightsData {
+  winning: SentimentData[];
+  cautious: SentimentData[];
+}
 
-const SentimentHighlights: React.FC = () => {
+const SentimentHighlights = () => {
+  const { user } = useAuth();
+  const [data, setData] = useState<SentimentHighlightsData>({ winning: [], cautious: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const sentimentData = await analyticsService.getSentimentHighlights(user.uid);
+        setData(sentimentData);
+      } catch (error) {
+        console.error('Error fetching sentiment highlights:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.uid]);
+
+  if (loading) {
+    return (
+      <div className="w-full bg-[#1A1A1A] rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-4">Sentiment Highlights</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="h-[200px] flex items-center justify-center">
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-bold mb-4">Sentiment Highlights</h2>
+    <div className="w-full bg-[#1A1A1A] rounded-lg p-6">
+      <h3 className="text-lg font-semibold mb-4">Sentiment Highlights</h3>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h3 className="text-lg font-semibold mb-2">Winning Statements</h3>
+          <h4 className="text-md font-medium mb-2">Winning Statements</h4>
           <ul className="space-y-2">
-            {winningStatements.map((statement, index) => (
-              <li key={index} className="p-2 bg-green-50 rounded">
-                <p className="font-medium">{statement.text}</p>
-                <p className="text-sm text-gray-600">{statement.client} - Week {statement.week}</p>
+            {data.winning.map((item, index) => (
+              <li key={index} className="p-2 bg-green-900/20 rounded">
+                <p className="text-sm">{item.text}</p>
+                <p className="text-xs text-gray-400 mt-1">Week {item.week}</p>
               </li>
             ))}
           </ul>
         </div>
         <div>
-          <h3 className="text-lg font-semibold mb-2">Cautious Statements</h3>
+          <h4 className="text-md font-medium mb-2">Cautious Statements</h4>
           <ul className="space-y-2">
-            {cautiousStatements.map((statement, index) => (
-              <li key={index} className="p-2 bg-yellow-50 rounded">
-                <p className="font-medium">{statement.text}</p>
-                <p className="text-sm text-gray-600">{statement.client} - Week {statement.week}</p>
+            {data.cautious.map((item, index) => (
+              <li key={index} className="p-2 bg-yellow-900/20 rounded">
+                <p className="text-sm">{item.text}</p>
+                <p className="text-xs text-gray-400 mt-1">Week {item.week}</p>
               </li>
             ))}
           </ul>

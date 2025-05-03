@@ -20,6 +20,7 @@ import {
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
+import FirebaseConnectionTest from '@/components/FirebaseConnectionTest';
 
 // List of implemented pages
 const implementedPages = [
@@ -110,6 +111,32 @@ export default function Home() {
           >
             {loading ? 'Generating Recipe...' : 'Test AI Recipe'}
           </button>
+        </div>
+
+        <div className="mb-8">
+          <FirebaseConnectionTest />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 border rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">Coach Features</h2>
+            <ul className="list-disc list-inside space-y-2 text-gray-600">
+              <li>Client Management</li>
+              <li>Program Creation</li>
+              <li>Progress Tracking</li>
+              <li>Check-in Management</li>
+            </ul>
+          </div>
+
+          <div className="p-6 border rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">Client Features</h2>
+            <ul className="list-disc list-inside space-y-2 text-gray-600">
+              <li>Program Access</li>
+              <li>Progress Updates</li>
+              <li>Check-in Submissions</li>
+              <li>Resource Library</li>
+            </ul>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">

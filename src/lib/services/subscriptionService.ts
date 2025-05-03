@@ -1,147 +1,179 @@
-import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { stripe } from '@/lib/stripe';
+import { db } from '@/lib/firebase-admin';
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@/config/subscription-plans';
 
-export interface Plan {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  features: string[];
-  limits: {
-    coaches: number;
-    clients: number;
-  };
+export interface CreateSubscriptionInput {
+  customerId: string;
+  priceId: string;
+  organizationId: string;
+  metadata?: Record<string, string>;
 }
 
-export interface Subscription {
-  id: string;
-  companyId: string;
-  planId: string;
-  status: 'active' | 'cancelled' | 'past_due';
-  currentPeriodStart: Date;
-  currentPeriodEnd: Date;
-  cancelAtPeriodEnd: boolean;
+export interface UpdateSubscriptionInput {
+  subscriptionId: string;
+  priceId: string;
+  prorate?: boolean;
 }
 
-export const DEFAULT_PLANS: Plan[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    description: 'Perfect for small coaching practices',
-    price: 49,
-    features: [
-      'Basic coach management',
-      'Client scheduling',
-      'Basic reporting'
-    ],
-    limits: {
-      coaches: 2,
-      clients: 50
-    }
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    description: 'For growing coaching businesses',
-    price: 149,
-    features: [
-      'Advanced coach management',
-      'Client scheduling',
-      'Advanced reporting',
-      'Custom branding',
-      'API access'
-    ],
-    limits: {
-      coaches: 10,
-      clients: 200
-    }
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    description: 'For large coaching organizations',
-    price: 499,
-    features: [
-      'Unlimited coach management',
-      'Client scheduling',
-      'Advanced reporting',
-      'Custom branding',
-      'API access',
-      'Priority support',
-      'Custom integrations'
-    ],
-    limits: {
-      coaches: -1, // Unlimited
-      clients: -1 // Unlimited
-    }
-  }
-];
-
-export async function getCompanySubscription(companyId: string): Promise<Subscription | null> {
+export async function createSubscription({
+  customerId,
+  priceId,
+  organizationId,
+  metadata = {}
+}: CreateSubscriptionInput) {
   try {
-    const subscriptionRef = doc(db, 'subscriptions', companyId);
-    const subscriptionSnap = await getDoc(subscriptionRef);
-    
-    if (!subscriptionSnap.exists()) {
-      return null;
-    }
+    // Create the subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: {
+        payment_method_types: ['card'],
+        save_default_payment_method: 'on_subscription',
+      },
+      expand: ['latest_invoice.payment_intent'],
+      metadata: {
+        organizationId,
+        ...metadata
+      }
+    });
 
-    return {
-      id: subscriptionSnap.id,
-      ...subscriptionSnap.data()
-    } as Subscription;
+    // Store subscription in Firestore
+    await db.collection('subscriptions').doc(subscription.id).set({
+      id: subscription.id,
+      organizationId,
+      customerId,
+      priceId,
+      status: subscription.status,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata
+    });
+
+    return subscription;
   } catch (error) {
-    console.error('Error fetching company subscription:', error);
+    console.error('Error creating subscription:', error);
     throw error;
   }
 }
 
-export async function getPlans(): Promise<Plan[]> {
+export async function updateSubscription({
+  subscriptionId,
+  priceId,
+  prorate = true
+}: UpdateSubscriptionInput) {
   try {
-    const plansRef = collection(db, 'plans');
-    const plansSnap = await getDocs(plansRef);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     
-    if (plansSnap.empty) {
-      return DEFAULT_PLANS;
-    }
+    // Update the subscription
+    const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+      items: [{
+        id: subscription.items.data[0].id,
+        price: priceId,
+      }],
+      prorate,
+    });
 
-    return plansSnap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Plan[];
-  } catch (error) {
-    console.error('Error fetching plans:', error);
-    return DEFAULT_PLANS;
-  }
-}
+    // Update subscription in Firestore
+    await db.collection('subscriptions').doc(subscriptionId).update({
+      priceId,
+      status: updatedSubscription.status,
+      currentPeriodStart: new Date(updatedSubscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+      updatedAt: new Date()
+    });
 
-export async function updateSubscription(
-  subscriptionId: string, 
-  updates: Partial<Subscription>
-): Promise<void> {
-  try {
-    const subscriptionRef = doc(db, 'subscriptions', subscriptionId);
-    await updateDoc(subscriptionRef, updates);
+    return updatedSubscription;
   } catch (error) {
     console.error('Error updating subscription:', error);
     throw error;
   }
 }
 
-export async function cancelSubscription(companyId: string): Promise<void> {
+export async function cancelSubscription(subscriptionId: string) {
   try {
-    const subscription = await getCompanySubscription(companyId);
-    
-    if (!subscription) {
-      throw new Error('Subscription not found');
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true
+    });
+
+    // Update subscription in Firestore
+    await db.collection('subscriptions').doc(subscriptionId).update({
+      cancelAtPeriodEnd: true,
+      updatedAt: new Date()
+    });
+
+    return subscription;
+  } catch (error) {
+    console.error('Error canceling subscription:', error);
+    throw error;
+  }
+}
+
+export async function getSubscription(subscriptionId: string) {
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['customer', 'latest_invoice']
+    });
+    return subscription;
+  } catch (error) {
+    console.error('Error retrieving subscription:', error);
+    throw error;
+  }
+}
+
+export async function getOrganizationSubscription(organizationId: string) {
+  try {
+    const subscriptionDoc = await db.collection('subscriptions')
+      .where('organizationId', '==', organizationId)
+      .where('status', 'in', ['active', 'trialing'])
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    if (subscriptionDoc.empty) {
+      return null;
     }
 
-    await updateSubscription(subscription.id, {
-      status: 'cancelled',
-      cancelAtPeriodEnd: true
-    });
+    const subscription = subscriptionDoc.docs[0].data();
+    return subscription;
   } catch (error) {
-    console.error('Error cancelling subscription:', error);
+    console.error('Error retrieving organization subscription:', error);
+    throw error;
+  }
+}
+
+export async function createCheckoutSession({
+  priceId,
+  organizationId,
+  successUrl,
+  cancelUrl
+}: {
+  priceId: string;
+  organizationId: string;
+  successUrl: string;
+  cancelUrl: string;
+}) {
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price: priceId,
+        quantity: 1,
+      }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        organizationId
+      }
+    });
+
+    return session;
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
     throw error;
   }
 } 

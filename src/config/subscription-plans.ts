@@ -1,69 +1,71 @@
-export interface SubscriptionPlan {
+export type SubscriptionPlan = 'BASIC' | 'PRO' | 'ENTERPRISE';
+
+export interface PlanFeatures {
   name: string;
   description: string;
-  price: number; // in cents
-  maxClients: number;
-  maxCheckInsPerMonth: number;
-  maxPhotosPerClient: number;
-  maxStorageGB: number;
+  price: number;
+  interval: 'month' | 'year';
   features: string[];
+  stripePriceId: string;
+  maxClients: number;
+  maxCoaches: number;
 }
 
-export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
-  FREE: {
-    name: 'Free',
-    description: 'Perfect for getting started',
-    price: 0,
-    maxClients: 3,
-    maxCheckInsPerMonth: 12,
-    maxPhotosPerClient: 10,
-    maxStorageGB: 1,
+export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanFeatures> = {
+  BASIC: {
+    name: 'Basic',
+    description: 'Perfect for individual coaches',
+    price: 49,
+    interval: 'month',
     features: [
-      'Up to 3 clients',
+      'Up to 10 clients',
       'Basic progress tracking',
-      'Limited check-ins',
+      'Check-in system',
+      'Email support',
       'Basic analytics'
-    ]
+    ],
+    stripePriceId: process.env.STRIPE_BASIC_PRICE_ID || 'price_basic',
+    maxClients: 10,
+    maxCoaches: 1
   },
   PRO: {
     name: 'Pro',
     description: 'For growing coaching businesses',
-    price: 2900, // $29/month
-    maxClients: 25,
-    maxCheckInsPerMonth: 100,
-    maxPhotosPerClient: 50,
-    maxStorageGB: 10,
+    price: 99,
+    interval: 'month',
     features: [
-      'Up to 25 clients',
+      'Up to 50 clients',
       'Advanced progress tracking',
-      'Unlimited check-ins',
-      'Detailed analytics',
-      'Custom branding',
-      'Priority support'
-    ]
-  },
-  ELITE: {
-    name: 'Elite',
-    description: 'For established coaching practices',
-    price: 7900, // $79/month
-    maxClients: 100,
-    maxCheckInsPerMonth: 500,
-    maxPhotosPerClient: 100,
-    maxStorageGB: 50,
-    features: [
-      'Up to 100 clients',
-      'Advanced progress tracking',
-      'Unlimited check-ins',
-      'Advanced analytics & reporting',
-      'Custom branding',
+      'Custom check-in templates',
       'Priority support',
-      'Team management',
-      'API access'
-    ]
+      'Advanced analytics',
+      'Program templates',
+      'Resource library'
+    ],
+    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || 'price_pro',
+    maxClients: 50,
+    maxCoaches: 3
+  },
+  ENTERPRISE: {
+    name: 'Enterprise',
+    description: 'For established coaching organizations',
+    price: 249,
+    interval: 'month',
+    features: [
+      'Unlimited clients',
+      'Custom integrations',
+      'Dedicated support',
+      'White-label options',
+      'Advanced security',
+      'Custom reporting',
+      'API access',
+      'Team management'
+    ],
+    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || 'price_enterprise',
+    maxClients: -1, // Unlimited
+    maxCoaches: -1 // Unlimited
   }
 };
-
-export type SubscriptionPlan = keyof typeof SUBSCRIPTION_PLANS;
 
 export const FEATURES_BY_PLAN = {
   clientLimit: {

@@ -14,14 +14,9 @@ const navigation = [
     icon: '📊'
   },
   {
-    name: 'Programs',
-    href: '/coach/programs',
-    icon: '📚',
-    children: [
-      { name: 'Templates', href: '/coach/programs/templates' },
-      { name: 'Active Programs', href: '/coach/programs/active' },
-      { name: 'Archived', href: '/coach/programs/archived' }
-    ]
+    name: 'Check-Ins',
+    href: '/coach/check-ins',
+    icon: '✅'
   },
   {
     name: 'Clients',
