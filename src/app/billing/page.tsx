@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@/config/subscription-plans';
-import { getOrganizationSubscription } from '@/lib/services/subscriptionService';
 import { toast } from 'react-hot-toast';
 
 export default function BillingPage() {
@@ -21,7 +20,11 @@ export default function BillingPage() {
 
     const fetchSubscription = async () => {
       try {
-        const subscription = await getOrganizationSubscription(user.organizationId);
+        const response = await fetch(`/api/subscription/${user.organizationId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch subscription');
+        }
+        const subscription = await response.json();
         setCurrentSubscription(subscription);
       } catch (error) {
         console.error('Error fetching subscription:', error);

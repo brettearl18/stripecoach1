@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2 } from 'lucide-react';
 import { getCompany, Company } from '@/lib/services/companyService';
-import { getCompanySubscription } from '@/lib/services/subscriptionService';
 
 export default function CompanyDetailPage() {
   const params = useParams();
@@ -23,15 +22,17 @@ export default function CompanyDetailPage() {
   const loadCompanyData = async () => {
     try {
       setLoading(true);
-      const [companyData, subscriptionData] = await Promise.all([
+      const [companyData, subscriptionResponse] = await Promise.all([
         getCompany(companyId),
-        getCompanySubscription(companyId)
+        fetch(`/api/company-subscription/${companyId}`)
       ]);
-
+      let subscriptionData = null;
+      if (subscriptionResponse.ok) {
+        subscriptionData = await subscriptionResponse.json();
+      }
       if (!companyData) {
         throw new Error('Company not found');
       }
-
       setCompany(companyData);
       setSubscription(subscriptionData);
     } catch (error) {

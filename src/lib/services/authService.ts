@@ -98,17 +98,20 @@ class AuthService {
         uid = userCredential.user.uid;
       }
 
-      // Create Firestore document
-      const userDoc = doc(db, 'users', uid);
-      await setDoc(userDoc, {
-        email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        provider: userData.provider,
-        providerId: userData.providerId,
-        createdAt: new Date(),
-        lastLogin: new Date()
-      });
+         // Build user doc data, omitting undefined fields
+     const userDocData: any = {
+      email: userData.email,
+      name: userData.name,
+      role: userData.role,
+      createdAt: new Date(),
+      lastLogin: new Date()
+    };
+    if (userData.provider !== undefined) userDocData.provider = userData.provider;
+    if (userData.providerId !== undefined) userDocData.providerId = userData.providerId;
+
+    // Create Firestore document
+    const userDoc = doc(db, 'users', uid);
+    await setDoc(userDoc, userDocData);
 
       return {
         id: uid,
@@ -183,7 +186,5 @@ class AuthService {
 
 // Create and export the singleton instance
 const authService = AuthService.getInstance();
-
-// Export both named and default exports
 export { authService };
 export default authService; 

@@ -53,7 +53,8 @@ describe('ProgramsDashboard', () => {
     render(<ProgramsDashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/error loading programs/i)).toBeInTheDocument();
+      expect(screen.getByText('Error')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load program statistics')).toBeInTheDocument();
     });
   });
 

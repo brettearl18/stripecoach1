@@ -6,203 +6,218 @@ import { TemplateForm } from '@/components/checkIn/TemplateForm';
 import type { CheckInTemplate } from '@/types/checkIn';
 import Link from 'next/link';
 
-export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<CheckInTemplate[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<CheckInTemplate | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const MEASUREMENT_OPTIONS = [
+  { id: 'weight', label: 'Weight (kg)' },
+  { id: 'waist', label: 'Waist (cm)' },
+  { id: 'chest', label: 'Chest (cm)' },
+  { id: 'hips', label: 'Hips (cm)' },
+  { id: 'leftArm', label: 'Left Arm (cm)' },
+  { id: 'rightArm', label: 'Right Arm (cm)' },
+  { id: 'leftThigh', label: 'Left Thigh (cm)' },
+  { id: 'rightThigh', label: 'Right Thigh (cm)' },
+];
+
+const TEMPLATE_TYPES = [
+  { id: 'regular', label: 'Regular Check-In' },
+  { id: 'measurement', label: 'Body Measurement' },
+  { id: 'progress-photo', label: 'Progress Photo' },
+];
+
+const FREQUENCIES = [
+  { id: 'weekly', label: 'Weekly' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'custom', label: 'Custom (days)' },
+];
+
+function TemplatesList({ refreshKey }: { refreshKey: number }) {
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
-    try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/check-in-templates');
-      const data = await response.json();
-      setTemplates(data);
-    } catch (error) {
-      console.error('Error loading templates:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateTemplate = async (template: Omit<CheckInTemplate, 'id' | 'coachId' | 'createdAt' | 'updatedAt' | 'isActive'>) => {
-    try {
-      const response = await fetch('/api/check-in-templates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(template),
+    setLoading(true);
+    fetch('/api/templates')
+      .then(res => res.json())
+      .then(data => {
+        setTemplates(data.templates || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError('Failed to load templates');
+        setLoading(false);
       });
-      
-      if (!response.ok) throw new Error('Failed to create template');
-      
-      await loadTemplates();
-      setIsCreating(false);
-    } catch (error) {
-      console.error('Error creating template:', error);
-    }
-  };
+  }, [refreshKey]);
 
-  const handleUpdateTemplate = async (templateId: string, updates: Partial<CheckInTemplate>) => {
-    try {
-      const response = await fetch(`/api/check-in-templates/${templateId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updates),
-      });
-      
-      if (!response.ok) throw new Error('Failed to update template');
-      
-      await loadTemplates();
-      setEditingTemplate(null);
-    } catch (error) {
-      console.error('Error updating template:', error);
-    }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
-
-    try {
-      const response = await fetch(`/api/check-in-templates/${templateId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) throw new Error('Failed to delete template');
-      
-      await loadTemplates();
-    } catch (error) {
-      console.error('Error deleting template:', error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500 dark:text-gray-400">Loading templates...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div>Loading templates...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              Check-in Templates
-            </h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Create and manage your check-in form templates
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/coach/template-builder-v3"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-            >
-              <PlusIcon className="w-4 h-4 mr-2" />
-              New AI Template Builder
-            </Link>
-            <Link
-              href="/coach/templates-v2"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Create Template
-            </Link>
+    <div className="mt-6">
+      <h2 className="text-lg font-semibold mb-2">Your Templates</h2>
+      <ul className="space-y-2">
+        {templates.map(t => (
+          <li key={t.id} className="p-3 bg-gray-800 rounded-lg text-white">
+            <div className="font-bold">{t.title}</div>
+            <div className="text-sm text-gray-400">{t.description}</div>
+          </li>
+        ))}
+        {templates.length === 0 && <li className="text-gray-400">No templates found.</li>}
+      </ul>
+    </div>
+  );
+}
+
+function NewTemplateForm({ onCreated }: { onCreated: () => void }) {
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [type, setType] = useState('regular');
+  const [frequency, setFrequency] = useState('weekly');
+  const [customDays, setCustomDays] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [measurements, setMeasurements] = useState<string[]>([]);
+
+  const handleMeasurementChange = (id: string) => {
+    setMeasurements(prev =>
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const templateData: any = {
+      title,
+      description: desc,
+      type,
+      defaultFrequency: frequency === 'custom' ? customDays : frequency,
+    };
+    if (type === 'measurement') {
+      templateData.measurements = measurements;
+    }
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateData })
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (data.success) {
+      onCreated();
+      setTitle('');
+      setDesc('');
+      setType('regular');
+      setFrequency('weekly');
+      setCustomDays('');
+      setMeasurements([]);
+    } else {
+      setError(data.error || 'Failed to create template');
+    }
+  };
+
+  return (
+    <form onSubmit={handleCreate} className="space-y-2 bg-gray-800 p-4 rounded-lg">
+      <div>
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Title"
+          required
+          className="w-full px-3 py-2 rounded bg-gray-900 text-white border border-gray-700"
+        />
+      </div>
+      <div>
+        <input
+          value={desc}
+          onChange={e => setDesc(e.target.value)}
+          placeholder="Description"
+          className="w-full px-3 py-2 rounded bg-gray-900 text-white border border-gray-700"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Template Type</label>
+        <div className="flex gap-4">
+          {TEMPLATE_TYPES.map(opt => (
+            <label key={opt.id} className="flex items-center gap-2 text-gray-200">
+              <input
+                type="radio"
+                name="templateType"
+                value={opt.id}
+                checked={type === opt.id}
+                onChange={() => setType(opt.id)}
+                className="accent-blue-600"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      {type === 'measurement' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-1">Body Measurements</label>
+          <div className="flex flex-wrap gap-3">
+            {MEASUREMENT_OPTIONS.map(opt => (
+              <label key={opt.id} className="flex items-center gap-2 text-gray-200">
+                <input
+                  type="checkbox"
+                  checked={measurements.includes(opt.id)}
+                  onChange={() => handleMeasurementChange(opt.id)}
+                  className="accent-blue-600"
+                />
+                {opt.label}
+              </label>
+            ))}
           </div>
         </div>
-
-        {/* Template List */}
-        {!isCreating && !editingTemplate && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-            <div className="p-6">
-              <div className="space-y-4">
-                {templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                  >
-                    <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {template.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        {template.description}
-                      </p>
-                      <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                        {template.questions.length} questions
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setEditingTemplate(template)}
-                        className="p-2 text-gray-400 hover:text-indigo-500 dark:hover:text-indigo-400"
-                      >
-                        <PencilSquareIcon className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {templates.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      No templates yet. Create your first template to get started.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Template Form */}
-        {(isCreating || editingTemplate) && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {isCreating ? 'Create Template' : 'Edit Template'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingTemplate(null);
-                  }}
-                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-              
-              <TemplateForm
-                onSubmit={isCreating ? handleCreateTemplate : (template) => handleUpdateTemplate(editingTemplate!.id, template)}
-                initialData={editingTemplate}
+      )}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">Default Frequency</label>
+        <div className="flex gap-4">
+          {FREQUENCIES.map(opt => (
+            <label key={opt.id} className="flex items-center gap-2 text-gray-200">
+              <input
+                type="radio"
+                name="frequency"
+                value={opt.id}
+                checked={frequency === opt.id}
+                onChange={() => setFrequency(opt.id)}
+                className="accent-blue-600"
               />
-            </div>
-          </div>
+              {opt.label}
+            </label>
+          ))}
+        </div>
+        {frequency === 'custom' && (
+          <input
+            type="number"
+            min={1}
+            value={customDays}
+            onChange={e => setCustomDays(e.target.value)}
+            placeholder="Enter number of days"
+            className="w-40 mt-2 px-3 py-2 rounded bg-gray-900 text-white border border-gray-700"
+          />
         )}
       </div>
+      {error && <div className="text-red-500 text-sm">{error}</div>}
+      <button
+        type="submit"
+        disabled={loading}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+      >
+        {loading ? 'Creating...' : 'Create Template'}
+      </button>
+    </form>
+  );
+}
+
+export default function TemplatesPage() {
+  const [refresh, setRefresh] = useState(0);
+  return (
+    <div className="max-w-2xl mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-4 text-white">Templates</h1>
+      <NewTemplateForm onCreated={() => setRefresh(r => r + 1)} />
+      <TemplatesList refreshKey={refresh} />
     </div>
   );
 } 

@@ -21,6 +21,9 @@ import {
 } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import FirebaseConnectionTest from '@/components/FirebaseConnectionTest';
+import FeedbackModal from '@/components/FeedbackModal';
+import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { toast } from 'react-hot-toast';
 
 // List of implemented pages
 const implementedPages = [
@@ -66,6 +69,7 @@ interface NavigationSection {
 export default function Home() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // Handler for the test AI button
   const handleTestAI = async () => {
@@ -84,6 +88,21 @@ export default function Home() {
       alert('Failed to fetch recipe.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestFeedback = async () => {
+    try {
+      const db = getFirestore();
+      await addDoc(collection(db, 'feedback'), {
+        message: 'This is a test feedback message.',
+        email: 'test@example.com',
+        createdAt: serverTimestamp(),
+      });
+      toast.success('Test feedback submitted!');
+    } catch (error) {
+      toast.error('Failed to submit test feedback.');
+      console.error('Test feedback error:', error);
     }
   };
 
@@ -110,6 +129,36 @@ export default function Home() {
             className="mt-2 px-8 py-3 text-lg font-medium text-white bg-gradient-to-r from-pink-500 to-yellow-500 rounded-lg shadow-lg hover:from-pink-600 hover:to-yellow-600 transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
           >
             {loading ? 'Generating Recipe...' : 'Test AI Recipe'}
+          </button>
+          {/* Create Check-In Template Button */}
+          <button
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const db = getFirestore();
+                await addDoc(collection(db, 'checkIns'), {
+                  clientId: 'test-client-id',
+                  coachId: 'test-coach-id',
+                  answers: {
+                    energy: 4,
+                    mood: 'Feeling good!',
+                    nutrition: 'Ate healthy meals all week.',
+                    workouts: 5,
+                  },
+                  createdAt: serverTimestamp(),
+                });
+                console.log('Check-in created!');
+                toast.success('Test check-in created! Check Firestore for aiInsights after a minute.');
+              } catch (error: any) {
+                toast.error('Error creating check-in: ' + error.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+            className="mt-2 px-8 py-3 text-lg font-medium text-white bg-gradient-to-r from-green-500 to-blue-500 rounded-lg shadow-lg hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+          >
+            {loading ? 'Creating...' : 'Create Check-In Template'}
           </button>
         </div>
 
@@ -242,6 +291,33 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <div className="fixed bottom-24 right-6 z-50">
+        <button
+          onClick={handleTestFeedback}
+          className="mb-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+        >
+          Test Feedback
+        </button>
+      </div>
+
+      <div className="fixed bottom-40 right-6 z-50">
+        <Link
+          href="/coach/clients/1"
+          className="mb-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-purple-400 block text-center"
+        >
+          Go to Coach's Test Client Profile (AI Insights, Notes, History)
+        </Link>
+      </div>
+
+      {/* Floating Feedback Button */}
+      <button
+        onClick={() => setFeedbackOpen(true)}
+        className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+      >
+        Send Feedback
+      </button>
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </main>
   );
 }

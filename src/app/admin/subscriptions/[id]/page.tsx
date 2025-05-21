@@ -25,7 +25,6 @@ import {
   CheckCircle2,
   Building2
 } from 'lucide-react';
-import { getCompanySubscription, cancelSubscription } from '@/lib/services/subscriptionService';
 import { getCompanyDetails } from '@/lib/services/companyService';
 import { getCompanyAnalytics } from '@/lib/services/analyticsService';
 import { useToast } from '@/components/ui/use-toast';
@@ -50,12 +49,15 @@ export default function SubscriptionDetailsPage({ params }: SubscriptionDetailsP
   const loadData = async () => {
     try {
       setLoading(true);
-      const [companyData, subscriptionData, analyticsData] = await Promise.all([
+      const [companyData, subscriptionResponse, analyticsData] = await Promise.all([
         getCompanyDetails(params.id),
-        getCompanySubscription(params.id),
+        fetch(`/api/company-subscription/${params.id}`),
         getCompanyAnalytics(params.id)
       ]);
-
+      let subscriptionData = null;
+      if (subscriptionResponse.ok) {
+        subscriptionData = await subscriptionResponse.json();
+      }
       setCompany(companyData);
       setSubscription(subscriptionData);
       setAnalytics(analyticsData);

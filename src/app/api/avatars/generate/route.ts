@@ -198,34 +198,24 @@ Format the response as a JSON object with the following structure:
         },
         badges: {
           style: 'modern',
-          themes: ['achievement', 'progress', 'milestone'],
-          achievements: []
         }
       };
 
-      const avatarId = await createAvatar(avatarData);
+      // Save avatar data to Firebase
+      await createAvatar(avatarData);
 
-      return NextResponse.json({ 
-        id: avatarId,
-        ...aiResponse
-      });
-    } catch (error: any) {
-      console.error('OpenAI API Error:', error);
-      
-      // Handle specific OpenAI errors
-      if (error.code === 'invalid_api_key') {
-        return NextResponse.json(
-          { error: 'OpenAI API key is invalid or not configured correctly' },
-          { status: 500 }
-        );
-      }
-      
-      throw error; // Re-throw other errors to be caught by outer try-catch
+      return NextResponse.json({ success: true, data: avatarData });
+    } catch (error) {
+      console.error('Error generating avatar:', error);
+      return NextResponse.json(
+        { error: 'Failed to generate avatar. Please try again later.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
-    console.error('Error generating avatar:', error);
+    console.error('Error processing request:', error);
     return NextResponse.json(
-      { error: 'Failed to generate avatar. Please try again later.' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

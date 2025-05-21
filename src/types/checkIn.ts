@@ -196,4 +196,19 @@ export interface CoachDashboardMetrics {
     pendingPhotos: string[]; // Check-in IDs
     missedCheckIns: string[]; // Client IDs
   };
+}
+
+export interface TemplateAssignment {
+  id: string;
+  templateId: string;
+  clientId: string;
+  coachId: string;
+  frequency: 'weekly' | 'monthly' | 'custom';
+  customDays?: number;
+  startDate: Date;
+  active: boolean;
+  lastCheckInDate?: Date;
+  nextDueDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 } 

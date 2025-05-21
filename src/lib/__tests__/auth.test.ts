@@ -1,26 +1,31 @@
-import { authenticateUser } from '../services/authService';
-import { authConfig } from '@/lib/auth';
+import { authService } from '../services/authService';
+import authConfig from '@/lib/auth';
 
 // Mock the authService
 jest.mock('../services/authService', () => ({
-  authenticateUser: jest.fn()
+  authService: {
+    authenticateUser: jest.fn()
+  }
 }));
 
 // Mock the auth config
 jest.mock('@/lib/auth', () => ({
-  authConfig: {
-    providers: {
-      credentials: {
+  default: {
+    providers: [
+      {
+        id: 'credentials',
+        name: 'Credentials',
+        type: 'credentials',
         authorize: async (credentials: any) => {
           if (!credentials.email || !credentials.password) {
             return null;
           }
-          return await authenticateUser(credentials.email, credentials.password);
+          return await authService.authenticateUser(credentials.email, credentials.password);
         }
       }
-    },
+    ],
     callbacks: {
-      jwt: ({ token, user }: any) => {
+      jwt: ({ token, user, account }: any) => {
         if (user) {
           token.user = user;
         }
@@ -49,35 +54,35 @@ describe('Auth Configuration', () => {
   });
 
   describe('CredentialsProvider', () => {
-    const provider = authConfig.providers.credentials;
+    const provider = authConfig.providers.find(p => p.id === 'credentials') as any;
 
     it('should authenticate valid credentials', async () => {
-      (authenticateUser as jest.Mock).mockResolvedValue(mockUser);
+      (authService.authenticateUser as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await provider.authorize({
         email: 'test@example.com',
         password: 'password123',
       });
 
-      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(authService.authenticateUser).toHaveBeenCalledWith('test@example.com', 'password123');
       expect(result).toEqual(mockUser);
     });
 
     it('should return null for missing credentials', async () => {
       const result = await provider.authorize({});
-      expect(authenticateUser).not.toHaveBeenCalled();
+      expect(authService.authenticateUser).not.toHaveBeenCalled();
       expect(result).toBeNull();
     });
 
     it('should return null for invalid credentials', async () => {
-      (authenticateUser as jest.Mock).mockResolvedValue(null);
+      (authService.authenticateUser as jest.Mock).mockResolvedValue(null);
 
       const result = await provider.authorize({
         email: 'test@example.com',
         password: 'wrongpassword',
       });
 
-      expect(authenticateUser).toHaveBeenCalledWith('test@example.com', 'wrongpassword');
+      expect(authService.authenticateUser).toHaveBeenCalledWith('test@example.com', 'wrongpassword');
       expect(result).toBeNull();
     });
   });
@@ -85,13 +90,13 @@ describe('Auth Configuration', () => {
   describe('JWT Callback', () => {
     it('should include user data in token', () => {
       const token = { someData: 'test' };
-      const result = authConfig.callbacks.jwt({ token, user: mockUser });
+      const result = authConfig.callbacks.jwt({ token, user: mockUser, account: null });
       expect(result).toEqual({ someData: 'test', user: mockUser });
     });
 
     it('should return token if no user', () => {
       const token = { someData: 'test' };
-      const result = authConfig.callbacks.jwt({ token });
+      const result = authConfig.callbacks.jwt({ token, user: null, account: null });
       expect(result).toEqual(token);
     });
   });

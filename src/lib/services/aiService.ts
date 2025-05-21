@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 import { 
   CheckInForm, 
   CheckInMetrics, 
@@ -8,69 +8,178 @@ import {
   Question
 } from '@/types/checkIn';
 
+// Error types
+export class AIError extends Error {
+  constructor(
+    message: string,
+    public type: 'API' | 'RATE_LIMIT' | 'NETWORK' | 'VALIDATION',
+    public retryable: boolean = false,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = 'AIError';
+  }
+}
+
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1000,
+  maxDelay: 10000,
+  backoffFactor: 2,
+};
+
 export class AIService {
   private openai: OpenAI;
+  private cache: Map<string, { data: any; timestamp: number }>;
+  private cacheDuration: number;
 
-  constructor() {
-    // Prevent usage on the client (browser)
-    if (typeof window !== 'undefined') {
-      throw new Error('AIService must only be used server-side. Never expose your OpenAI API key to the browser.');
+  constructor(apiKey: string, cacheDuration: number = 5 * 60 * 1000) {
+    this.openai = new OpenAI({ apiKey });
+    this.cache = new Map();
+    this.cacheDuration = cacheDuration;
+  }
+
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    retryCount: number = 0
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (retryCount >= RETRY_CONFIG.maxRetries) {
+        throw this.handleError(error);
+      }
+
+      const delay = Math.min(
+        RETRY_CONFIG.initialDelay * Math.pow(RETRY_CONFIG.backoffFactor, retryCount),
+        RETRY_CONFIG.maxDelay
+      );
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return this.retryWithBackoff(operation, retryCount + 1);
     }
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is missing. Add it to your .env.local and deployment environment.');
+  }
+
+  private handleError(error: any): AIError {
+    if (error instanceof AIError) {
+      return error;
     }
-    this.openai = new OpenAI({
-      apiKey,
-      // dangerouslyAllowBrowser: true // Do NOT enable this in production
+
+    // Handle OpenAI API errors
+    if (error.response?.status === 429) {
+      return new AIError(
+        'Rate limit exceeded',
+        'RATE_LIMIT',
+        true,
+        error
+      );
+    }
+
+    if (error.response?.status >= 500) {
+      return new AIError(
+        'AI service unavailable',
+        'API',
+        true,
+        error
+      );
+    }
+
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      return new AIError(
+        'Network error',
+        'NETWORK',
+        true,
+        error
+      );
+    }
+
+    return new AIError(
+      error.message || 'Unknown error occurred',
+      'API',
+      false,
+      error
+    );
+  }
+
+  private getCacheKey(checkIn: CheckInForm): string {
+    return `checkin_${checkIn.id}_${checkIn.timestamp}`;
+  }
+
+  private getCachedData(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+
+    if (Date.now() - cached.timestamp > this.cacheDuration) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return cached.data;
+  }
+
+  private setCachedData(key: string, data: any): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
     });
   }
 
   async analyzeCheckIn(checkIn: CheckInForm) {
-    try {
-      const prompt = `Analyze the following client check-in data and provide insights:
-      Metrics: ${JSON.stringify(checkIn.metrics)}
-      Answers: ${JSON.stringify(checkIn.answers)}
-      Coach Feedback: ${checkIn.coachInteraction?.lastFeedback || 'None'}`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "You are an AI fitness coach assistant analyzing client check-in data." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      });
-
-      return this.parseAIResponse(completion.choices[0].message.content || '');
-    } catch (error) {
-      console.error('Error analyzing check-in:', error);
-      return this.getDefaultResponse();
+    const cacheKey = this.getCacheKey(checkIn);
+    const cachedData = this.getCachedData(cacheKey);
+    if (cachedData) {
+      return cachedData;
     }
+
+    return this.retryWithBackoff(async () => {
+      try {
+        const prompt = `Analyze the following client check-in data and provide insights:
+        Metrics: ${JSON.stringify(checkIn.metrics)}
+        Answers: ${JSON.stringify(checkIn.answers)}
+        Coach Feedback: ${checkIn.coachInteraction?.lastFeedback || 'None'}`;
+
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are an AI fitness coach assistant analyzing client check-in data." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        });
+
+        const result = this.parseAIResponse(completion.choices[0].message.content || '');
+        this.setCachedData(cacheKey, result);
+        return result;
+      } catch (error) {
+        throw this.handleError(error);
+      }
+    });
   }
 
   async generateGroupInsights(checkIns: CheckInForm[]) {
-    try {
-      const aggregatedData = this.aggregateCheckInData(checkIns);
-      const prompt = `Analyze the following group fitness data and provide insights:
-      ${JSON.stringify(aggregatedData)}`;
+    return this.retryWithBackoff(async () => {
+      try {
+        const aggregatedData = this.aggregateCheckInData(checkIns);
+        const prompt = `Analyze the following group fitness data and provide insights:
+        ${JSON.stringify(aggregatedData)}`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: "You are an AI fitness coach assistant analyzing group performance data." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 500
-      });
+        const completion = await this.openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "You are an AI fitness coach assistant analyzing group performance data." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        });
 
-      return this.parseAIResponse(completion.choices[0].message.content || '');
-    } catch (error) {
-      console.error('Error generating group insights:', error);
-      return this.getDefaultResponse();
-    }
+        return this.parseAIResponse(completion.choices[0].message.content || '');
+      } catch (error) {
+        throw this.handleError(error);
+      }
+    });
   }
 
   private aggregateCheckInData(checkIns: CheckInForm[]) {

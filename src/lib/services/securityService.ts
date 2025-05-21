@@ -308,7 +308,7 @@ export const getSecuritySettings = async (userId: string): Promise<SecuritySetti
   try {
     const docRef = doc(db, 'securitySettings', userId);
     const docSnap = await getDoc(docRef);
-
+    
     if (docSnap.exists()) {
       return docSnap.data() as SecuritySettings;
     }
@@ -334,4 +334,4 @@ export const saveSecuritySettings = async (
     console.error('Error saving security settings:', error);
     throw error;
   }
-}; 
+};

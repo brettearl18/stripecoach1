@@ -22,13 +22,13 @@ export default function NewTemplatePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 sm:px-10 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Create New Template</h1>
-        <p className="text-gray-500">Create a new program template for your coaching practice</p>
+        <h1 className="text-2xl font-bold text-white">Create New Template</h1>
+        <p className="text-gray-300">Create a new program template for your coaching practice</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-gray-800 rounded-xl shadow-sm p-6 sm:p-10" style={{maxWidth: 700, margin: '0 auto'}}>
         <ProgramTemplateForm
           onSubmit={handleSubmit}
           onCancel={handleCancel}

@@ -1517,6 +1517,34 @@ const CoachReviewSection = () => {
   );
 };
 
+// New AI Insights Tab Component
+const AIInsightsTab = ({ client }: TabContentProps) => (
+  <div className="space-y-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">AI Insights</h2>
+      <p className="text-gray-600 dark:text-gray-300">
+        {client.aiInsights?.summary || "No AI insights available."}
+      </p>
+    </div>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Coach Notes</h2>
+      <p className="text-gray-600 dark:text-gray-300">
+        {client.coachNotes || "No coach notes available."}
+      </p>
+    </div>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Check-in History</h2>
+      <ul className="space-y-2">
+        {client.checkInHistory?.map((checkIn: any, index: number) => (
+          <li key={index} className="text-gray-600 dark:text-gray-300">
+            {new Date(checkIn.date).toLocaleDateString()} - {checkIn.score}%
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+);
+
 const mockClientData = {
   id: '1',
   firstName: 'John',
@@ -1634,33 +1662,10 @@ const mockClientData = {
 export default function ClientProfilePage() {
   const params = useParams();
   const [activeTab, setActiveTab] = useState('overview');
-  const [loading, setLoading] = useState(true);
-  const [client, setClient] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const client = mockClientData; // Always use mock data
+  const loading = false;
+  const error = null;
   const { user } = useAuth();
-
-  useEffect(() => {
-    loadClient();
-  }, [params.id]);
-
-  const loadClient = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      if (!params.id) {
-        throw new Error('Client ID is required');
-      }
-
-      // Use mock data instead of Firebase call
-      setClient(mockClientData);
-    } catch (err) {
-      console.error('Error loading client data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load client data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -1685,7 +1690,7 @@ export default function ClientProfilePage() {
               <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mb-4" />
               <p className="text-red-500 dark:text-red-400 text-lg font-medium mb-4">{error}</p>
               <button
-                onClick={loadClient}
+                onClick={() => {}}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Try Again
@@ -1711,6 +1716,8 @@ export default function ClientProfilePage() {
         return <PhotosTab />;
       case 'calendar':
         return <CalendarTab client={client} />;
+      case 'ai-insights':
+        return <AIInsightsTab client={client} />;
       default:
         return null;
     }
@@ -1873,7 +1880,7 @@ export default function ClientProfilePage() {
           {/* Tabs */}
           <div className="border-t border-gray-200 dark:border-gray-700">
             <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {['overview', 'check-ins', 'progress', 'forms', 'photos', 'calendar'].map((tab) => (
+              {['overview', 'check-ins', 'progress', 'forms', 'photos', 'calendar', 'ai-insights'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}

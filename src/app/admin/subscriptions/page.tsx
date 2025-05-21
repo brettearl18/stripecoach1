@@ -22,13 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getCompanies } from '@/lib/services/companyService';
-import { 
-  getCompanySubscription, 
-  Plan, 
-  getPlans,
-  cancelSubscription,
-  updateSubscription 
-} from '@/lib/services/subscriptionService';
+import { Plan, getPlans, cancelSubscription, updateSubscription } from '@/lib/services/subscriptionService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface CompanyWithSubscription {
@@ -72,7 +66,15 @@ export default function SubscriptionsPage() {
 
       const companiesWithSubs = await Promise.all(
         companiesData.map(async (company) => {
-          const subscription = await getCompanySubscription(company.id);
+          let subscription = null;
+          try {
+            const response = await fetch(`/api/company-subscription/${company.id}`);
+            if (response.ok) {
+              subscription = await response.json();
+            }
+          } catch (e) {
+            subscription = null;
+          }
           return {
             ...company,
             subscription: subscription ? {

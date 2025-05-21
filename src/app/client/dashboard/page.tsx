@@ -28,6 +28,8 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { ProgramTimeline } from './components/ProgramTimeline';
 import { WeeklyProgress } from './components/WeeklyProgress';
 import { CheckInButton } from './components/CheckInButton';
+import { useAuth } from '@/lib/firebase/auth';
+import { getClientById, getCheckIns } from '@/lib/services/firebaseService';
 
 // Mock data for the past 30 days
 const generateMockData = () => {
@@ -107,10 +109,9 @@ const nutritionSummary = {
 
 // Mock habits data
 const weeklyHabits = [
-  { name: 'Morning Workout', days: [true, true, true, false, false, false, false] },
-  { name: 'Hit Protein Goal', days: [true, true, false, true, false, false, false] },
-  { name: '8hrs Sleep', days: [true, false, true, true, false, false, false] },
-  { name: 'Water 3L', days: [true, true, true, true, false, false, false] },
+  { id: 1, name: 'Morning Workout', completed: true },
+  { id: 2, name: 'Protein Intake', completed: false },
+  { id: 3, name: 'Water Intake', completed: true },
 ];
 
 // Add mock client data
@@ -306,71 +307,43 @@ const CoachCard = ({ coach }: { coach: Coach | null }) => {
 };
 
 export default function ClientDashboard() {
+  const { user } = useAuth();
+  const [client, setClient] = useState(null);
+  const [checkIns, setCheckIns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [isChartInitialized, setIsChartInitialized] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Initialize ChartJS
   useEffect(() => {
-    try {
-      ChartJS.register(
-        CategoryScale,
-        LinearScale,
-        PointElement,
-        LineElement,
-        Title,
-        Tooltip,
-        Legend,
-        Filler
-      );
-      setIsChartInitialized(true);
-    } catch (error) {
-      console.error('Error initializing ChartJS:', error);
-      setError(error as Error);
-    }
-  }, []);
-
-  // Data loading simulation
-  useEffect(() => {
-    try {
-      setTimeout(() => {
+    async function loadClientData() {
+      try {
+        if (!user?.uid) return;
+        const clientData = await getClientById(user.uid);
+        setClient(clientData);
+        const checkInData = await getCheckIns(user.uid);
+        setCheckIns(checkInData);
+      } catch (err) {
+        setError(err);
+      } finally {
         setIsLoading(false);
-      }, 500);
-    } catch (err) {
-      setError(err as Error);
-      setIsLoading(false);
+      }
     }
-  }, []);
+    loadClientData();
+  }, [user?.uid]);
 
-  if (error) {
-    return (
-      <div className="p-4 text-red-500">
-        Error loading dashboard: {error.message}
-      </div>
-    );
-  }
-
-  if (isLoading || !isChartInitialized) {
-    return (
-      <div className="p-4">
-        Loading...
-      </div>
-    );
-  }
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!client) return <div>Client not found</div>;
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column */}
         <div className="lg:col-span-8 space-y-6">
-          <ProfileOverview />
-          <WeeklyProgress />
-          <ProgramTimeline />
+          <ProfileOverview client={client} />
+          <WeeklyProgress checkIns={checkIns} />
+          <ProgramTimeline client={client} />
         </div>
-
-        {/* Right Column */}
         <div className="lg:col-span-4 space-y-6">
-          <CheckInButton client={mockClientData} />
+          <CheckInButton client={client} />
           <HabitsCell habits={weeklyHabits} />
           <ActivityFeed activities={activityFeed} />
         </div>

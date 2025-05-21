@@ -37,16 +37,7 @@ jest.mock('react-hot-toast', () => ({
 }));
 
 // Mock Firebase
-jest.mock('@/lib/firebase/firebase-client', () => ({
-  auth: {
-    onAuthStateChanged: jest.fn(),
-    signOut: jest.fn(),
-  },
-  db: {
-    collection: jest.fn(),
-    doc: jest.fn(),
-  },
-}));
+jest.mock('@/lib/firebase/firebase-client');
 
 // Mock programTemplateService
 jest.mock('@/lib/services/programTemplateService', () => ({
@@ -107,14 +98,23 @@ global.Headers = class {
   }
 };
 
-// Mock browser storage
-Object.defineProperty(window, 'localStorage', {
-  value: new Map()
-});
+// Mock localStorage
+const localStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.localStorage = localStorageMock;
 
-Object.defineProperty(window, 'sessionStorage', {
-  value: new Map()
-});
+// Mock sessionStorage
+const sessionStorageMock = {
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  clear: jest.fn(),
+};
+global.sessionStorage = sessionStorageMock;
 
 // Mock the entire @firebase/auth package
 jest.mock('@firebase/auth', () => {
@@ -199,4 +199,11 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),
   })),
+});
+
+// Reset all mocks before each test
+beforeEach(() => {
+  jest.clearAllMocks();
+  localStorage.clear();
+  sessionStorage.clear();
 }); 

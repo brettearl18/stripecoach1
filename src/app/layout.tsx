@@ -13,8 +13,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Stripe Coach',
-  description: 'Professional coaching platform',
+  title: 'Checkin.io - Stripe Coach Platform',
+  description: 'Checkin.io is a coaching platform for client management, progress tracking, and seamless communication. Built with Stripe integration and Firebase.'
 }
 
 export default function RootLayout({
@@ -24,7 +24,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <head>
+        <meta name="description" content="Checkin.io is a coaching platform for client management, progress tracking, and seamless communication. Built with Stripe integration and Firebase." />
+      </head>
+      <body className="min-h-screen bg-background font-sans antialiased text-gray-900 bg-gradient-to-b from-gray-900 to-gray-800">
         <SessionProvider>
           <ThemeProvider>
             <ClientProviders>

@@ -211,13 +211,9 @@ export default function TemplateAllocation({ onSave, onBack, defaultSettings }: 
                     </label>
                     <input
                       type="number"
-                      min="1"
-                      max="14"
-                      value={allocation.checkInWindow}
-                      onChange={(e) => handleUpdateClientSettings(clientId, {
-                        checkInWindow: parseInt(e.target.value)
-                      })}
-                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white"
+                      value={defaultSettings.checkInWindow || 7}
+                      readOnly
+                      className="w-full bg-[#2C2C30] border border-gray-700 rounded-lg px-4 py-2 text-white opacity-70 cursor-not-allowed"
                     />
                   </div>
 

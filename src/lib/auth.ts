@@ -60,33 +60,32 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === 'google' || account?.provider === 'facebook') {
+      if (account?.provider === 'google') {
         try {
           // Check if user exists
           const existingUser = await authService.getUserByEmail(user.email!);
-          
           if (!existingUser) {
-            // Create new user with social login info
+            // Create new user with Google info and coach role
             await authService.createUser({
               email: user.email!,
               name: user.name!,
-              role: 'client', // Default role for social login
+              role: 'coach',
               provider: account.provider,
               providerId: account.providerAccountId,
             });
           }
           return true;
         } catch (error) {
-          console.error('Error in social login:', error);
+          console.error('Error in Google social login:', error);
           return false;
         }
       }
       return true;
     },
     async jwt({ token, user, account }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id;
+      if (user && 'role' in user) {
+        token.role = (user as any).role;
+        token.id = (user as any).id;
         if (account) {
           token.provider = account.provider;
         }
@@ -94,13 +93,15 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.role = token.role;
-        session.user.id = token.id;
-        session.user.provider = token.provider;
+      if (token && session.user) {
+        (session.user as any).role = token.role;
+        (session.user as any).id = token.id;
+        (session.user as any).provider = token.provider;
       }
       return session;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
-} 
+}
+
+export default authOptions; 

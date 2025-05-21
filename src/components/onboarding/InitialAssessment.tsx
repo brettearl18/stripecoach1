@@ -492,4 +492,4 @@ const InitialAssessment: React.FC<InitialAssessmentProps> = ({ isOpen, onClose, 
   );
 };
 
-export default InitialAssessment; 
+export { InitialAssessment }; 

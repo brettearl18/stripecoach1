@@ -255,6 +255,25 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Role Selector */}
+            <div className="mt-4">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-400 mb-1">
+                Select Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={role}
+                onChange={e => setRole(e.target.value as UserRole)}
+                className="block w-full px-3 py-2 border border-gray-700 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                required
+              >
+                <option value="coach">Coach</option>
+                <option value="client">Client</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center">
                 <input

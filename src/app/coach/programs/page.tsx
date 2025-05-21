@@ -88,7 +88,7 @@ export default function ProgramsDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+        <LoadingSpinner data-testid="loading-spinner" />
       </div>
     );
   }

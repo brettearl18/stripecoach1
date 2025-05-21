@@ -51,6 +51,7 @@ import {
   CoachDashboardMetrics, 
   EnhancedCheckInForm as IEnhancedCheckInForm
 } from '@/types/checkIn';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 interface ClientProgress {
   id: string;
@@ -174,6 +175,20 @@ interface WidgetLayout {
     order: number;
     isExpanded: boolean;
   };
+}
+
+interface AIError {
+  message: string;
+  type: 'API' | 'RATE_LIMIT' | 'NETWORK' | 'VALIDATION';
+  retryable: boolean;
+  timestamp: string;
+}
+
+interface AIResponse {
+  insights: any;
+  cached: boolean;
+  timestamp: string;
+  warning?: string;
 }
 
 // Mock data - replace with real data from your backend
@@ -437,7 +452,7 @@ const formatDate = (dateString: string) => {
 
 async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise<GroupInsight[]> {
   try {
-    const response = await fetch('/api/coach/ai/insights', {
+    const response = await fetch('/api/coach/ai-insights', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -445,16 +460,30 @@ async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise
       body: JSON.stringify({ checkIns }),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      if (retryCount < 3) {
+      const error = data as AIError;
+      
+      if (error.retryable && retryCount < 3) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
         return fetchAIInsights(checkIns, retryCount + 1);
       }
-      return mockAIAnalysis.insights;
+
+      throw new Error(error.message);
     }
 
-    const data = await response.json();
-    return data.insights || mockAIAnalysis.insights;
+    const aiResponse = data as AIResponse;
+    
+    if (aiResponse.warning) {
+      toast.warning(aiResponse.warning);
+    }
+
+    if (aiResponse.cached) {
+      toast.info('Using cached insights');
+    }
+
+    return aiResponse.insights || mockAIAnalysis.insights;
   } catch (error) {
     console.error('Error fetching AI insights:', error);
     if (retryCount < 3) {
@@ -477,6 +506,8 @@ export default function CoachDashboard() {
   const [coachProfile, setCoachProfile] = useState<CoachProfile>(mockCoachProfile);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const lastAIUpdate = new Date().toISOString();
+  const [aiError, setAiError] = useState<AIError | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const handleSearchOpen = () => {
     setCommandPaletteOpen(true);
@@ -496,10 +527,21 @@ export default function CoachDashboard() {
 
   const handleAIInsightsRefresh = async () => {
     setIsLoadingInsights(true);
-    // TODO: Implement refresh logic
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-    setIsLoadingInsights(false);
-    toast.success('Insights refreshed');
+    setAiError(null);
+    setIsRetrying(true);
+    
+    try {
+      const insights = await fetchAIInsights(mockClientProgress, 0);
+      setAiAnalysis(prev => ({ ...prev, insights }));
+      toast.success('Insights refreshed');
+    } catch (error) {
+      const aiError = error as AIError;
+      setAiError(aiError);
+      toast.error(aiError.message);
+    } finally {
+      setIsLoadingInsights(false);
+      setIsRetrying(false);
+    }
   };
 
   useEffect(() => {
@@ -525,9 +567,9 @@ export default function CoachDashboard() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            </div>
-          );
+      </div>
+    </div>
+  );
   }
 
   // Transform metrics into CoachSummary format
@@ -589,6 +631,59 @@ export default function CoachDashboard() {
     }
   };
 
+  const renderAIInsights = () => {
+    if (isLoadingInsights) {
+          return (
+        <div className="flex items-center justify-center p-8">
+          <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2">Loading insights...</span>
+            </div>
+          );
+    }
+
+    if (aiError) {
+      return (
+        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                Error Loading Insights
+                              </h3>
+              <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+                {aiError.message}
+              </p>
+              {aiError.retryable && (
+                              <button 
+                  onClick={handleAIInsightsRefresh}
+                  disabled={isRetrying}
+                  className="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                >
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin mr-1" />
+                      Retrying...
+                    </>
+                  ) : (
+                    'Try Again'
+                  )}
+                </button>
+              )}
+                </div>
+              </div>
+            </div>
+          );
+    }
+
+          return (
+      <AIGroupInsights 
+        lastUpdated={lastAIUpdate}
+        onRefresh={handleAIInsightsRefresh}
+        isLoading={isLoadingInsights}
+      />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="container mx-auto px-4 py-8">
@@ -637,11 +732,7 @@ export default function CoachDashboard() {
 
           {/* AI Group Insights */}
           <div className="lg:col-span-3">
-            <AIGroupInsights 
-              lastUpdated={lastAIUpdate}
-              onRefresh={handleAIInsightsRefresh}
-              isLoading={isLoadingInsights}
-            />
+            {renderAIInsights()}
         </div>
 
         {/* Recent Progress Photos */}

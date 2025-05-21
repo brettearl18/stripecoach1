@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signOut } from 'firebase/auth';
 import { getFirestore, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
-import { firebaseConfig } from './firebaseConfig';
+import { firebaseConfig } from './config';
 import { validateData, schemas } from './data-validation';
 import { handleFirebaseError, ErrorType } from './error-handler';
 import { validatePassword, checkAuthAttempts, incrementAuthAttempts } from './auth-rules';

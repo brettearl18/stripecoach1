@@ -216,98 +216,104 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-10 max-w-2xl mx-auto">
       {/* Basic Information */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Basic Information</h2>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Title</label>
+      <div className="space-y-6 border-b border-gray-700 pb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Basic Information</h2>
+        <div className="mb-6">
+          <label htmlFor="title" className="block text-gray-200 text-base font-medium mb-2">Title</label>
           <input
+            id="title"
             type="text"
             value={formData.title}
             onChange={(e) => handleInputChange('title', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+            placeholder="Enter program title"
             required
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+        <div className="mb-6">
+          <label htmlFor="description" className="block text-gray-200 text-base font-medium mb-2">Description</label>
           <textarea
+            id="description"
             value={formData.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
             rows={3}
+            placeholder="Describe the program"
             required
           />
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Type</label>
+            <label htmlFor="type" className="block text-gray-200 text-base font-medium mb-2">Type</label>
             <input
+              id="type"
               type="text"
               value={formData.type}
               onChange={(e) => handleInputChange('type', e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+              placeholder="e.g. Weight Loss"
               required
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
+            <label htmlFor="category" className="block text-gray-200 text-base font-medium mb-2">Category</label>
             <input
+              id="category"
               type="text"
               value={formData.category}
               onChange={(e) => handleInputChange('category', e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+              placeholder="e.g. Fitness"
               required
             />
           </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Duration (weeks)</label>
+        <div className="mb-6">
+          <label htmlFor="duration" className="block text-gray-200 text-base font-medium mb-2">Duration (weeks)</label>
           <input
+            id="duration"
             type="number"
             value={formData.duration}
             onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
             min={1}
+            placeholder="8"
             required
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Tags</label>
-          <div className="mt-1 flex items-center space-x-2">
+        <div className="mb-6">
+          <label htmlFor="tags" className="block text-gray-200 text-base font-medium mb-2">Tags</label>
+          <div className="flex items-center space-x-2">
             <input
+              id="tags"
               type="text"
               value={newTag}
               onChange={(e) => setNewTag(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
               placeholder="Add a tag"
             />
             <button
               type="button"
               onClick={handleAddTag}
-              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-base font-medium flex items-center"
             >
-              Add
+              +
             </button>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {formData.metadata?.tags?.map(tag => (
               <span
                 key={tag}
-                className="inline-flex items-center px-2 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
-                  className="ml-1 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  aria-label={`Remove tag ${tag}`}
                 >
                   ×
                 </button>
@@ -318,17 +324,16 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
       </div>
 
       {/* Modules */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Modules</h2>
-        
-        <div className="space-y-4">
+      <div className="space-y-6 border-b border-gray-700 pb-8">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Modules</h2>
+        <div className="space-y-6">
           {formData.structure?.modules?.map((module, index) => (
-            <div key={module.id} className="p-4 border rounded-lg">
+            <div key={module.id} className="p-6 bg-gray-900 border border-gray-700 rounded-lg shadow hover:bg-gray-800 transition">
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="font-medium">{module.title}</h3>
-                  <p className="text-sm text-gray-500">{module.description}</p>
-                  <div className="mt-2 text-sm text-gray-500">
+                  <h3 className="font-semibold text-lg text-gray-100">{module.title}</h3>
+                  <p className="text-sm text-gray-400">{module.description}</p>
+                  <div className="mt-2 text-sm text-gray-400">
                     Duration: {module.duration} week(s)
                   </div>
                 </div>
@@ -337,7 +342,8 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
                     type="button"
                     onClick={() => handleModuleReorder(module.id, 'up')}
                     disabled={index === 0}
-                    className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="text-gray-400 hover:text-gray-200 disabled:opacity-50 px-2 py-1 rounded"
+                    aria-label="Move module up"
                   >
                     ↑
                   </button>
@@ -345,34 +351,35 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
                     type="button"
                     onClick={() => handleModuleReorder(module.id, 'down')}
                     disabled={index === formData.structure?.modules?.length - 1}
-                    className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="text-gray-400 hover:text-gray-200 disabled:opacity-50 px-2 py-1 rounded"
+                    aria-label="Move module down"
                   >
                     ↓
                   </button>
                   <button
                     type="button"
                     onClick={() => handleModuleEdit(module.id)}
-                    className="text-blue-600 hover:text-blue-700"
+                    className="text-blue-400 hover:text-blue-600 px-2 py-1 rounded"
+                    aria-label="Edit module"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => handleModuleDelete(module.id)}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-400 hover:text-red-600 px-2 py-1 rounded"
+                    aria-label="Delete module"
                   >
                     Delete
                   </button>
                 </div>
               </div>
-
               <ModuleContentForm
                 module={module}
                 onUpdate={(updatedModule) => {
                   const updatedModules = formData.structure?.modules?.map(m =>
                     m.id === module.id ? updatedModule : m
                   ) || [];
-                  
                   setFormData(prev => ({
                     ...prev,
                     structure: {
@@ -385,58 +392,58 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
             </div>
           ))}
         </div>
-
-        <div className="p-4 border rounded-lg">
-          <h3 className="font-medium mb-4">Add New Module</h3>
-          
+        <div className="p-6 bg-gray-900 border border-gray-700 rounded-lg shadow mt-6">
+          <h3 className="font-semibold text-lg text-gray-100 mb-4">Add New Module</h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Title</label>
+              <label htmlFor="module-title" className="block text-gray-200 text-base font-medium mb-2">Title</label>
               <input
+                id="module-title"
                 type="text"
                 value={currentModule.title}
                 onChange={(e) => setCurrentModule(prev => ({ ...prev, title: e.target.value }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                placeholder="Module title"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <label htmlFor="module-description" className="block text-gray-200 text-base font-medium mb-2">Description</label>
               <textarea
+                id="module-description"
                 value={currentModule.description}
                 onChange={(e) => setCurrentModule(prev => ({ ...prev, description: e.target.value }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                 rows={2}
+                placeholder="Module description"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700">Duration (weeks)</label>
+              <label htmlFor="module-duration" className="block text-gray-200 text-base font-medium mb-2">Duration (weeks)</label>
               <input
+                id="module-duration"
                 type="number"
                 value={currentModule.duration}
                 onChange={(e) => setCurrentModule(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                className="w-full h-12 px-4 py-3 bg-gray-900 text-gray-200 placeholder-gray-400 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                 min={1}
+                placeholder="2"
               />
             </div>
-
             <button
               type="button"
               onClick={handleModuleAdd}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors text-base font-medium flex items-center"
             >
-              Add Module
+              + Add Module
             </button>
           </div>
         </div>
       </div>
 
       {/* Settings */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Settings</h2>
-        
-        <div>
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold mb-4 text-gray-100">Settings</h2>
+        <div className="mb-6">
           <label className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -445,15 +452,14 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
                 ...formData.settings,
                 autoAssign: e.target.checked
               })}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="rounded border-gray-700 text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm font-medium text-gray-700">Auto-assign to new clients</span>
+            <span className="text-base font-medium text-gray-200">Auto-assign to new clients</span>
           </label>
         </div>
-
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-2">
-            <h3 className="font-medium">Notifications</h3>
+            <h3 className="font-semibold text-gray-200 mb-2">Notifications</h3>
             {Object.entries(formData.settings?.notifications || {}).map(([key, value]) => (
               <label key={key} className="flex items-center space-x-2">
                 <input
@@ -466,15 +472,14 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
                       [key]: e.target.checked
                     }
                   })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-700 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                <span className="text-base text-gray-200">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
               </label>
             ))}
           </div>
-
           <div className="space-y-2">
-            <h3 className="font-medium">Progress Tracking</h3>
+            <h3 className="font-semibold text-gray-200 mb-2">Progress Tracking</h3>
             {Object.entries(formData.settings?.progressTracking || {}).map(([key, value]) => (
               <label key={key} className="flex items-center space-x-2">
                 <input
@@ -487,9 +492,9 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
                       [key]: e.target.checked
                     }
                   })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-gray-700 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                <span className="text-base text-gray-200">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
               </label>
             ))}
           </div>
@@ -497,17 +502,17 @@ export default function ProgramTemplateForm({ initialData, onSubmit, onCancel }:
       </div>
 
       {/* Form Actions */}
-      <div className="flex justify-end space-x-4">
+      <div className="flex justify-end space-x-4 mt-8">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-6 py-3 border border-gray-700 rounded-lg hover:bg-gray-800 text-gray-200 text-base font-medium transition-colors"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-base font-medium transition-colors"
         >
           Save Template
         </button>

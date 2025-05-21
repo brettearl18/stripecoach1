@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import { analyticsService } from '@/lib/services/database';
 import { useAuth } from '@/hooks/useAuth';

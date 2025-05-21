@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles, Plus, Trash2, GripVertical, Save, Copy, MoreVertical, X, Camera, Ruler, Calendar, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DefaultTemplates } from './components/DefaultTemplates'
 import { TemplateBranding } from './components/TemplateBranding'
+import { getUserQuestions, getCompanyQuestions, getGlobalQuestions, Question } from '@/lib/services/questionBankService';
+import TemplateAllocation from './components/TemplateAllocation';
 
 // Template types with clear descriptions and icons
 const TEMPLATE_TYPES = [
@@ -58,6 +60,24 @@ const QUESTION_TYPES = [
     label: 'Multiple Choice',
     description: 'Select multiple options',
     example: 'Which areas need more focus?'
+  },
+  {
+    type: 'number',
+    label: 'Number',
+    description: 'Numeric input',
+    example: 'How many workouts did you complete?'
+  },
+  {
+    type: 'date',
+    label: 'Date',
+    description: 'Date picker',
+    example: 'When did you start your program?'
+  },
+  {
+    type: 'fileUpload',
+    label: 'File Upload',
+    description: 'Upload a file or photo',
+    example: 'Upload your progress photo'
   }
 ];
 
@@ -79,6 +99,34 @@ const WEEK_NUMBERS = [
   { value: 'last', label: 'Last' },
 ];
 
+const SUGGESTED_BASICS = [
+  {
+    key: 'weight',
+    label: 'Weight',
+    type: 'number',
+    placeholder: 'Enter weight',
+    helpText: 'Client body weight (kg or lbs)'
+  },
+  {
+    key: 'nutritionCompliance',
+    label: 'Nutrition Compliance',
+    type: 'scale',
+    min: 1,
+    max: 5,
+    placeholder: '',
+    helpText: 'How well did you stick to your nutrition plan? (1-5)'
+  },
+  {
+    key: 'gymCompliance',
+    label: 'Gym Compliance',
+    type: 'scale',
+    min: 1,
+    max: 5,
+    placeholder: '',
+    helpText: 'How well did you stick to your gym/workout plan? (1-5)'
+  }
+];
+
 export default function TemplateBuilderV2() {
   const [step, setStep] = useState(1);
   const [template, setTemplate] = useState({
@@ -88,8 +136,8 @@ export default function TemplateBuilderV2() {
     sections: [],
     frequency: 'weekly',
     branding: {
-      primaryColor: '#4F46E5',
-      secondaryColor: '#818CF8',
+      primaryColor: '#635BFF',
+      secondaryColor: '#00B87C',
       logo: '',
       fontFamily: 'Inter',
       customCSS: ''
@@ -108,14 +156,46 @@ export default function TemplateBuilderV2() {
       customPattern: ''
     }
   });
-  
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [libraryTab, setLibraryTab] = useState<'user' | 'company' | 'global'>('user');
+  const [userQuestions, setUserQuestions] = useState<Question[]>([]);
+  const [companyQuestions, setCompanyQuestions] = useState<Question[]>([]);
+  const [globalQuestions, setGlobalQuestions] = useState<Question[]>([]);
+  const coachId = 'demo-coach'; // TODO: Replace with real auth
+  const companyId = 'demo-company'; // TODO: Replace with real company
+  const [showBrandingAdvanced, setShowBrandingAdvanced] = useState(false);
+  const [showAllocationSuccess, setShowAllocationSuccess] = useState(false);
+
+  const defaultBranding = {
+    primaryColor: '#635BFF',
+    secondaryColor: '#00B87C',
+    fontFamily: 'Inter',
+  };
+
+  useEffect(() => {
+    if (showLibrary) {
+      getUserQuestions(coachId).then(setUserQuestions);
+      getCompanyQuestions(companyId).then(setCompanyQuestions);
+      getGlobalQuestions().then(setGlobalQuestions);
+    }
+  }, [showLibrary]);
+
+  useEffect(() => {
+    if (!template.branding.primaryColor) {
+      setTemplate(t => ({
+        ...t,
+        branding: { ...defaultBranding }
+      }));
+    }
+  }, []);
+
   // Step 1: Template Type Selection
   const renderTemplateTypeSelection = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Choose Template Type</h2>
-          <p className="text-muted-foreground">Select the type of template you want to create</p>
+          <h2 className="text-3xl font-semibold text-[#1A1A1A]">Choose Template Type</h2>
+          <p className="text-[#6B7280] mt-2">Select the type of template you want to create</p>
         </div>
       </div>
 
@@ -136,15 +216,15 @@ export default function TemplateBuilderV2() {
               });
               setStep(2);
             }}
-            className={`p-6 rounded-xl border-2 transition-colors text-left ${
+            className={`p-8 rounded-xl border-2 transition-all duration-200 text-left ${
               template.type === type.id
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-primary/50'
+                ? 'border-[#635BFF] bg-[#635BFF]/5 shadow-lg'
+                : 'border-[#E5E7EB] hover:border-[#635BFF]/50 hover:shadow-md'
             }`}
           >
-            <type.icon className="w-8 h-8 mb-4 text-primary" />
-            <h3 className="font-semibold mb-2">{type.title}</h3>
-            <p className="text-sm text-muted-foreground">{type.description}</p>
+            <type.icon className="w-10 h-10 mb-4 text-[#635BFF]" />
+            <h3 className="text-xl font-semibold mb-3 text-[#1A1A1A]">{type.title}</h3>
+            <p className="text-[#6B7280] leading-relaxed">{type.description}</p>
           </motion.button>
         ))}
       </div>
@@ -153,220 +233,119 @@ export default function TemplateBuilderV2() {
 
   // Step 2: Basic Details
   const renderBasicDetails = () => (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-8 max-w-2xl">
       <div>
-        <h2 className="text-2xl font-semibold">Template Details</h2>
-        <p className="text-muted-foreground">Set up the basic information for your template</p>
+        <h2 className="text-3xl font-semibold text-[#1A1A1A]">Template Details</h2>
+        <p className="text-[#6B7280] mt-2">Set up the basic information for your template</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <label className="text-sm font-medium mb-1.5 block">Template Title</label>
+          <label className="text-sm font-medium mb-2 block text-[#1A1A1A]">Template Title</label>
           <input
             type="text"
             value={template.title}
             onChange={(e) => setTemplate({ ...template, title: e.target.value })}
-            className="w-full px-4 py-2 rounded-lg bg-background border border-input"
+            className="w-full px-4 py-3 rounded-lg bg-[#18181b] border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all duration-200 text-white placeholder:text-gray-300"
             placeholder="e.g., Weekly Check-in Form"
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-1.5 block">Description</label>
+          <label className="text-sm font-medium mb-2 block text-[#1A1A1A]">Description</label>
           <textarea
             value={template.description}
             onChange={(e) => setTemplate({ ...template, description: e.target.value })}
-            className="w-full px-4 py-2 rounded-lg bg-background border border-input min-h-[100px]"
+            className="w-full px-4 py-3 rounded-lg bg-[#18181b] border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all duration-200 min-h-[120px] text-white placeholder:text-gray-300"
             placeholder="Describe the purpose of this template..."
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium mb-1.5 block">Frequency</label>
+          <label className="text-sm font-medium mb-2 block text-[#1A1A1A]">Frequency</label>
           <select
             value={template.frequency}
-            onChange={(e) => {
-              setTemplate({
-                ...template,
-                frequency: e.target.value,
-                schedule: {
-                  ...template.schedule,
-                  type: e.target.value,
-                  days: [],
-                  timeWindow: { start: '09:00', end: '17:00' }
-                }
-              });
-            }}
-            className="w-full px-4 py-2 rounded-lg bg-background border border-input"
+            onChange={(e) => setTemplate({ ...template, frequency: e.target.value })}
+            className="w-full px-4 py-3 rounded-lg bg-[#18181b] border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 transition-all duration-200 text-white"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
-            <option value="fortnightly">Fortnightly</option>
             <option value="monthly">Monthly</option>
             <option value="custom">Custom</option>
           </select>
-        </div>
+          </div>
 
         {/* Schedule Settings */}
         <div className="border border-border rounded-lg p-4 space-y-4">
           <h3 className="font-medium">Schedule Settings</h3>
-          
-          {/* Time Window */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Open Day</label>
+              <select
+                value={template.schedule?.openDay || 'monday'}
+                onChange={e => setTemplate({
+                  ...template,
+                  schedule: {
+                    ...template.schedule,
+                    openDay: e.target.value
+                  }
+                })}
+                className="w-full px-4 py-2 rounded-lg bg-[#18181b] border border-input text-white"
+              >
+                {DAYS_OF_WEEK.map(day => (
+                  <option key={day.value} value={day.value}>{day.label}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Open Time</label>
               <input
                 type="time"
-                value={template.schedule?.timeWindow?.start || '09:00'}
-                onChange={(e) => setTemplate({
+                value={template.schedule?.openTime || '09:00'}
+                onChange={e => setTemplate({
                   ...template,
                   schedule: {
                     ...template.schedule,
-                    timeWindow: {
-                      ...template.schedule?.timeWindow,
-                      start: e.target.value
-                    }
+                    openTime: e.target.value
                   }
                 })}
-                className="w-full px-4 py-2 rounded-lg bg-background border border-input"
+                className="w-full px-4 py-2 rounded-lg bg-[#18181b] border border-input text-white"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Close Day</label>
+              <select
+                value={template.schedule?.closeDay || 'tuesday'}
+                onChange={e => setTemplate({
+                  ...template,
+                  schedule: {
+                    ...template.schedule,
+                    closeDay: e.target.value
+                  }
+                })}
+                className="w-full px-4 py-2 rounded-lg bg-[#18181b] border border-input text-white"
+              >
+                {DAYS_OF_WEEK.map(day => (
+                  <option key={day.value} value={day.value}>{day.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Close Time</label>
               <input
                 type="time"
-                value={template.schedule?.timeWindow?.end || '17:00'}
-                onChange={(e) => setTemplate({
+                value={template.schedule?.closeTime || '17:00'}
+                onChange={e => setTemplate({
                   ...template,
                   schedule: {
                     ...template.schedule,
-                    timeWindow: {
-                      ...template.schedule?.timeWindow,
-                      end: e.target.value
-                    }
+                    closeTime: e.target.value
                   }
                 })}
-                className="w-full px-4 py-2 rounded-lg bg-background border border-input"
+                className="w-full px-4 py-2 rounded-lg bg-[#18181b] border border-input text-white"
               />
             </div>
           </div>
-
-          {/* Days Selection for Weekly/Fortnightly */}
-          {(template.frequency === 'weekly' || template.frequency === 'fortnightly') && (
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Select Days {template.frequency === 'fortnightly' ? '(Every Two Weeks)' : ''}
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {DAYS_OF_WEEK.map((day) => (
-                  <label
-                    key={day.value}
-                    className="flex items-center space-x-2 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={template.schedule?.days?.includes(day.value)}
-                      onChange={(e) => {
-                        const days = template.schedule?.days || [];
-                        setTemplate({
-                          ...template,
-                          schedule: {
-                            ...template.schedule,
-                            days: e.target.checked
-                              ? [...days, day.value]
-                              : days.filter(d => d !== day.value)
-                          }
-                        });
-                      }}
-                      className="rounded border-input"
-                    />
-                    <span>{day.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Monthly Pattern */}
-          {template.frequency === 'monthly' && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Select Pattern</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <select
-                    value={template.schedule?.monthlyPattern?.week || 'first'}
-                    onChange={(e) => setTemplate({
-                      ...template,
-                      schedule: {
-                        ...template.schedule,
-                        monthlyPattern: {
-                          ...template.schedule?.monthlyPattern,
-                          week: e.target.value
-                        }
-                      }
-                    })}
-                    className="w-full px-4 py-2 rounded-lg bg-background border border-input"
-                  >
-                    {WEEK_NUMBERS.map((week) => (
-                      <option key={week.value} value={week.value}>
-                        {week.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={template.schedule?.monthlyPattern?.day || 'monday'}
-                    onChange={(e) => setTemplate({
-                      ...template,
-                      schedule: {
-                        ...template.schedule,
-                        monthlyPattern: {
-                          ...template.schedule?.monthlyPattern,
-                          day: e.target.value
-                        }
-                      }
-                    })}
-                    className="w-full px-4 py-2 rounded-lg bg-background border border-input"
-                  >
-                    {DAYS_OF_WEEK.map((day) => (
-                      <option key={day.value} value={day.value}>
-                        {day.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Example: First Monday of every month
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Custom Schedule */}
-          {template.frequency === 'custom' && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Custom Schedule</label>
-                <textarea
-                  value={template.schedule?.customPattern || ''}
-                  onChange={(e) => setTemplate({
-                    ...template,
-                    schedule: {
-                      ...template.schedule,
-                      customPattern: e.target.value
-                    }
-                  })}
-                  placeholder="Describe your custom schedule pattern..."
-                  className="w-full px-4 py-2 rounded-lg bg-background border border-input min-h-[100px]"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Examples:
-                  <br />- Every 3 weeks on Monday and Wednesday
-                  <br />- First and third Tuesday of each month
-                  <br />- Every 10 days
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -391,225 +370,399 @@ export default function TemplateBuilderV2() {
   // Step 3: Section Builder
   const renderSectionBuilder = () => (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Build Your Template</h2>
-        <p className="text-muted-foreground">Add and organize sections and questions</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-semibold text-[#1A1A1A]">Template Sections</h2>
+          <p className="text-[#6B7280] mt-2">Organize your template into logical sections</p>
         </div>
+        <button
+              onClick={() => {
+            setTemplate({
+              ...template,
+              sections: [
+                ...template.sections,
+                {
+                  id: crypto.randomUUID(),
+                  title: 'New Section',
+                  questions: []
+                }
+              ]
+            });
+          }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#635BFF] text-white hover:bg-[#635BFF]/90 transition-colors duration-200"
+        >
+          <Plus className="w-5 h-5" />
+          Add Section
+        </button>
+      </div>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Sections Panel */}
-        <div className="col-span-8 space-y-6">
-          {template.sections.map((section, sectionIndex) => (
-            <motion.div
-              key={section.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-card border border-border rounded-xl p-6 space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <input
-                  type="text"
-                  value={section.title}
-                  onChange={(e) => {
-                    const newSections = [...template.sections];
-                    newSections[sectionIndex].title = e.target.value;
-                    setTemplate({ ...template, sections: newSections });
-                  }}
-                  className="text-lg font-medium bg-transparent border-none focus:outline-none"
-                  placeholder="Section Title"
-                />
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const newSections = [...template.sections];
-                      newSections.splice(sectionIndex, 1);
+      {/* Suggested Basics Panel */}
+      <div className="mb-6 p-4 bg-[#F7F8FA] border border-[#E5E7EB] rounded-xl">
+        <h3 className="font-semibold text-[#635BFF] mb-2">Suggested Basics</h3>
+        <div className="flex flex-wrap gap-4">
+          {SUGGESTED_BASICS.map(basic => {
+            // Check if this basic is already in the first section
+            const basicsSection = template.sections[0];
+            const exists = basicsSection && basicsSection.questions.some(q => q.key === basic.key);
+            return (
+              <div key={basic.key} className="flex items-center gap-2">
+                <label className="font-medium text-[#635BFF] flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={exists}
+                    onChange={e => {
+                      let newSections = [...template.sections];
+                      // Ensure at least one section exists
+                      if (!newSections.length) {
+                        newSections = [{
+                          id: crypto.randomUUID(),
+                          title: 'Basics',
+                          questions: []
+                        }];
+                      }
+                      if (e.target.checked) {
+                        // Add the basic question if not present
+                        if (!newSections[0].questions.some(q => q.key === basic.key)) {
+                          newSections[0].questions.unshift({
+                            id: crypto.randomUUID(),
+                            text: basic.label,
+                            type: basic.type,
+                            min: basic.min,
+                            max: basic.max,
+                            placeholder: basic.placeholder,
+                            helpText: basic.helpText,
+                            required: true,
+                            key: basic.key // for mapping to dashboard
+                          });
+                        }
+                      } else {
+                        // Remove the basic question
+                        newSections[0].questions = newSections[0].questions.filter(q => q.key !== basic.key);
+                      }
                       setTemplate({ ...template, sections: newSections });
                     }}
-                    className="p-2 text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <button className="p-2 text-muted-foreground cursor-move">
-                    <GripVertical className="w-4 h-4" />
-                  </button>
-                </div>
+                  />
+                  {basic.label}
+                </label>
               </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-[#635BFF] mt-2">Including these basics ensures your client's dashboard is always up to date.</p>
+      </div>
 
-              {/* Questions */}
-              <div className="space-y-3">
-                {section.questions.map((question, questionIndex) => (
-                  <motion.div
-                    key={question.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex items-start gap-4 p-4 bg-background rounded-lg group"
-                  >
+      <div className="space-y-6">
+        {template.sections.map((section, index) => (
+          <div
+            key={section.id}
+            className="p-6 rounded-xl border border-[#E5E7EB] bg-white shadow-sm"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <input
+                type="text"
+                value={section.title}
+                onChange={(e) => {
+                  const newSections = [...template.sections];
+                  newSections[index].title = e.target.value;
+                  setTemplate({ ...template, sections: newSections });
+                }}
+                className="text-xl font-semibold bg-transparent border-none focus:ring-0 p-0 text-[#1A1A1A]"
+                placeholder="Section Title"
+              />
+              <button
+                onClick={() => {
+                  const newSections = template.sections.filter((_, i) => i !== index);
+                  setTemplate({ ...template, sections: newSections });
+                }}
+                className="p-2 text-[#6B7280] hover:text-[#FF4D4F] transition-colors duration-200"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {section.questions.map((question, qIndex) => (
+                <div
+                  key={question.id}
+                  className="p-4 rounded-lg border border-[#E5E7EB] bg-[#F7F8FA]"
+                >
+                  <div className="flex items-center gap-4">
+                    <GripVertical className="w-5 h-5 text-[#6B7280]" />
                     <div className="flex-1">
                       <input
                         type="text"
                         value={question.text}
                         onChange={(e) => {
                           const newSections = [...template.sections];
-                          newSections[sectionIndex].questions[questionIndex].text = e.target.value;
+                          newSections[index].questions[qIndex].text = e.target.value;
                           setTemplate({ ...template, sections: newSections });
                         }}
-                        className="w-full bg-transparent border-none focus:outline-none"
-                        placeholder="Enter your question"
+                        className="w-full bg-transparent border-none focus:ring-0 p-0 text-[#1A1A1A]"
+                        placeholder="Question text"
                       />
-                      <div className="flex items-center gap-4 mt-2">
-                        <select
-                          value={question.type}
-                          onChange={(e) => {
-                            const newSections = [...template.sections];
-                            newSections[sectionIndex].questions[questionIndex].type = e.target.value;
-                            setTemplate({ ...template, sections: newSections });
-                          }}
-                          className="px-2 py-1 text-sm bg-primary/10 text-primary rounded border-none"
-                        >
-                          {QUESTION_TYPES.map(type => (
-                            <option key={type.type} value={type.type}>{type.label}</option>
-                          ))}
-                        </select>
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={question.required}
-                            onChange={(e) => {
-                              const newSections = [...template.sections];
-                              newSections[sectionIndex].questions[questionIndex].required = e.target.checked;
-                              setTemplate({ ...template, sections: newSections });
-                            }}
-                            className="rounded border-input"
-                          />
-                          Required
-                        </label>
-                      </div>
                     </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => {
-                          const newSections = [...template.sections];
-                          newSections[sectionIndex].questions.splice(questionIndex, 1);
-                          setTemplate({ ...template, sections: newSections });
-                        }}
-                        className="p-1.5 text-muted-foreground hover:text-destructive rounded-md hover:bg-destructive/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button className="p-1.5 text-muted-foreground cursor-move rounded-md hover:bg-accent">
-                        <GripVertical className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-                <button
-                  onClick={() => {
-                    const newSections = [...template.sections];
-                    newSections[sectionIndex].questions.push({
-                      id: crypto.randomUUID(),
-                      text: '',
-                      type: 'text',
-                      required: false
-                    });
-                    setTemplate({ ...template, sections: newSections });
-                  }}
-                  className="w-full py-3 border-2 border-dashed border-border rounded-lg hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Question
-                </button>
-            </div>
-            </motion.div>
-          ))}
+                    <select
+                      value={question.type}
+                      onChange={(e) => {
+                        const newSections = [...template.sections];
+                        newSections[index].questions[qIndex].type = e.target.value;
+                        setTemplate({ ...template, sections: newSections });
+                      }}
+                      className="px-3 py-1 rounded-md border border-[#E5E7EB] bg-white text-[#1A1A1A]"
+                    >
+                      {QUESTION_TYPES.map((type) => (
+                        <option key={type.type} value={type.type}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const newSections = [...template.sections];
+                        newSections[index].questions = newSections[index].questions.filter(
+                          (_, i) => i !== qIndex
+                        );
+                        setTemplate({ ...template, sections: newSections });
+                      }}
+                      className="p-2 text-[#6B7280] hover:text-[#FF4D4F] transition-colors duration-200"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
 
-          <button
-            onClick={() => {
-              setTemplate({
-                ...template,
-                sections: [
-                  ...template.sections,
-                  {
+              <button
+                onClick={() => {
+                  const newSections = [...template.sections];
+                  newSections[index].questions.push({
                     id: crypto.randomUUID(),
-                    title: 'New Section',
-                    questions: []
-                  }
-                ]
-              });
-            }}
-            className="w-full py-4 border-2 border-dashed border-border rounded-xl hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Add Section
-          </button>
-        </div>
-
-        {/* AI Assistant Panel */}
-        <div className="col-span-4 space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6 sticky top-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">AI Assistant</h3>
+                    text: '',
+                    type: 'text'
+                  });
+                  setTemplate({ ...template, sections: newSections });
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#E5E7EB] text-[#635BFF] hover:bg-[#635BFF]/5 transition-colors duration-200"
+              >
+                <Plus className="w-5 h-5" />
+                Add Question
+              </button>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Get AI-powered suggestions for questions based on your template type and sections.
-            </p>
-            <button
-              className="w-full bg-primary/10 text-primary rounded-lg py-2 px-4 hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              Generate Suggestions
-            </button>
           </div>
-        </div>
+        ))}
       </div>
 
-      <div className="flex justify-end gap-4">
+      <div className="flex justify-end gap-4 pt-6">
         <button
           onClick={() => setStep(2)}
-          className="px-4 py-2 text-muted-foreground hover:text-foreground"
+          className="px-4 py-2 text-muted-foreground hover:text-foreground border border-[#E5E7EB] rounded-lg bg-transparent"
         >
           Back
         </button>
         <button
           onClick={() => {
-            // Save template logic here
+            // Save template logic here (for now, just alert or log)
             alert('Template saved successfully!');
           }}
-          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+          className="px-6 py-2 bg-[#00B87C] text-white rounded-lg hover:bg-[#00B87C]/90"
         >
-          <Save className="w-4 h-4" />
           Save Template
+        </button>
+        <button
+          onClick={() => setStep(4)}
+          className="px-6 py-2 bg-[#635BFF] text-white rounded-lg hover:bg-[#635BFF]/90"
+        >
+          Continue
         </button>
       </div>
     </div>
   );
 
-  // Add the branding step render function
-  const renderBranding = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">Customize Branding</h2>
-        <p className="text-muted-foreground">Personalize the appearance of your template</p>
+  // Step 4: Preview & Finalize
+  const renderPreviewFinalize = () => (
+    <div className="space-y-8">
+      <h2 className="text-3xl font-semibold text-[#1A1A1A]">Preview & Finalize</h2>
+      <p className="text-[#6B7280] mt-2">Review your template and make any final adjustments before publishing.</p>
+
+      {/* Preview Panel */}
+      <div className="p-6 rounded-xl border border-[#E5E7EB] bg-white max-w-xl">
+        <h3 className="text-lg font-semibold mb-4 text-[#1A1A1A]">Template Preview</h3>
+        <div
+          className="p-6 rounded-lg"
+          style={{
+            backgroundColor: (template.branding.primaryColor || defaultBranding.primaryColor) + '10',
+            border: `2px solid ${template.branding.primaryColor || defaultBranding.primaryColor}`
+          }}
+        >
+          <h4
+            className="text-xl font-semibold mb-2"
+            style={{ color: template.branding.primaryColor || defaultBranding.primaryColor, fontFamily: template.branding.fontFamily || defaultBranding.fontFamily }}
+          >
+            {template.title || 'Template Title'}
+          </h4>
+          <p className="text-[#6B7280] mb-4" style={{ fontFamily: template.branding.fontFamily || defaultBranding.fontFamily }}>
+            {template.description || 'Template description...'}
+          </p>
+          {/* Render sections and questions */}
+          <div className="space-y-6">
+            {template.sections.map((section, idx) => (
+              <div key={section.id || idx} className="bg-white border border-[#E5E7EB] rounded-lg p-4">
+                <h5 className="font-semibold text-[#1A1A1A] mb-2">{section.title}</h5>
+                <ul className="space-y-2">
+                  {section.questions.map((q, qIdx) => (
+                    <li key={q.id || qIdx} className="flex items-center gap-2 p-2 rounded bg-[#F7F8FA] border border-[#E5E7EB]">
+                      <span className="font-medium text-[#635BFF]">{q.text}</span>
+                      <span className="ml-auto text-xs text-[#6B7280]">{QUESTION_TYPES.find(t => t.type === q.type)?.label || q.type}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {template.sections.length === 0 && (
+              <div className="text-[#6B7280] italic">No sections or questions added yet.</div>
+            )}
+          </div>
+        </div>
       </div>
-      <TemplateBranding
-        onBrandingUpdate={(branding) => setTemplate({ ...template, branding })}
-        initialBranding={template.branding}
-      />
-      <div className="flex justify-end gap-4">
+
+      {/* Advanced Branding Section */}
+      <div>
+        <button
+          className="text-[#635BFF] font-medium underline mb-2"
+          onClick={() => setShowBrandingAdvanced(v => !v)}
+        >
+          {showBrandingAdvanced ? 'Hide' : 'Customize'} Branding (Advanced)
+        </button>
+        {showBrandingAdvanced && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4 border border-[#E5E7EB] rounded-xl bg-[#18181b] mt-2">
+            <div className="space-y-6">
+              <div>
+                <label className="text-sm font-medium mb-2 block text-white">Primary Color</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="color"
+                    value={template.branding.primaryColor || defaultBranding.primaryColor}
+                    onChange={(e) =>
+                      setTemplate({
+                        ...template,
+                        branding: { ...template.branding, primaryColor: e.target.value }
+                      })
+                    }
+                    className="w-12 h-12 rounded-lg border border-[#E5E7EB] cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={template.branding.primaryColor || defaultBranding.primaryColor}
+                    onChange={(e) =>
+                      setTemplate({
+                        ...template,
+                        branding: { ...template.branding, primaryColor: e.target.value }
+                      })
+                    }
+                    className="flex-1 px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 bg-[#18181b] text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block text-white">Secondary Color</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="color"
+                    value={template.branding.secondaryColor || defaultBranding.secondaryColor}
+                    onChange={(e) =>
+                      setTemplate({
+                        ...template,
+                        branding: { ...template.branding, secondaryColor: e.target.value }
+                      })
+                    }
+                    className="w-12 h-12 rounded-lg border border-[#E5E7EB] cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={template.branding.secondaryColor || defaultBranding.secondaryColor}
+                    onChange={(e) =>
+                      setTemplate({
+                        ...template,
+                        branding: { ...template.branding, secondaryColor: e.target.value }
+                      })
+                    }
+                    className="flex-1 px-4 py-2 rounded-lg border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 bg-[#18181b] text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block text-white">Font Family</label>
+                <select
+                  value={template.branding.fontFamily || defaultBranding.fontFamily}
+                  onChange={(e) =>
+                    setTemplate({
+                      ...template,
+                      branding: { ...template.branding, fontFamily: e.target.value }
+                    })
+                  }
+                  className="w-full px-4 py-3 rounded-lg border border-[#E5E7EB] focus:border-[#635BFF] focus:ring-2 focus:ring-[#635BFF]/20 bg-[#18181b] text-white"
+                >
+                  <option value="Inter">Inter</option>
+                  <option value="Roboto">Roboto</option>
+                  <option value="Open Sans">Open Sans</option>
+                </select>
+              </div>
+            </div>
+        </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-4 pt-6">
         <button
           onClick={() => setStep(3)}
-          className="px-4 py-2 text-muted-foreground hover:text-foreground"
+          className="px-4 py-2 text-muted-foreground hover:text-foreground border border-[#E5E7EB] rounded-lg bg-transparent"
         >
           Back
         </button>
         <button
-          onClick={() => setStep(5)}
-          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 flex items-center gap-2"
+          onClick={() => {
+            // Save as draft logic here (for now, just alert or log)
+            alert('Template saved as draft!');
+          }}
+          className="px-6 py-2 bg-[#00B87C] text-white rounded-lg hover:bg-[#00B87C]/90"
         >
-          Continue
-          <ChevronRight className="w-4 h-4" />
+          Save as Draft
+        </button>
+        <button
+          onClick={() => setShowAllocationSuccess(false) || setStep(5)}
+          className="px-6 py-2 bg-[#635BFF] text-white rounded-lg hover:bg-[#635BFF]/90"
+        >
+          Publish / Finish
+        </button>
+        <button
+          onClick={() => setStep(5)}
+          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 ml-2"
+        >
+          Assign to Clients
         </button>
       </div>
+    </div>
+  );
+
+  // Step 5: Allocation
+  const renderAllocationStep = () => (
+    <div>
+      <TemplateAllocation
+        defaultSettings={{
+          frequency: template.frequency ? { type: template.frequency } : { type: 'weekly' },
+          checkInWindow: 7
+        }}
+        onBack={() => setStep(4)}
+        onSave={(allocations) => {
+          setShowAllocationSuccess(true);
+          // Here you would save allocations to the backend
+        }}
+      />
+      {showAllocationSuccess && (
+        <div className="mt-8 p-4 bg-green-100 text-green-800 rounded-lg">
+          Template successfully allocated to selected clients!
+        </div>
+      )}
     </div>
   );
 
@@ -642,8 +795,8 @@ export default function TemplateBuilderV2() {
             {step === 1 && renderTemplateTypeSelection()}
             {step === 2 && renderBasicDetails()}
             {step === 3 && renderSectionBuilder()}
-            {step === 4 && renderBranding()}
-            {step === 5 && renderPreview()}
+            {step === 4 && renderPreviewFinalize()}
+            {step === 5 && renderAllocationStep()}
           </motion.div>
         </AnimatePresence>
       </main>

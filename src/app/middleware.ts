@@ -2,81 +2,72 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+// Define public routes that don't require authentication
+const publicRoutes = [
+  '/sign-in',
+  '/signup',
+  '/forgot-password',
+  '/',
+  '/api/auth',
+];
+
+// Define protected routes and their allowed roles
+const protectedRoutes = {
+  '/admin': ['admin'],
+  '/coach': ['coach', 'admin'],
+  '/client': ['client', 'coach', 'admin'],
+};
+
 export async function middleware(request: NextRequest) {
-  // Get the pathname of the request
-  const path = request.nextUrl.pathname;
-  console.log('Middleware - Current path:', path);
-
-  // Define public paths that don't require authentication
-  const isPublicPath = path === '/login' || path === '/signup' || path === '/reset-password' || path === '/';
-  console.log('Middleware - Is public path:', isPublicPath);
-
-  // Get the token from NextAuth
   const token = await getToken({ 
     req: request,
     secret: process.env.NEXTAUTH_SECRET
   });
 
-  console.log('Middleware - Token data:', {
-    exists: !!token,
-    role: token?.role,
-    email: token?.email,
-    path
-  });
+  const path = request.nextUrl.pathname;
 
-  // If accessing a public path while authenticated, redirect to role-specific dashboard
-  if (isPublicPath && token?.role) {
-    const redirectPath = `/${token.role}/dashboard`;
-    console.log('Middleware - Redirecting authenticated user from public path to:', redirectPath);
-    return NextResponse.redirect(new URL(redirectPath, request.url));
+  // Allow access to public routes
+  if (publicRoutes.some(route => path.startsWith(route))) {
+    return NextResponse.next();
   }
 
-  // If accessing a protected path without authentication, redirect to login
-  if (!isPublicPath && !token) {
-    console.log('Middleware - Redirecting unauthenticated user to login');
-    return NextResponse.redirect(new URL('/login', request.url));
+  // If user is not authenticated, redirect to login
+  if (!token) {
+    return NextResponse.redirect(new URL('/sign-in', request.url));
   }
 
-  // If authenticated, check role-based access
-  if (token?.role && !isPublicPath) {
-    const userRole = token.role;
-    
-    // Extract the role from the URL path (e.g., /coach/dashboard -> coach)
-    const urlRole = path.split('/')[1];
-    
-    console.log('Middleware - Role check:', {
-      userRole,
-      urlRole,
-      path
-    });
-
-    // Verify role-based access
-    if (userRole === 'admin') {
-      // Admin can access everything
-      console.log('Middleware - Admin access granted');
-      return NextResponse.next();
-    } else if (urlRole !== userRole) {
-      // Other roles can only access their own paths
-      const correctPath = `/${userRole}/dashboard`;
-      console.log('Middleware - Redirecting to correct role path:', correctPath);
-      return NextResponse.redirect(new URL(correctPath, request.url));
+  // Check role-based access
+  for (const [route, allowedRoles] of Object.entries(protectedRoutes)) {
+    if (path.startsWith(route) && !allowedRoles.includes(token.role as string)) {
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 
-  console.log('Middleware - Access granted');
+  // If user is a client and hasn't completed onboarding
+  if (path.startsWith('/client') && 
+      !path.startsWith('/client/onboarding') && 
+      token.role === 'client' && 
+      !token.onboardingCompleted) {
+    return NextResponse.redirect(new URL('/client/onboarding', request.url));
+  }
+
+  // If user has completed onboarding and tries to access onboarding page
+  if (path === '/client/onboarding' && token.onboardingCompleted) {
+    return NextResponse.redirect(new URL('/client/dashboard', request.url));
+  }
+
   return NextResponse.next();
 }
 
-// Configure which paths the middleware should run on
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public folder
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
 }; 

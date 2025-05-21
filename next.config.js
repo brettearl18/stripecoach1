@@ -62,7 +62,7 @@ const nextConfig = {
   staticPageGenerationTimeout: 120,
   // Enable experimental features
   experimental: {
-    serverActions: true,
+    serverActions: { bodySizeLimit: '2mb' },
     // Enable modern features
     optimizeCss: true,
     scrollRestoration: true,
@@ -86,4 +86,17 @@ const nextConfig = {
   reactStrictMode: true,
 }
 
-module.exports = nextConfig
+const { withSentryConfig } = require("@sentry/nextjs");
+
+module.exports = withSentryConfig(
+  nextConfig,
+  {
+    org: "vana-health-pty-ltd",
+    project: "javascript-nextjs",
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    tunnelRoute: "/monitoring",
+    disableLogger: true,
+    automaticVercelMonitors: true,
+  }
+);

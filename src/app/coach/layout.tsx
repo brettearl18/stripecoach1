@@ -24,6 +24,11 @@ const navigation = [
     icon: '👥'
   },
   {
+    name: 'Programs',
+    href: '/coach/programs',
+    icon: '📋'
+  },
+  {
     name: 'Resources',
     href: '/coach/resources',
     icon: '📁'
@@ -75,12 +80,12 @@ export default function CoachLayout({
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-900">
         {/* Navigation */}
-        <nav className="fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 p-4">
+        <nav className="fixed top-0 left-0 h-full w-64 bg-gray-900 border-r border-gray-800 p-4">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">Coach Portal</h2>
-            <p className="text-sm text-gray-500 mt-1">Welcome, {user?.displayName || 'Coach'}</p>
+            <h2 className="text-2xl font-bold text-white">Coach Portal</h2>
+            <p className="text-sm text-gray-400 mt-1">Welcome, {user?.displayName || 'Coach'}</p>
           </div>
 
           <div className="space-y-1">
@@ -88,13 +93,13 @@ export default function CoachLayout({
               <div key={item.name}>
                 <Link
                   href={item.href}
-                  className={`
-                    group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                  className={
+                    `group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
                     ${isActive(item.href)
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                    }
-                  `}
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'}
+                    `
+                  }
                 >
                   <span className="mr-3">{item.icon}</span>
                   {item.name}
@@ -107,13 +112,13 @@ export default function CoachLayout({
                       <Link
                         key={child.name}
                         href={child.href}
-                        className={`
-                          group flex items-center px-3 py-2 text-sm font-medium rounded-md
+                        className={
+                          `group flex items-center px-3 py-2 text-sm font-medium rounded-md
                           ${isActive(child.href)
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                          }
-                        `}
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-800'}
+                          `
+                        }
                       >
                         {child.name}
                       </Link>

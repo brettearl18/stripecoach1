@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, FirestoreError } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
-import { firebaseConfig } from './firebaseConfig';
+import { firebaseConfig } from './config';
 
 async function testFirebaseConnection() {
   try {
