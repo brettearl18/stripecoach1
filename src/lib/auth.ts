@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import FacebookProvider from 'next-auth/providers/facebook';
-import { authService } from '@/lib/services/authService';
+import authService from '@/lib/services/authService';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -84,19 +84,19 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user, account }) {
       if (user && 'role' in user) {
-        token.role = (user as any).role;
-        token.id = (user as any).id;
+        (token as any).role = (user as any).role;
+        (token as any).id = (user as any).id;
         if (account) {
-          token.provider = account.provider;
+          (token as any).provider = account.provider;
         }
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
-        (session.user as any).provider = token.provider;
+        (session.user as any).role = (token as any).role;
+        (session.user as any).id = (token as any).id;
+        (session.user as any).provider = (token as any).provider;
       }
       return session;
     },

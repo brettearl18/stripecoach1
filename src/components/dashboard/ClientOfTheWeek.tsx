@@ -1,78 +1,59 @@
-import { Star, TrendingUp } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useEffect, useState } from 'react';
+import { getClientOfTheWeek } from '@/lib/firebase/coachAnalytics';
+import { useAuth } from '@/hooks/useAuth';
+import { StarIcon, UserCircleIcon } from '@heroicons/react/24/solid';
 
-interface ClientOfTheWeekProps {
-  client: {
-    name: string;
-    achievement: string;
-    weekNumber: number;
-    stats: {
-      workouts: { completed: number; total: number; change: number };
-      nutrition: { percentage: number; change: number };
-      steps: { average: number; change: number };
-    };
-  };
-}
+export function ClientOfTheWeek() {
+  const { user } = useAuth();
+  const [client, setClient] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-export function ClientOfTheWeek({ client }: ClientOfTheWeekProps) {
+  useEffect(() => {
+    if (user?.uid) {
+      setLoading(true);
+      getClientOfTheWeek(user.uid)
+        .then(setClient)
+        .finally(() => setLoading(false));
+    }
+  }, [user?.uid]);
+
+  if (loading) return <div className="py-4 text-center text-muted-foreground">Loading client of the week...</div>;
+  if (!client) return <div className="py-4 text-center text-muted-foreground">No client of the week found.</div>;
+
   return (
-    <Card className="bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Star className="w-6 h-6 text-yellow-300" />
-            <CardTitle>Client of the Week</CardTitle>
-          </div>
-          <span className="text-sm opacity-80">Week {client.weekNumber}</span>
+    <div className="rounded-xl shadow bg-gradient-to-br from-blue-500 to-purple-600 text-white h-full">
+      <div className="p-6 flex flex-col items-center">
+        <div className="flex items-center gap-2 mb-2">
+          <StarIcon className="w-7 h-7 text-yellow-300" />
+          <span className="text-lg font-bold tracking-wide">Client of the Week</span>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                {client.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="font-semibold">{client.name}</h3>
-                <p className="text-sm opacity-80">{client.achievement}</p>
-              </div>
-            </div>
+        {client.avatar ? (
+          <img
+            src={client.avatar}
+            alt={client.name}
+            className="w-20 h-20 rounded-full border-4 border-yellow-300 shadow-lg mb-2"
+          />
+        ) : (
+          <UserCircleIcon className="w-20 h-20 text-white/70 mb-2" />
+        )}
+        <div className="text-xl font-semibold mb-1">{client.name || client.fullName}</div>
+        <div className="text-sm opacity-80 mb-2">Top performer this week!</div>
+        {/* Example stats, adjust as needed */}
+        <div className="flex gap-4 mt-2">
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg">{client.workoutsCompleted ?? '-'}</span>
+            <span className="text-xs opacity-80">Workouts</span>
           </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <h4 className="text-sm opacity-80">Workouts</h4>
-              <div className="text-xl font-semibold">
-                {client.stats.workouts.completed}/{client.stats.workouts.total}
-              </div>
-              <div className="text-sm text-green-300">
-                +{client.stats.workouts.change} from last week
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <h4 className="text-sm opacity-80">Nutrition</h4>
-              <div className="text-xl font-semibold">
-                {client.stats.nutrition.percentage}%
-              </div>
-              <div className="text-sm text-green-300">
-                +{client.stats.nutrition.change}% from last week
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <h4 className="text-sm opacity-80">Steps</h4>
-              <div className="text-xl font-semibold">
-                {(client.stats.steps.average / 1000).toFixed(1)}k
-              </div>
-              <div className="text-sm text-green-300">
-                +{client.stats.steps.change} avg
-              </div>
-            </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg">{client.nutritionScore ?? '-'}</span>
+            <span className="text-xs opacity-80">Nutrition</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg">{client.steps ?? '-'}</span>
+            <span className="text-xs opacity-80">Steps</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  )
+      </div>
+    </div>
+  );
 } 

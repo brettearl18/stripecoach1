@@ -1,7 +1,7 @@
 import { auth, db } from '@/lib/firebase/firebase-client';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { authService } from './authService';
+import authService from './authService';
 
 export interface CoachData {
   name: string;

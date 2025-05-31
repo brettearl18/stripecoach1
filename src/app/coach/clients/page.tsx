@@ -18,7 +18,6 @@ import {
   UserGroupIcon,
   SparklesIcon,
   BellIcon,
-  CheckboxIcon,
   CheckIcon,
   ChevronUpDownIcon,
   ArrowDownTrayIcon,
@@ -47,7 +46,7 @@ interface WeeklyCheckIn {
 }
 
 interface Client {
-  id?: string;
+  id: string;
   name: string;
   email: string;
   coachId: string;
@@ -155,7 +154,7 @@ const ComplianceIndicator = ({ score, isPending }: { score: number; isPending: b
   );
 };
 
-const AISummary = ({ summary, clientName }) => {
+const AISummary = ({ summary, clientName }: { summary: string; clientName: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   
@@ -250,130 +249,8 @@ const isWithinReminderWindow = (checkInDeadline: Date) => {
   return now >= threeHoursBeforeDeadline && now <= checkInDeadline;
 };
 
-const MOCK_CLIENTS: Client[] = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    avatar: 'https://i.pravatar.cc/150?img=1',
-    isActive: true,
-    checkInHistory: [
-      { week: 1, score: 92, date: new Date('2024-03-20'), status: 'completed' },
-      { week: 2, score: 88, date: new Date('2024-03-13'), status: 'completed' },
-      { week: 3, score: 95, date: new Date('2024-03-06'), status: 'completed' },
-      { week: 4, score: 90, date: new Date('2024-02-28'), status: 'completed' },
-      { week: 5, score: 87, date: new Date('2024-02-21'), status: 'completed' }
-    ],
-    currentCompliance: 92,
-    hasPendingCheckIn: false,
-    aiSummary: "Consistently high performer, showing excellent adherence to program",
-    checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
-    currentWeek: 12,
-    phase: 'Phase 1',
-    startDate: '2024-01-15',
-    status: 'active',
-    progress: 75,
-    nextCheckIn: '2024-04-27',
-    complianceRate: 92,
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    avatar: 'https://i.pravatar.cc/150?img=2',
-    isActive: true,
-    checkInHistory: [
-      { week: 1, score: 75, date: new Date('2024-03-20'), status: 'pending' },
-      { week: 2, score: 82, date: new Date('2024-03-13'), status: 'completed' },
-      { week: 3, score: 78, date: new Date('2024-03-06'), status: 'completed' },
-      { week: 4, score: 73, date: new Date('2024-02-28'), status: 'completed' },
-      { week: 5, score: 68, date: new Date('2024-02-21'), status: 'completed' }
-    ],
-    currentCompliance: 75,
-    hasPendingCheckIn: true,
-    aiSummary: "Recent decline in check-in scores, may need additional support",
-    checkInDeadline: new Date(Date.now() + (2 * 60 * 60 * 1000)),
-    currentWeek: 20,
-    phase: 'Phase 2',
-    startDate: '2024-01-15',
-    status: 'active',
-    progress: 75,
-    nextCheckIn: '2024-04-27',
-    complianceRate: 75,
-  },
-  {
-    id: '3',
-    name: 'Emma Wilson',
-    isActive: true,
-    checkInHistory: [
-      { week: 1, score: 0, date: new Date('2024-03-20'), status: 'missed' },
-      { week: 2, score: 65, date: new Date('2024-03-13'), status: 'completed' },
-      { week: 3, score: 72, date: new Date('2024-03-06'), status: 'completed' },
-      { week: 4, score: 68, date: new Date('2024-02-28'), status: 'completed' },
-      { week: 5, score: 70, date: new Date('2024-02-21'), status: 'completed' }
-    ],
-    currentCompliance: 65,
-    hasPendingCheckIn: false,
-    aiSummary: "Struggling with consistency, missed last check-in",
-    checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
-    currentWeek: 8,
-    phase: 'Phase 1',
-    startDate: '2024-01-15',
-    status: 'active',
-    progress: 75,
-    nextCheckIn: '2024-04-27',
-    complianceRate: 65,
-  },
-  {
-    id: '4',
-    name: 'David Rodriguez',
-    avatar: 'https://i.pravatar.cc/150?img=4',
-    isActive: true,
-    checkInHistory: [
-      { week: 1, score: 88, date: new Date('2024-03-20'), status: 'completed' },
-      { week: 2, score: 85, date: new Date('2024-03-13'), status: 'completed' },
-      { week: 3, score: 0, date: new Date('2024-03-06'), status: 'missed' },
-      { week: 4, score: 92, date: new Date('2024-02-28'), status: 'completed' },
-      { week: 5, score: 87, date: new Date('2024-02-21'), status: 'completed' }
-    ],
-    currentCompliance: 88,
-    hasPendingCheckIn: false,
-    aiSummary: "Strong recovery after missed check-in, back on track",
-    checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
-    currentWeek: 16,
-    phase: 'Phase 1',
-    startDate: '2024-01-15',
-    status: 'active',
-    progress: 75,
-    nextCheckIn: '2024-04-27',
-    complianceRate: 88,
-  },
-  {
-    id: '5',
-    name: 'Lisa Thompson',
-    avatar: 'https://i.pravatar.cc/150?img=5',
-    isActive: true,
-    checkInHistory: [
-      { week: 1, score: 78, date: new Date('2024-03-20'), status: 'pending' },
-      { week: 2, score: 82, date: new Date('2024-03-13'), status: 'completed' },
-      { week: 3, score: 85, date: new Date('2024-03-06'), status: 'completed' },
-      { week: 4, score: 80, date: new Date('2024-02-28'), status: 'completed' },
-      { week: 5, score: 75, date: new Date('2024-02-21'), status: 'completed' }
-    ],
-    currentCompliance: 80,
-    hasPendingCheckIn: true,
-    aiSummary: "Moderate performance with room for improvement",
-    checkInDeadline: new Date(Date.now() + (24 * 60 * 60 * 1000)),
-    currentWeek: 4,
-    phase: 'Phase 1',
-    startDate: '2024-01-15',
-    status: 'active',
-    progress: 75,
-    nextCheckIn: '2024-04-27',
-    complianceRate: 80,
-  }
-];
-
 // Custom Checkbox Component
-const Checkbox = ({ checked, indeterminate = false }) => {
+const Checkbox = ({ checked, indeterminate = false }: { checked: boolean; indeterminate?: boolean }) => {
   return (
     <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors duration-200 ${
       checked
@@ -403,6 +280,8 @@ const ClientsPage = () => {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedClientsForTemplate, setSelectedClientsForTemplate] = useState<string[]>([]);
 
   // Move useMemo here, before any useEffect
   const sortedClients = useMemo(() => {
@@ -442,6 +321,7 @@ const ClientsPage = () => {
         // setClients(fetchedClients);
       } catch (error) {
         console.error('Error loading clients:', error);
+        setError('Failed to load clients');
       } finally {
         setLoading(false);
       }
@@ -605,6 +485,14 @@ const ClientsPage = () => {
     ));
   };
 
+  const toggleAllClients = () => {
+    if (selectedClients.size === clients.length) {
+      setSelectedClients(new Set());
+    } else {
+      setSelectedClients(new Set(clients.map(c => c.id).filter((id): id is string => id !== undefined)));
+    }
+  };
+
   const toggleClientSelection = (clientId: string) => {
     const newSelection = new Set(selectedClients);
     if (newSelection.has(clientId)) {
@@ -613,14 +501,6 @@ const ClientsPage = () => {
       newSelection.add(clientId);
     }
     setSelectedClients(newSelection);
-  };
-
-  const toggleAllClients = () => {
-    if (selectedClients.size === clients.length) {
-      setSelectedClients(new Set());
-    } else {
-      setSelectedClients(new Set(clients.map(c => c.id)));
-    }
   };
 
   const navigateToProfile = (clientId: string, e: React.MouseEvent) => {
@@ -646,6 +526,71 @@ const ClientsPage = () => {
           <UserPlusIcon className="w-4 h-4" />
           Add New Client
         </button>
+      </div>
+
+      {/* Client Summary Section */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Clients Card */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Total Clients</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{clients.length}</h3>
+            </div>
+            <div className="p-2 bg-blue-500/10 rounded-lg">
+              <UserGroupIcon className="w-6 h-6 text-blue-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Active Clients Card */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Active Clients</p>
+              <h3 className="text-2xl font-bold text-white mt-1">
+                {clients.filter(c => c.status === 'active').length}
+              </h3>
+            </div>
+            <div className="p-2 bg-green-500/10 rounded-lg">
+              <CheckCircleIcon className="w-6 h-6 text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Check-ins Card */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Pending Check-ins</p>
+              <h3 className="text-2xl font-bold text-white mt-1">
+                {clients.filter(c => c.hasPendingCheckIn).length}
+              </h3>
+            </div>
+            <div className="p-2 bg-orange-500/10 rounded-lg">
+              <ClockIcon className="w-6 h-6 text-orange-400" />
+            </div>
+          </div>
+        </div>
+
+        {/* Average Compliance Card */}
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Avg. Compliance</p>
+              <h3 className="text-2xl font-bold text-white mt-1">
+                {clients.length > 0
+                  ? Math.round(
+                      clients.reduce((acc, c) => acc + c.complianceRate, 0) / clients.length
+                    )
+                  : 0}%
+              </h3>
+            </div>
+            <div className="p-2 bg-purple-500/10 rounded-lg">
+              <ChartBarIcon className="w-6 h-6 text-purple-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Search and Filters Section */}
@@ -809,11 +754,11 @@ const ClientsPage = () => {
                   onClick={() => toggleClientSelection(client.id)}
                   className="hover:opacity-80 transition-opacity"
                 >
-                  <Checkbox checked={selectedClients.has(client.id)} />
+                  <Checkbox checked={client.id ? selectedClients.has(client.id) : false} />
                 </button>
             </div>
             
-              {/* Client Info - with smaller right padding */}
+              {/* Client Info */}
               <div className="flex items-center gap-2 pr-2">
                 {client.avatar ? (
                   <button

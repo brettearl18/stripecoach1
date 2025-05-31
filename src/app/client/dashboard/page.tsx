@@ -28,7 +28,7 @@ import { ActivityFeed } from './components/ActivityFeed';
 import { ProgramTimeline } from './components/ProgramTimeline';
 import { WeeklyProgress } from './components/WeeklyProgress';
 import { CheckInButton } from './components/CheckInButton';
-import { useAuth } from '@/lib/firebase/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { getClientById, getCheckIns } from '@/lib/services/firebaseService';
 
 // Mock data for the past 30 days

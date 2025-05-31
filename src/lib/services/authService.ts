@@ -1,4 +1,4 @@
-'use client';
+
 
 import { auth, db } from '@/lib/firebase/firebase-client';
 import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';

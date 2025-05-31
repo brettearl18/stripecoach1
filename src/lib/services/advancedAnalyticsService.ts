@@ -155,14 +155,22 @@ export async function exportData(
 // Helper functions
 async function getClients(companyId: string) {
   const clientsRef = collection(db, 'clients');
-  const q = query(clientsRef, where('companyId', '==', companyId));
+  const q = query(
+    clientsRef, 
+    where('companyId', '==', companyId),
+    where('status', '==', 'active')
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 async function getCoaches(companyId: string) {
   const coachesRef = collection(db, 'coaches');
-  const q = query(coachesRef, where('companyId', '==', companyId));
+  const q = query(
+    coachesRef, 
+    where('companyId', '==', companyId),
+    where('status', '==', 'active')
+  );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
@@ -173,7 +181,8 @@ async function getCheckIns(companyId: string, dateRange: { start: Date; end: Dat
     checkInsRef,
     where('companyId', '==', companyId),
     where('timestamp', '>=', Timestamp.fromDate(dateRange.start)),
-    where('timestamp', '<=', Timestamp.fromDate(dateRange.end))
+    where('timestamp', '<=', Timestamp.fromDate(dateRange.end)),
+    where('status', '==', 'completed')
   );
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

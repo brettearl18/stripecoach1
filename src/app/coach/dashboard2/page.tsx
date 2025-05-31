@@ -42,6 +42,7 @@ import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DashboardCustomizer } from '@/components/DashboardCustomizer';
 import { CoachNavigation } from '@/components/navigation/CoachNavigation';
+import { analyticsService } from '@/lib/services/database';
 
 interface ClientProgress {
   id: string;
@@ -153,346 +154,60 @@ interface SectionPreference {
   columnSpan: 1 | 2 | 3;
 }
 
-// Mock data - replace with real data from your backend
-const mockMetrics: DashboardMetrics = {
-  totalClients: 25,
-  activeToday: 8,
-  pendingCheckIns: 5,
-  completedCheckIns: 15,
-  clientProgress: {
-    improving: 12,
-    steady: 8,
-    needsAttention: 5,
-  },
-  weeklyEngagement: 85,
-};
+function useCoachDashboardMetrics(coachId: string | undefined) {
+  const [metrics, setMetrics] = useState<CoachDashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const mockEnhancedCheckIn: EnhancedCheckInForm = {
-  id: '1',
-  templateId: 'weekly-checkin',
-  clientId: '1',
-  name: 'Sarah Wilson',
-  title: 'Weekly Check-in',
-  description: 'Regular progress tracking',
-  questions: [],
-  answers: [],
-  metrics: {
-    training: 90,
-    nutrition: 85,
-    mindset: 75,
-    recovery: 80,
-    sleep: 70,
-    stress: 65
-  },
-  status: {
-    state: 'completed',
-    clientProgress: 'on_track',
-    lastUpdated: '2024-03-21T09:30:00Z'
-  },
-  streak: {
-    current: 8,
-    longest: 12,
-    lastCheckIn: '2024-03-21T09:30:00Z',
-    consistency: 92
-  },
-  history: {
-    lastFiveCheckIns: [
-      {
-        id: 'check-1',
-        date: '2024-03-21T09:30:00Z',
-        overallScore: 85,
-        metrics: {
-          training: 90,
-          nutrition: 85,
-          mindset: 75,
-          recovery: 80,
-          sleep: 70,
-          stress: 65
-        }
-      }
-    ],
-    trends: [
-      {
-        metric: 'training',
-        weeklyAverage: 88,
-        monthlyAverage: 85,
-        trend: 'up'
-      }
-    ]
-  },
-  coachInteraction: {
-    lastReview: '2024-03-21T10:30:00Z',
-    averageResponseTime: 120,
-    totalReviews: 24,
-    lastFeedback: {
-      date: '2024-03-21T10:30:00Z',
-      summary: 'Great progress this week!',
-      action_items: ['Focus on sleep quality', 'Work on stress management']
-    }
-  },
-  engagement: {
-    photoSubmissions: 8,
-    commentResponses: 12,
-    actionItemsCompleted: 18,
-    totalActionItems: 20
-  },
-  dueDate: '2024-03-21T09:30:00Z',
-  completedAt: '2024-03-21T09:30:00Z',
-  createdAt: '2024-03-21T09:30:00Z',
-  updatedAt: '2024-03-21T10:30:00Z'
-};
+  useEffect(() => {
+    if (!coachId) return;
+    setLoading(true);
+    analyticsService.getCoachDashboardMetrics(coachId)
+      .then(setMetrics)
+      .catch((e) => setError(e.message || 'Failed to load metrics'))
+      .finally(() => setLoading(false));
+  }, [coachId]);
 
-const mockDashboardMetrics: CoachDashboardMetrics = {
-  dailyMetrics: {
-    totalCheckIns: 15,
-    pendingReviews: 5,
-    completedReviews: 15,
-    averageResponseTime: 90
-  },
-  clientMetrics: {
-    totalActive: 25,
-    atRisk: 5,
-    improving: 12,
-    needsAttention: 5
-  },
-  engagementMetrics: {
-    weeklyActiveClients: 21,
-    averageCheckInCompletion: 88,
-    photoSubmissionRate: 75,
-    feedbackResponseRate: 92
-  },
-  priorityActions: {
-    urgentReviews: ['check-1', 'check-2'],
-    atRiskClients: ['client-1', 'client-2'],
-    pendingPhotos: ['check-3', 'check-4'],
-    missedCheckIns: ['client-3', 'client-4']
-  }
-};
+  return { metrics, loading, error };
+}
 
-const mockClientProgress: EnhancedCheckInForm[] = [mockEnhancedCheckIn];
+function useCoachClientsProgress(coachId: string | undefined) {
+  const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const mockProgressPhotos: CheckInPhoto[] = [
-  {
-    id: 'p1',
-    url: '/progress-photos/sarah-progress-1.jpg',
-    type: 'progress',
-    date: '2024-03-21',
-    notes: 'Weekly progress update'
-  },
-  // ... other photos
-];
+  useEffect(() => {
+    if (!coachId) return;
+    setLoading(true);
+    analyticsService.getCoachClientsProgress(coachId)
+      .then(setClients)
+      .catch((e) => setError(e.message || 'Failed to load clients'))
+      .finally(() => setLoading(false));
+  }, [coachId]);
 
-const mockAIAnalysis: AIAnalysis = {
-  overallMood: [
-    { category: 'Energy', score: 7.8, trend: 'up', change: 0.5 },
-    { category: 'Motivation', score: 8.2, trend: 'up', change: 0.3 },
-    { category: 'Stress', score: 4.5, trend: 'down', change: -0.8 },
-    { category: 'Sleep Quality', score: 7.2, trend: 'stable', change: 0.1 },
-  ],
-  recentWins: [
-    "80% of clients hit their protein targets this week",
-    "Average step count increased by 2,000 steps",
-    "5 clients achieved personal records in strength training",
-    "Significant improvement in morning routine compliance"
-  ],
-  commonChallenges: [
-    "Weekend nutrition adherence dropping",
-    "Post-work workout attendance decreased",
-    "Stress management during work hours",
-    "Late-night snacking incidents increased"
-  ],
-  insights: [
-    {
-      type: 'success',
-      message: 'Group cohesion is strengthening, with 60% more peer interactions this week',
-      impact: 'high'
-    },
-    {
-      type: 'warning',
-      message: 'Sleep patterns show disruption in 30% of clients - may need sleep hygiene workshop',
-      impact: 'medium'
-    },
-    {
-      type: 'info',
-      message: 'Nutrition compliance peaks on Mondays and gradually decreases through the week',
-      impact: 'high'
-    }
-  ],
-  focusAreas: [
-    "Schedule a group session on weekend meal prep",
-    "Implement stress management techniques",
-    "Review and adjust evening routines",
-    "Strengthen accountability partnerships"
-  ]
-};
+  return { clients, loading, error };
+}
 
-const mockClientOfTheWeek: ClientOfTheWeek = {
-  id: '1',
-  name: 'Sarah Wilson',
-  achievement: 'Most Consistent Progress',
-  weekNumber: 12,
-  stats: {
-    workouts: { completed: 6, total: 6, trend: 'up', change: 1 },
-    nutrition: { percentage: 95, trend: 'up', change: 5 },
-    steps: { average: 12000, trend: 'up', change: 2000 }
-  }
-};
-
-const mockHonorableMentions: HonorableMention[] = [
-  {
-    id: '3',
-    name: 'Emma Davis',
-    achievement: 'Biggest Breakthrough',
-    highlight: 'Overcame fear of heavy lifting',
-    metric: {
-      label: 'Strength PR',
-      value: '80kg',
-      trend: 'up',
-      change: 15
-    }
-  },
-  {
-    id: '4',
-    name: 'James Wilson',
-    achievement: 'Most Resilient',
-    highlight: 'Maintained routine during travel',
-    metric: {
-      label: 'Consistency',
-      value: '92%',
-      trend: 'up',
-      change: 12
-    }
-  }
-];
-
-const mockCoachProfile: CoachProfile = {
-  name: "Michael Chen",
-  motivationalQuote: "Empowering others to become their strongest, healthiest selves. Every small step counts!",
-  lastQuoteUpdate: "2024-04-05"
-};
-
-const mockClientAIInsights: ClientAIInsights = {
-  summary: "Based on Sarah's recent check-ins and progress data, she's showing consistent improvement in most areas, particularly in energy levels and sleep quality. Her commitment to the program is evident in her regular check-ins and goal progression.",
-  strengths: [
-    "Achieved a steady weight loss trend, down 4kg over the past 3 months",
-    "Significant improvement in energy levels, up from 60% to 85%",
-    "Sleep quality has improved by 1.3 hours on average"
-  ],
-  challenges: [
-    "Muscle tone progress is slightly behind schedule at 45%",
-    "Weekend workout consistency could be improved"
-  ],
-  recommendations: [
-    "Consider adjusting the strength training program to accelerate muscle tone development",
-    "Schedule check-ins earlier in the day when energy levels are highest",
-    "Maintain the current sleep hygiene practices as they're showing positive results"
-  ],
-  trends: [
-    {
-      metric: "Energy",
-      status: "improving",
-      insight: "Consistent upward trend in morning energy levels"
-    },
-    {
-      metric: "Sleep",
-      status: "improving",
-      insight: "Quality of sleep has improved significantly"
-    },
-    {
-      metric: "Nutrition",
-      status: "stable",
-      insight: "Maintaining good adherence to meal plan"
-    }
-  ]
-};
-
-const getStatusColor = (status: CheckInStatus['clientProgress']) => {
-  switch (status) {
-    case 'on_track':
-      return 'text-green-500 bg-green-50 dark:bg-green-500/10';
-    case 'needs_attention':
-      return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10';
-    case 'at_risk':
-      return 'text-red-500 bg-red-50 dark:bg-red-500/10';
-  }
-};
-
-const getStatusIcon = (status: CheckInStatus['clientProgress']) => {
-  switch (status) {
-    case 'on_track':
-      return <CheckCircleIcon className="w-5 h-5" />;
-    case 'needs_attention':
-      return <ExclamationCircleIcon className="w-5 h-5" />;
-    case 'at_risk':
-      return <BellIcon className="w-5 h-5" />;
-  }
-};
-
-const getAverageProgress = (metrics: CheckInMetrics) => {
-  const values = Object.values(metrics).filter(val => typeof val === 'number') as number[];
-  return Math.round(values.reduce((acc, val) => acc + val, 0) / values.length);
-};
-
-// Add a helper function for consistent date formatting
-const formatDate = (dateString: string) => {
-  try {
-    return format(new Date(dateString), 'dd/MM/yyyy');
-  } catch (error) {
-    return dateString;
-  }
-};
-
-async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise<AIAnalysis> {
-  try {
-    // Only send the latest check-in
-    const latestCheckIn = checkIns[0];
-    
-    const response = await fetch('/api/coach/ai-insights', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        checkIns: [latestCheckIn],
-        analysisType: 'group'
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('AI insights error:', errorData);
-      
-      if (response.status === 429 && retryCount < 3) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return fetchAIInsights([latestCheckIn], retryCount + 1);
-      }
-      
-      if (response.status === 401 || response.status === 403) {
-        toast.error('API authentication failed. Please check your API key.');
-      } else if (response.status === 500) {
-        toast.error('Server error occurred. Using cached data.');
-      } else {
-        toast.error('Unable to fetch AI insights. Using cached data.');
-      }
-      
-      return mockAIAnalysis;
-    }
-
-    const data = await response.json();
-    return data.insights || mockAIAnalysis;
-  } catch (error) {
-    console.error('Error fetching AI insights:', error);
-    if (retryCount < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-      return fetchAIInsights(checkIns, retryCount + 1);
-    }
-    toast.error('Unable to fetch AI insights. Using cached data.');
-    return mockAIAnalysis;
-  }
+async function fetchAIInsightsForCoach(coachId: string | undefined): Promise<AIAnalysis> {
+  if (!coachId) throw new Error('No coach ID');
+  // Fetch all recent check-ins (last 14 days)
+  const checkIns = await analyticsService.getRecentCheckInsForCoach(coachId, 14);
+  if (!checkIns.length) throw new Error('No recent check-ins found');
+  // Call the API for group analysis
+  const res = await fetch('/api/coach/ai-insights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ checkIns, analysisType: 'group' })
+  });
+  if (!res.ok) throw new Error('Failed to fetch AI insights');
+  const data = await res.json();
+  return data.insights;
 }
 
 export default function CoachDashboard() {
   const { user } = useAuth();
+  const { metrics, loading, error } = useCoachDashboardMetrics(user?.uid);
+  const { clients: clientProgress, loading: loadingClients } = useCoachClientsProgress(user?.uid);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'today' | 'week' | 'month'>('week');
   const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhoto | null>(null);
   const [expandedClients, setExpandedClients] = useState<string[]>([]);
@@ -563,22 +278,12 @@ export default function CoachDashboard() {
 
   const loadAIInsights = useCallback(async (force = false) => {
     if (!force && isLoadingInsights) return;
-    
-    // Get the latest check-in
-    const latestCheckIn = mockClientProgress[0];
-    
-    // Skip if we've already analyzed this check-in and it's not a forced refresh
-    if (!force && lastAnalyzedCheckInId === latestCheckIn.id) {
-      return;
-    }
-    
+    if (!user?.uid) return;
     setIsLoadingInsights(true);
     setRetryCount(0);
-    
     try {
-      const insights = await fetchAIInsights([latestCheckIn]);
+      const insights = await fetchAIInsightsForCoach(user.uid);
       setAIAnalysis(insights);
-      setLastAnalyzedCheckInId(latestCheckIn.id);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to load AI insights:', error);
@@ -589,12 +294,12 @@ export default function CoachDashboard() {
     } finally {
       setIsLoadingInsights(false);
     }
-  }, [isLoadingInsights, retryCount, lastAnalyzedCheckInId]);
+  }, [isLoadingInsights, retryCount, user?.uid]);
 
-  // Only load insights when component mounts or when forced
+  // In useEffect, call loadAIInsights when user?.uid changes
   useEffect(() => {
-    loadAIInsights();
-  }, []);  // Remove loadAIInsights from dependencies
+    if (user?.uid) loadAIInsights();
+  }, [user?.uid]);
 
   const renderAIInsights = () => (
     <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow transition-colors duration-200">
@@ -763,8 +468,8 @@ export default function CoachDashboard() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Check-ins Today</p>
                     <div className="mt-2 flex items-baseline">
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{mockMetrics.completedCheckIns}</h3>
-                      <span className="ml-2 text-sm text-gray-500">/ {mockMetrics.totalClients}</span>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{loading ? '...' : metrics?.completedCheckIns ?? 0}</h3>
+                      <span className="ml-2 text-sm text-gray-500">/ {loading ? '...' : metrics?.totalClients ?? 0}</span>
                     </div>
                   </div>
                   <div className="p-3 bg-blue-500/10 rounded-lg">
@@ -775,7 +480,7 @@ export default function CoachDashboard() {
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
-                      style={{ width: `${(mockMetrics.completedCheckIns / mockMetrics.totalClients) * 100}%` }}
+                      style={{ width: `${(loading ? 0 : metrics?.completedCheckIns ?? 0 / loading ? 0 : metrics?.totalClients ?? 0) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -786,7 +491,7 @@ export default function CoachDashboard() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Needs Attention</p>
                     <h3 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-                      {mockMetrics.clientProgress.needsAttention}
+                      {loading ? '...' : metrics?.clientProgress.needsAttention ?? 0}
                     </h3>
                   </div>
                   <div className="p-3 bg-yellow-500/10 rounded-lg">
@@ -809,7 +514,7 @@ export default function CoachDashboard() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Weekly Engagement</p>
                     <h3 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-                      {mockMetrics.weeklyEngagement}%
+                      {loading ? '...' : metrics?.weeklyEngagement ?? 0}%
                     </h3>
                   </div>
                   <div className="p-3 bg-green-500/10 rounded-lg">
@@ -820,7 +525,7 @@ export default function CoachDashboard() {
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div 
                       className="bg-green-500 h-2 rounded-full" 
-                      style={{ width: `${mockMetrics.weeklyEngagement}%` }}
+                      style={{ width: `${loading ? 0 : metrics?.weeklyEngagement ?? 0}%` }}
                     />
                   </div>
                 </div>
@@ -831,7 +536,7 @@ export default function CoachDashboard() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Improving Clients</p>
                     <h3 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
-                      {mockMetrics.clientProgress.improving}
+                      {loading ? '...' : metrics?.clientProgress.improving ?? 0}
                     </h3>
                   </div>
                   <div className="p-3 bg-purple-500/10 rounded-lg">
@@ -862,7 +567,7 @@ export default function CoachDashboard() {
                   </h2>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {mockClientProgress.length} Active Clients
+                      {loadingClients ? <div>Loading clients...</div> : clientProgress.length} Active Clients
                     </span>
                     <button className="text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 p-1 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors">
                       <ArrowsPointingOutIcon className="w-5 h-5" />
@@ -871,7 +576,7 @@ export default function CoachDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  {mockClientProgress.map((checkIn) => (
+                  {loadingClients ? <div>Loading clients...</div> : clientProgress.map((checkIn) => (
                     <motion.div 
                       key={checkIn.id}
                       initial={{ opacity: 0, y: 10 }}
@@ -1250,7 +955,7 @@ export default function CoachDashboard() {
                           Pending Check-ins
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {mockMetrics.pendingCheckIns} clients need review
+                          {loading ? '...' : metrics?.pendingCheckIns ?? 0} clients need review
                         </p>
                       </div>
                     </div>
@@ -1270,7 +975,7 @@ export default function CoachDashboard() {
                           At-Risk Clients
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {mockMetrics.clientProgress.needsAttention} clients need attention
+                          {loading ? '...' : metrics?.clientProgress.needsAttention ?? 0} clients need attention
                         </p>
                       </div>
                     </div>
@@ -1426,18 +1131,18 @@ export default function CoachDashboard() {
           <div className="bg-gray-800/50 rounded-lg p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Check-ins Today</h3>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-semibold text-white">{mockMetrics.completedCheckIns}</p>
-              <p className="text-sm text-gray-400">/ {mockMetrics.totalClients}</p>
+              <p className="text-2xl font-semibold text-white">{loading ? '...' : metrics?.completedCheckIns ?? 0}</p>
+              <p className="text-sm text-gray-400">/ {loading ? '...' : metrics?.totalClients ?? 0}</p>
             </div>
             <div className="w-full bg-gray-700 rounded-full h-1.5 mt-4">
-              <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(mockMetrics.completedCheckIns / mockMetrics.totalClients) * 100}%` }}></div>
+              <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(loading ? 0 : metrics?.completedCheckIns ?? 0 / loading ? 0 : metrics?.totalClients ?? 0) * 100}%` }}></div>
             </div>
           </div>
 
           <div className="bg-gray-800/50 rounded-lg p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Needs Attention</h3>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-semibold text-white">{mockMetrics.clientProgress.needsAttention}</p>
+              <p className="text-2xl font-semibold text-white">{loading ? '...' : metrics?.clientProgress.needsAttention ?? 0}</p>
               <button className="text-sm text-yellow-400 hover:text-yellow-300">View clients</button>
             </div>
           </div>
@@ -1445,9 +1150,9 @@ export default function CoachDashboard() {
           <div className="bg-gray-800/50 rounded-lg p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Weekly Engagement</h3>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-semibold text-white">{mockMetrics.weeklyEngagement}%</p>
+              <p className="text-2xl font-semibold text-white">{loading ? '...' : metrics?.weeklyEngagement ?? 0}%</p>
               <div className="w-24 h-8 bg-green-500/20 rounded">
-                <div className="bg-green-500 h-full rounded" style={{ width: `${mockMetrics.weeklyEngagement}%` }}></div>
+                <div className="bg-green-500 h-full rounded" style={{ width: `${loading ? 0 : metrics?.weeklyEngagement ?? 0}%` }}></div>
               </div>
             </div>
           </div>
@@ -1455,7 +1160,7 @@ export default function CoachDashboard() {
           <div className="bg-gray-800/50 rounded-lg p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-2">Improving Clients</h3>
             <div className="flex items-end justify-between">
-              <p className="text-2xl font-semibold text-white">{mockMetrics.clientProgress.improving}</p>
+              <p className="text-2xl font-semibold text-white">{loading ? '...' : metrics?.clientProgress.improving ?? 0}</p>
               <button className="text-sm text-purple-400 hover:text-purple-300">View progress</button>
             </div>
           </div>
@@ -1472,7 +1177,7 @@ export default function CoachDashboard() {
                 <h2 className="text-lg font-semibold text-white">Client Progress</h2>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <span>{mockMetrics.totalClients} Active Clients</span>
+                <span>{loading ? '...' : metrics?.totalClients ?? 0} Active Clients</span>
                 <button className="p-1 hover:bg-gray-700 rounded">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />

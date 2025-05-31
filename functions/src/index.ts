@@ -48,3 +48,18 @@ export const generateCheckInSummary = functions.firestore
       });
     }
   });
+
+export const resetAICredits = functions.pubsub
+  .schedule('every monday 02:00')
+  .timeZone('Australia/Sydney') // Change to your timezone if needed
+  .onRun(async (context) => {
+    const db = admin.firestore();
+    const coaches = await db.collection('coaches').get();
+    const batch = db.batch();
+    coaches.forEach(doc => {
+      batch.update(doc.ref, { aiRefreshCredits: 3 });
+    });
+    await batch.commit();
+    console.log('AI refresh credits reset for all coaches');
+    return null;
+  });

@@ -1,757 +1,267 @@
-'use client';
+"use client";
+import { UserGroupIcon, TrophyIcon, ChartBarIcon, StarIcon, ExclamationTriangleIcon, CheckCircleIcon, ArrowTrendingUpIcon, UserIcon, Cog6ToothIcon, BellIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Clock, Trophy as LucideTrophy, Target, Heart as LucideHeart, Camera, LineChart } from "lucide-react";
-import {
-  ChartBarIcon,
-  ArrowTrendingUpIcon,
-  CheckCircleIcon,
-  TagIcon,
-  ClipboardDocumentCheckIcon,
-  PhotoIcon,
-  ChevronRightIcon,
-  BellIcon,
-  UserGroupIcon,
-  CalendarIcon,
-  ChatBubbleBottomCenterTextIcon,
-  PencilIcon,
-  HeartIcon,
-  TrophyIcon,
-  ExclamationCircleIcon,
-  SparklesIcon,
-  CameraIcon
-} from '@heroicons/react/24/outline';
-import { Avatar } from "@/components/ui/avatar";
-import { format } from 'date-fns';
-import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
-import { DashboardCustomizer } from '@/components/DashboardCustomizer';
-import { CoachNavigation } from '@/components/navigation/CoachNavigation';
-import { PriorityAlerts } from '@/components/dashboard/PriorityAlerts';
-import { AnalyticsSnapshot } from '@/components/dashboard/AnalyticsSnapshot';
-import { ClientOfTheWeek } from '@/components/dashboard/ClientOfTheWeek';
-import { RecentProgressPhotos } from '@/components/dashboard/RecentProgressPhotos';
-import { AIGroupInsights } from '@/components/dashboard/AIGroupInsights';
-import { CommandPalette } from '@/components/CommandPalette';
-import { DashboardSidebar } from '@/components/navigation/DashboardSidebar';
-import { QuickActions } from '@/components/dashboard/QuickActions';
-import { NotificationCenter } from '@/components/dashboard/NotificationCenter';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import type { DropResult } from 'react-beautiful-dnd';
-import { CoachSummary, type CoachSummaryProps } from '@/components/dashboard/CoachSummary';
-import { RecentBadgeWins } from '@/components/dashboard/RecentBadgeWins';
-import { 
-  CheckInForm, 
-  CheckInMetrics, 
-  CheckInStatus, 
-  CheckInPhoto,
-  CoachDashboardMetrics, 
-  EnhancedCheckInForm as IEnhancedCheckInForm
-} from '@/types/checkIn';
-import { AlertCircle, RefreshCw } from 'lucide-react';
-
-interface ClientProgress {
-  id: string;
-  name: string;
-  avatar?: string;
-  lastCheckIn: string;
-  checkInStreak: number;
-  weeklyProgress: {
-    training: number;
-    nutrition: number;
-    mindset: number;
-  };
-  recentAchievements: string[];
-  focusAreas: string[];
-  status: 'on_track' | 'needs_attention' | 'at_risk';
+function BusinessOverviewCard({ data, loading, error }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <ChartBarIcon className="h-7 w-7 text-indigo-400" />
+        <h2 className="text-lg font-semibold text-white">Business Overview (AI)</h2>
+      </div>
+      <div className="flex flex-wrap gap-6">
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">Growth</span>
+          <span className="text-lg font-bold text-green-400">{data?.growth || "0%"}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">Active Clients</span>
+          <span className="text-lg font-bold text-blue-300">{data?.activeClients || 0}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">Churn</span>
+          <span className="text-lg font-bold text-red-400">{data?.churn || "0%"}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">New Signups</span>
+          <span className="text-lg font-bold text-yellow-300">{data?.newSignups || 0}</span>
+        </div>
+      </div>
+      <div className="mt-2 text-white text-sm min-h-[40px]">
+        {loading && <span>Loading AI summary...</span>}
+        {error && <span className="text-red-400">{error}</span>}
+        {!loading && !error && (data?.summary || "No summary available.")}
+      </div>
+      {data?.alerts && data.alerts.length > 0 && (
+        <div className="mt-2 flex items-center gap-2 text-orange-400 text-sm">
+          <ExclamationTriangleIcon className="h-5 w-5" />
+          <span>{data.alerts[0]}</span>
+        </div>
+      )}
+    </section>
+  );
 }
 
-interface DashboardMetrics {
-  totalClients: number;
-  activeToday: number;
-  pendingCheckIns: number;
-  completedCheckIns: number;
-  clientProgress: {
-    improving: number;
-    steady: number;
-    needsAttention: number;
-  };
-  weeklyEngagement: number;
-  clientMetrics: {
-    improving: number;
-    totalActive: number;
-  };
-  engagementMetrics: {
-    averageCheckInCompletion: number;
-  };
+function ClientOverviewCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <UserGroupIcon className="h-7 w-7 text-green-400" />
+        <h2 className="text-lg font-semibold text-white">Client Overview (AI)</h2>
+      </div>
+      <div className="flex flex-wrap gap-6">
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">Total Clients</span>
+          <span className="text-lg font-bold text-blue-300">{data?.totalClients || 0}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">Active</span>
+          <span className="text-lg font-bold text-green-400">{data?.active || 0}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">At Risk</span>
+          <span className="text-lg font-bold text-red-400">{data?.atRisk || 0}</span>
+        </div>
+        <div className="flex flex-col items-start">
+          <span className="text-xs text-gray-400">New This Month</span>
+          <span className="text-lg font-bold text-yellow-300">{data?.newClients || 0}</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 mt-2">
+        <span className="text-xs text-gray-400">Top Performers</span>
+        <ul className="text-sm text-white">
+          {(data?.topPerformers && data.topPerformers.length > 0) ? data.topPerformers.map((c, i) => (
+            <li key={c.name || i} className="flex items-center gap-2">
+              <CheckCircleIcon className="h-4 w-4 text-green-400" />
+              {c.name} <span className="text-xs text-gray-400 ml-1">({c.streak}-week streak)</span>
+            </li>
+          )) : <li className="text-gray-500">No top performers</li>}
+        </ul>
+      </div>
+      <div className="flex items-center gap-2 mt-2 text-blue-400 text-sm">
+        <ArrowTrendingUpIcon className="h-5 w-5" />
+        <span>Engagement Trend: {data?.engagementTrend || "0%"}</span>
+      </div>
+    </section>
+  );
 }
 
-interface ProgressPhoto {
-  id: string;
-  clientId: string;
-  clientName: string;
-  photoUrl: string;
-  date: string;
-  type: 'before' | 'after' | 'progress';
+function ClientOfTheWeekCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <TrophyIcon className="h-7 w-7 text-yellow-400" />
+        <h2 className="text-lg font-semibold text-white">Client of the Week (AI)</h2>
+      </div>
+      {data?.name ? (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 font-bold text-xl">
+            {data.name.split(' ').map((n) => n[0]).join('')}
+          </div>
+          <div>
+            <span className="block text-white font-semibold text-lg">{data.name}</span>
+            <span className="block text-yellow-300 text-sm">{data.achievement}</span>
+          </div>
+        </div>
+      ) : <span className="text-gray-500">No client selected this week.</span>}
+      <div className="text-gray-300 text-sm mt-2">{data?.summary || ""}</div>
+    </section>
+  );
 }
 
-interface SentimentMetric {
-  category: string;
-  score: number;
-  trend: 'up' | 'down' | 'stable';
-  change: number;
+function WinsLossesCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <CheckCircleIcon className="h-7 w-7 text-blue-400" />
+        <h2 className="text-lg font-semibold text-white">Wins & Losses (AI)</h2>
+      </div>
+      <div>
+        <span className="text-xs text-green-400 font-semibold">Wins</span>
+        <ul className="text-sm text-green-300 list-disc ml-5">
+          {(data?.wins && data.wins.length > 0) ? data.wins.map((w, i) => <li key={i}>{w}</li>) : <li className="text-gray-500">No wins</li>}
+        </ul>
+      </div>
+      <div>
+        <span className="text-xs text-red-400 font-semibold">Losses</span>
+        <ul className="text-sm text-red-300 list-disc ml-5">
+          {(data?.losses && data.losses.length > 0) ? data.losses.map((l, i) => <li key={i}>{l}</li>) : <li className="text-gray-500">No losses</li>}
+        </ul>
+      </div>
+    </section>
+  );
 }
 
-interface GroupInsight {
-  type: 'success' | 'warning' | 'info';
-  message: string;
-  impact: 'high' | 'medium' | 'low';
+function WhatToFocusOnCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <ArrowTrendingUpIcon className="h-7 w-7 text-pink-400" />
+        <h2 className="text-lg font-semibold text-white">What to Focus On (AI)</h2>
+      </div>
+      <ul className="text-sm text-pink-300 list-disc ml-5">
+        {(data?.focus && data.focus.length > 0) ? data.focus.map((f, i) => <li key={i}>{f}</li>) : <li className="text-gray-500">No focus areas available.</li>}
+      </ul>
+    </section>
+  );
 }
 
-interface AIAnalysis {
-  overallMood: SentimentMetric[];
-  recentWins: string[];
-  commonChallenges: string[];
-  insights: GroupInsight[];
-  focusAreas: string[];
+function ClientsToCheckOnCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <ExclamationTriangleIcon className="h-7 w-7 text-red-400" />
+        <h2 className="text-lg font-semibold text-white">Clients to Check On (AI)</h2>
+      </div>
+      <ul className="text-sm text-red-300 list-disc ml-5">
+        {(data?.clients && data.clients.length > 0) ? data.clients.map((c, i) => (
+          <li key={i}>
+            <span className="font-semibold text-white">{c.name}</span> <span className="text-xs text-red-400 ml-1">({c.reason})</span>
+          </li>
+        )) : <li className="text-gray-500">No at-risk clients found.</li>}
+      </ul>
+    </section>
+  );
 }
 
-interface ClientOfTheWeek {
-  id: string;
-  name: string;
-  avatar?: string;
-  achievement: string;
-  weekNumber: number;
-  stats: {
-    workouts: { completed: number; total: number; trend: 'up' | 'down' | 'stable'; change: number };
-    nutrition: { percentage: number; trend: 'up' | 'down' | 'stable'; change: number };
-    steps: { average: number; trend: 'up' | 'down' | 'stable'; change: number };
-  };
-}
-
-interface HonorableMention {
-  id: string;
-  name: string;
-  avatar?: string;
-  achievement: string;
-  highlight: string;
-  metric: {
-    label: string;
-    value: string;
-    trend: 'up' | 'down' | 'stable';
-    change: number;
-  };
-}
-
-interface CoachProfile {
-  name: string;
-  motivationalQuote: string;
-  lastQuoteUpdate?: string;
-}
-
-interface ClientAIInsights {
-  summary: string;
-  strengths: string[];
-  challenges: string[];
-  recommendations: string[];
-  trends: {
-    metric: string;
-    status: 'improving' | 'declining' | 'stable';
-    insight: string;
-  }[];
-}
-
-interface SectionPreference {
-  isVisible: boolean;
-  order: number;
-  columnSpan: 1 | 2 | 3;
-}
-
-interface WidgetLayout {
-  [key: string]: {
-    order: number;
-    isExpanded: boolean;
-  };
-}
-
-interface AIError {
-  message: string;
-  type: 'API' | 'RATE_LIMIT' | 'NETWORK' | 'VALIDATION';
-  retryable: boolean;
-  timestamp: string;
-}
-
-interface AIResponse {
-  insights: any;
-  cached: boolean;
-  timestamp: string;
-  warning?: string;
-}
-
-// Mock data - replace with real data from your backend
-const mockMetrics: DashboardMetrics = {
-  totalClients: 25,
-  activeToday: 8,
-  pendingCheckIns: 5,
-  completedCheckIns: 15,
-  clientProgress: {
-    improving: 12,
-    steady: 8,
-    needsAttention: 5,
-  },
-  weeklyEngagement: 85,
-  clientMetrics: {
-    improving: 12,
-    totalActive: 25
-  },
-  engagementMetrics: {
-    averageCheckInCompletion: 88
-  }
-};
-
-const mockEnhancedCheckIn: IEnhancedCheckInForm = {
-  id: '1',
-  templateId: '1',
-  clientId: '1',
-  title: 'Weekly Check-in',
-  description: 'Standard weekly check-in form',
-  questions: [],
-  answers: [],
-  metrics: {
-    training: 8,
-    nutrition: 7,
-    mindset: 9
-  },
-  status: {
-    state: 'completed',
-    clientProgress: 'on_track',
-    lastUpdated: new Date().toISOString()
-  },
-  dueDate: new Date().toISOString(),
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  streak: {
-    current: 5,
-    longest: 10,
-    lastCheckIn: new Date().toISOString(),
-    consistency: 0.8
-  },
-  history: {
-    lastFiveCheckIns: [],
-    trends: []
-  },
-  coachInteraction: {
-    lastReview: new Date().toISOString(),
-    averageResponseTime: 24,
-    totalReviews: 10
-  },
-  engagement: {
-    photoSubmissions: 5,
-    commentResponses: 8,
-    actionItemsCompleted: 12,
-    totalActionItems: 15
-  }
-};
-
-const mockDashboardMetrics: CoachDashboardMetrics = {
-  dailyMetrics: {
-    totalCheckIns: 15,
-    pendingReviews: 5,
-    completedReviews: 15,
-    averageResponseTime: 90
-  },
-  clientMetrics: {
-    totalActive: 25,
-    atRisk: 5,
-    improving: 12,
-    needsAttention: 5
-  },
-  engagementMetrics: {
-    weeklyActiveClients: 21,
-    averageCheckInCompletion: 88,
-    photoSubmissionRate: 75,
-    feedbackResponseRate: 92
-  },
-  priorityActions: {
-    urgentReviews: ['check-1', 'check-2'],
-    atRiskClients: ['client-1', 'client-2'],
-    pendingPhotos: ['check-3', 'check-4'],
-    missedCheckIns: ['client-3', 'client-4']
-  }
-};
-
-const mockClientProgress: IEnhancedCheckInForm[] = [mockEnhancedCheckIn];
-
-const mockProgressPhotos: ProgressPhoto[] = [
-  {
-    id: '1',
-    clientId: 'client1',
-    clientName: 'John Doe',
-    photoUrl: '/mock/progress1.jpg',
-    date: '2024-03-15',
-    type: 'progress'
-  },
-  {
-    id: '2',
-    clientId: 'client2',
-    clientName: 'Jane Smith',
-    photoUrl: '/mock/progress2.jpg',
-    date: '2024-03-14',
-    type: 'progress'
-  }
-];
-
-const mockAIAnalysis: AIAnalysis = {
-  overallMood: [
-    { category: 'Energy', score: 7.8, trend: 'up', change: 0.5 },
-    { category: 'Motivation', score: 8.2, trend: 'up', change: 0.3 }
-  ],
-  recentWins: [
-    "80% of clients hit their protein targets this week",
-    "Average step count increased by 2,000 steps"
-  ],
-  commonChallenges: [
-    "Weekend nutrition adherence dropping",
-    "Post-work workout attendance decreased"
-  ],
-  insights: [
-    {
-      type: 'success',
-      message: 'Group motivation levels have increased by 25% this week',
-      impact: 'high'
-    },
-    {
-      type: 'info',
-      message: 'Most clients are hitting their step goals consistently',
-      impact: 'medium'
-    }
-  ],
-  focusAreas: [
-    "Schedule a group session on weekend meal prep",
-    "Implement stress management techniques"
-  ]
-};
-
-const mockClientOfTheWeek = {
-  name: "Sarah Johnson",
-  achievement: "Crushed all workout goals and improved nutrition compliance by 40%",
-  weekNumber: 12,
-  stats: {
-    workouts: { completed: 5, total: 5, change: 2 },
-    nutrition: { percentage: 95, change: 15 },
-    steps: { average: 12000, change: 2000 }
-  }
-};
-
-const mockHonorableMentions: HonorableMention[] = [
-  {
-    id: '3',
-    name: 'Emma Davis',
-    achievement: 'Biggest Breakthrough',
-    highlight: 'Overcame fear of heavy lifting',
-    metric: {
-      label: 'Strength PR',
-      value: '80kg',
-      trend: 'up',
-      change: 15
-    }
-  },
-  {
-    id: '4',
-    name: 'James Wilson',
-    achievement: 'Most Resilient',
-    highlight: 'Maintained routine during travel',
-    metric: {
-      label: 'Consistency',
-      value: '92%',
-      trend: 'up',
-      change: 12
-    }
-  }
-];
-
-const mockCoachProfile: CoachProfile = {
-  name: "Sarah Johnson",
-  motivationalQuote: "Empowering others to become their strongest, healthiest selves. Every small step counts!",
-  lastQuoteUpdate: new Date().toISOString()
-};
-
-const mockClientAIInsights: ClientAIInsights = {
-  summary: "Based on Sarah's recent check-ins and progress data, she's showing consistent improvement in most areas, particularly in energy levels and sleep quality. Her commitment to the program is evident in her regular check-ins and goal progression.",
-  strengths: [
-    "Achieved a steady weight loss trend, down 4kg over the past 3 months",
-    "Significant improvement in energy levels, up from 60% to 85%",
-    "Sleep quality has improved by 1.3 hours on average"
-  ],
-  challenges: [
-    "Muscle tone progress is slightly behind schedule at 45%",
-    "Weekend workout consistency could be improved"
-  ],
-  recommendations: [
-    "Consider adjusting the strength training program to accelerate muscle tone development",
-    "Schedule check-ins earlier in the day when energy levels are highest",
-    "Maintain the current sleep hygiene practices as they're showing positive results"
-  ],
-  trends: [
-    {
-      metric: "Energy",
-      status: "improving",
-      insight: "Consistent upward trend in morning energy levels"
-    },
-    {
-      metric: "Sleep",
-      status: "improving",
-      insight: "Quality of sleep has improved significantly"
-    },
-    {
-      metric: "Nutrition",
-      status: "stable",
-      insight: "Maintaining good adherence to meal plan"
-    }
-  ]
-};
-
-const getStatusColor = (status: CheckInStatus['clientProgress']) => {
-  switch (status) {
-    case 'on_track':
-      return 'text-green-500 bg-green-50 dark:bg-green-500/10';
-    case 'needs_attention':
-      return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-500/10';
-    case 'at_risk':
-      return 'text-red-500 bg-red-50 dark:bg-red-500/10';
-  }
-};
-
-const getStatusIcon = (status: CheckInStatus['clientProgress']) => {
-  switch (status) {
-    case 'on_track':
-      return <CheckCircleIcon className="w-5 h-5" />;
-    case 'needs_attention':
-      return <ExclamationCircleIcon className="w-5 h-5" />;
-    case 'at_risk':
-      return <BellIcon className="w-5 h-5" />;
-  }
-};
-
-const getAverageProgress = (metrics: CheckInMetrics) => {
-  const values = Object.values(metrics).filter(val => typeof val === 'number') as number[];
-  return Math.round(values.reduce((acc, val) => acc + val, 0) / values.length);
-};
-
-// Add a helper function for consistent date formatting
-const formatDate = (dateString: string) => {
-  try {
-    return format(new Date(dateString), 'dd/MM/yyyy');
-  } catch (error) {
-    return dateString;
-  }
-};
-
-async function fetchAIInsights(checkIns: CheckInForm[], retryCount = 0): Promise<GroupInsight[]> {
-  try {
-    const response = await fetch('/api/coach/ai-insights', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ checkIns }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      const error = data as AIError;
-      
-      if (error.retryable && retryCount < 3) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return fetchAIInsights(checkIns, retryCount + 1);
-      }
-
-      throw new Error(error.message);
-    }
-
-    const aiResponse = data as AIResponse;
-    
-    if (aiResponse.warning) {
-      toast.warning(aiResponse.warning);
-    }
-
-    if (aiResponse.cached) {
-      toast.info('Using cached insights');
-    }
-
-    return aiResponse.insights || mockAIAnalysis.insights;
-  } catch (error) {
-    console.error('Error fetching AI insights:', error);
-    if (retryCount < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-      return fetchAIInsights(checkIns, retryCount + 1);
-    }
-    toast.error('Unable to fetch AI insights. Using cached data.');
-    return mockAIAnalysis.insights;
-  }
+function ClientsToPraiseCard({ data }) {
+  return (
+    <section className="bg-gray-900 rounded-2xl p-6 shadow-lg border border-gray-800 flex flex-col gap-4 min-h-[180px]">
+      <div className="flex items-center gap-3 mb-2">
+        <StarIcon className="h-7 w-7 text-orange-400" />
+        <h2 className="text-lg font-semibold text-white">Clients to Praise (AI)</h2>
+      </div>
+      <ul className="text-sm text-orange-300 list-disc ml-5">
+        {(data?.clients && data.clients.length > 0) ? data.clients.map((c, i) => (
+          <li key={i}>
+            <span className="font-semibold text-white">{c.name}</span> <span className="text-xs text-orange-400 ml-1">({c.reason})</span>
+          </li>
+        )) : <li className="text-gray-500">No clients to praise found.</li>}
+      </ul>
+    </section>
+  );
 }
 
 export default function CoachDashboard() {
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isCommandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [isNotificationsOpen, setNotificationsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
-  const [clientProgress, setClientProgress] = useState(mockClientProgress);
-  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis>(mockAIAnalysis);
-  const [coachProfile, setCoachProfile] = useState<CoachProfile>(mockCoachProfile);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const lastAIUpdate = new Date().toISOString();
-  const [aiError, setAiError] = useState<AIError | null>(null);
-  const [isRetrying, setIsRetrying] = useState(false);
+  const { user } = useAuth();
+  const [businessData, setBusinessData] = useState({});
+  const [businessLoading, setBusinessLoading] = useState(false);
+  const [businessError, setBusinessError] = useState('');
+  const [credits, setCredits] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleSearchOpen = () => {
-    setCommandPaletteOpen(true);
-  };
-
-  const handleNotificationsOpen = () => {
-    setNotificationsOpen(true);
-  };
-
-  const handleNotificationsClose = () => {
-    setNotificationsOpen(false);
-  };
-
-  const handleCommandPaletteClose = () => {
-    setCommandPaletteOpen(false);
-  };
-
-  const handleAIInsightsRefresh = async () => {
-    setIsLoadingInsights(true);
-    setAiError(null);
-    setIsRetrying(true);
-    
-    try {
-      const insights = await fetchAIInsights(mockClientProgress, 0);
-      setAiAnalysis(prev => ({ ...prev, insights }));
-      toast.success('Insights refreshed');
-    } catch (error) {
-      const aiError = error as AIError;
-      setAiError(aiError);
-      toast.error(aiError.message);
-    } finally {
-      setIsLoadingInsights(false);
-      setIsRetrying(false);
-    }
-  };
+  // Simulate fetching live data (replace with real fetch if available)
+  const [clientData, setClientData] = useState(null);
+  const [clientOfWeekData, setClientOfWeekData] = useState(null);
+  const [winsLossesData, setWinsLossesData] = useState(null);
+  const [focusData, setFocusData] = useState(null);
+  const [checkOnData, setCheckOnData] = useState(null);
+  const [praiseData, setPraiseData] = useState(null);
 
   useEffect(() => {
-    // Simulate data loading
-    const loadData = async () => {
+    async function fetchCoachData() {
+      setBusinessLoading(true);
+      setBusinessError('');
       try {
-        // In a real app, you would fetch data here
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setMetrics(mockMetrics);
-        setCoachProfile(mockCoachProfile);
-    } catch (error) {
-        console.error('Error loading dashboard data:', error);
-    } finally {
-        setIsLoading(false);
+        const res = await fetch(`/api/coach-data?coachId=${user.uid}`);
+        const data = await res.json();
+        setBusinessData({ summary: data.aiInsights });
+        setCredits(data.aiRefreshCredits ?? 3);
+      } catch (e) {
+        setBusinessError('Failed to load insights.');
       }
-    };
-    
-    loadData();
-  }, []);
+      setBusinessLoading(false);
+    }
+    if (user?.uid) fetchCoachData();
+  }, [user?.uid]);
 
-  if (isLoading) {
-          return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    </div>
-  );
-  }
-
-  // Transform metrics into CoachSummary format
-  const coachSummaryData: CoachSummaryProps = {
-    coachName: coachProfile.name,
-    weeklyHighlights: {
-      wins: [
-        `${metrics.clientMetrics.improving} clients improving`,
-        `${metrics.engagementMetrics.averageCheckInCompletion}% check-in completion`,
-        `${metrics.clientMetrics.totalActive} active clients`
-      ],
-      clientQuotes: [
-        {
-          quote: "Your guidance has been transformative. I never thought I could achieve this much!",
-          clientName: "Sarah W."
-        },
-        {
-          quote: "The way you break down complex nutrition concepts makes it so much easier to follow through.",
-          clientName: "James T."
-        }
-      ],
-      impactMetrics: [
-        {
-          label: "Client Satisfaction",
-          value: "94%",
-          trend: "up",
-          change: 5
-        },
-        {
-          label: "Goal Achievement Rate",
-          value: `${metrics.engagementMetrics.averageCheckInCompletion}%`,
-          trend: "up",
-          change: 3
-        }
-      ]
-    },
-    encouragement: coachProfile.motivationalQuote
-  };
-
-  // Transform client of the week data to match interface
-  const transformedClientOfWeek = {
-    name: mockClientOfTheWeek.name,
-    achievement: mockClientOfTheWeek.achievement,
-    weekNumber: mockClientOfTheWeek.weekNumber,
-    stats: {
-      workouts: {
-        completed: mockClientOfTheWeek.stats.workouts.completed,
-        total: mockClientOfTheWeek.stats.workouts.total,
-        change: mockClientOfTheWeek.stats.workouts.change
-      },
-      nutrition: {
-        percentage: mockClientOfTheWeek.stats.nutrition.percentage,
-        change: mockClientOfTheWeek.stats.nutrition.change
-      },
-      steps: {
-        average: mockClientOfTheWeek.stats.steps.average,
-        change: mockClientOfTheWeek.stats.steps.change
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setBusinessError('');
+    try {
+      const res = await fetch('/api/ai-insights/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coachId: user.uid,
+          prompt: 'Give me a concise, high-level summary of my business performance for this week as a fitness coach. If you have no data, say so.',
+        }),
+      });
+      const data = await res.json();
+      if (data.result) {
+        setBusinessData({ summary: data.result });
+        setCredits(data.credits);
+      } else {
+        setBusinessError(data.error || 'Failed to refresh.');
       }
+    } catch (e) {
+      setBusinessError('Failed to refresh.');
     }
-  };
-
-  const renderAIInsights = () => {
-    if (isLoadingInsights) {
-          return (
-        <div className="flex items-center justify-center p-8">
-          <RefreshCw className="w-6 h-6 animate-spin text-primary" />
-          <span className="ml-2">Loading insights...</span>
-            </div>
-          );
-    }
-
-    if (aiError) {
-      return (
-        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-          <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                Error Loading Insights
-                              </h3>
-              <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-                {aiError.message}
-              </p>
-              {aiError.retryable && (
-                              <button 
-                  onClick={handleAIInsightsRefresh}
-                  disabled={isRetrying}
-                  className="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                >
-                  {isRetrying ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin mr-1" />
-                      Retrying...
-                    </>
-                  ) : (
-                    'Try Again'
-                  )}
-                </button>
-              )}
-                </div>
-              </div>
-            </div>
-          );
-    }
-
-          return (
-      <AIGroupInsights 
-        lastUpdated={lastAIUpdate}
-        onRefresh={handleAIInsightsRefresh}
-        isLoading={isLoadingInsights}
-      />
-    );
+    setRefreshing(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-white">Coach Dashboard</h1>
-                <div className="flex items-center space-x-4">
+    <div className="p-6 md:p-10 w-full">
+      <h1 className="text-2xl font-bold text-white mb-8">AI Insights Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+        <div>
+          <BusinessOverviewCard data={businessData} loading={businessLoading || refreshing} error={businessError} />
             <button
-              onClick={handleSearchOpen}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
+            onClick={handleRefresh}
+            disabled={refreshing || credits <= 0}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
             >
-              <span className="sr-only">Search</span>
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+            {refreshing ? 'Refreshing...' : `Refresh AI Insights (${credits} left)`}
                     </button>
-            <button
-              onClick={handleNotificationsOpen}
-              className="p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <span className="sr-only">View notifications</span>
-              <BellIcon className="w-6 h-6" />
-                    </button>
-                  </div>
-                </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Analytics Snapshot */}
-          <div className="lg:col-span-2">
-            <AnalyticsSnapshot />
-            </div>
-
-          {/* Client of the Week */}
-          <div className="lg:col-span-1">
-            <ClientOfTheWeek client={mockClientOfTheWeek} />
-                </div>
-
-          {/* Priority Alerts */}
-          <div className="lg:col-span-2">
-            <PriorityAlerts />
+          {businessError && <div className="text-red-500 mt-2">{businessError}</div>}
         </div>
-
-          {/* Recent Badge Wins */}
-          <div className="lg:col-span-1">
-            <RecentBadgeWins />
-            </div>
-
-          {/* AI Group Insights */}
-          <div className="lg:col-span-3">
-            {renderAIInsights()}
-        </div>
-
-        {/* Recent Progress Photos */}
-          <div className="lg:col-span-3">
-            <RecentProgressPhotos photos={mockProgressPhotos} />
-          </div>
-        </div>
-
-        {/* Command Palette */}
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={handleCommandPaletteClose}
-        />
-
-        {/* Notification Center */}
-        <NotificationCenter
-          isOpen={isNotificationsOpen}
-          onClose={handleNotificationsClose}
-        />
+        <ClientOverviewCard data={clientData} />
+        <ClientOfTheWeekCard data={clientOfWeekData} />
+        <WinsLossesCard data={winsLossesData} />
+        <WhatToFocusOnCard data={focusData} />
+        <ClientsToCheckOnCard data={checkOnData} />
+        <ClientsToPraiseCard data={praiseData} />
               </div>
     </div>
   );

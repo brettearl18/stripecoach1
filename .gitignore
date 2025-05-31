@@ -45,6 +45,7 @@ next-env.d.ts
 
 # Firebase Admin SDK
 stripe-coach-firebase-adminsdk*.json
+serviceAccountKey.json
 
 # Environment files
 .env.development

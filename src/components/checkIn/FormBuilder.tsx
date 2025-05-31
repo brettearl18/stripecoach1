@@ -102,7 +102,7 @@ const QUESTION_TYPES = [
   }
 ];
 
-export default function FormBuilder({ initialData, isTemplate = false }: FormBuilderProps) {
+export default function CheckInFormBuilder({ initialData, isTemplate = false }: FormBuilderProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [templates, setTemplates] = useState<CheckInForm[]>([]);

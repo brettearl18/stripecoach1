@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAuth } from '@/hooks/useAuth'
 import { useState, useEffect } from 'react'
+import { getActiveClients, getRecentCheckIns, getAverageClientProgress } from '@/lib/firebase/coachAnalytics'
 
 interface AnalyticMetric {
   label: string
@@ -40,49 +41,54 @@ export function AnalyticsSnapshot() {
       icon: ClipboardDocumentCheckIcon
     }
   ])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (user?.uid) {
       loadAnalytics()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
   const loadAnalytics = async () => {
+    setLoading(true)
     try {
-      // In a real implementation, fetch data from your backend
-      // For now, using mock data
+      const coachId = user.uid
+      const clients = await getActiveClients(coachId)
+      const activeClients = clients.length
+      const checkIns = await getRecentCheckIns(coachId)
+      const engagedClients = new Set(checkIns.map(ci => ci.clientId))
+      const weeklyEngagement = activeClients ? Math.round((engagedClients.size / activeClients) * 100) : 0
+      const avgProgress = await getAverageClientProgress(coachId)
+      const completedCheckIns = checkIns.filter(ci => ci.completed).length
+      const checkInCompletion = checkIns.length ? Math.round((completedCheckIns / checkIns.length) * 100) : 0
+
       setMetrics([
         {
           label: 'Active Clients',
-          value: 25,
-          change: 3,
-          trend: 'up',
+          value: activeClients,
           icon: UserGroupIcon
         },
         {
           label: 'Weekly Engagement',
-          value: '85%',
-          change: 5,
-          trend: 'up',
+          value: `${weeklyEngagement}%`,
           icon: ChartBarIcon
         },
         {
           label: 'Client Progress',
-          value: '78%',
-          change: -2,
-          trend: 'down',
+          value: `${avgProgress}%`,
           icon: ArrowTrendingUpIcon
         },
         {
           label: 'Check-in Completion',
-          value: '92%',
-          change: 8,
-          trend: 'up',
+          value: `${checkInCompletion}%`,
           icon: ClipboardDocumentCheckIcon
         }
       ])
     } catch (error) {
       console.error('Error loading analytics:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -120,40 +126,17 @@ export function AnalyticsSnapshot() {
         <p className="text-sm text-muted-foreground">
           Key metrics and insights from your coaching business
         </p>
-        
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="p-4 rounded-lg bg-background/50">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Active Clients</p>
-              <span className="text-sm text-green-600 bg-green-100 px-2 py-0.5 rounded">+3%</span>
+          {metrics.map((metric, idx) => (
+            <div key={metric.label} className="p-4 rounded-lg bg-background/50">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">{metric.label}</p>
+              </div>
+              <p className="text-2xl font-bold mt-2">{metric.value}</p>
             </div>
-            <p className="text-2xl font-bold mt-2">25</p>
-          </div>
-          
-          <div className="p-4 rounded-lg bg-background/50">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Weekly Engagement</p>
-              <span className="text-sm text-green-600 bg-green-100 px-2 py-0.5 rounded">+5%</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">85%</p>
-          </div>
-          
-          <div className="p-4 rounded-lg bg-background/50">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Client Progress</p>
-              <span className="text-sm text-red-600 bg-red-100 px-2 py-0.5 rounded">-2%</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">78%</p>
-          </div>
-          
-          <div className="p-4 rounded-lg bg-background/50">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Check-in Completion</p>
-              <span className="text-sm text-green-600 bg-green-100 px-2 py-0.5 rounded">+8%</span>
-            </div>
-            <p className="text-2xl font-bold mt-2">92%</p>
-          </div>
+          ))}
         </div>
+        {loading && <div className="mt-4 text-sm text-muted-foreground">Loading analytics...</div>}
       </div>
     </div>
   )

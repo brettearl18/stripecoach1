@@ -35,6 +35,9 @@ import {
   UserIcon,
   PencilSquareIcon,
   ArrowLeft,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +48,8 @@ import { format } from 'date-fns';
 import { clientService } from '@/lib/services/clientService';
 import ClientSettings from './components/ClientSettings';
 import { SCORING_TIERS } from '../../templates-v2/services/scoringService';
+import { analyticsService } from '@/lib/services/database';
+import mockClientData from './mockClientData'; // If not already imported
 
 interface TabContentProps {
   client: any;
@@ -136,6 +141,14 @@ interface CoachReview {
   nutrition: CategoryReview;
   mindset: CategoryReview;
   lastUpdated: string;
+}
+
+// Utility to calculate days ago from a date string
+function getDaysAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
 function processCheckInResponses(checkIns: any[], scoringTierId?: string): CoachReview {
@@ -751,189 +764,297 @@ const CheckInDetails = ({
 };
 
 // Tab content components
-const OverviewTab = ({ client }: TabContentProps) => (
-  <div className="space-y-6">
-    {/* Client Settings */}
-    <ClientSettings 
-      client={client}
-      onUpdate={async (updates) => {
-        try {
-          await clientService.updateClient(client.id, updates);
-          // You might want to refresh the client data here
-        } catch (error) {
-          console.error('Failed to update client:', error);
-        }
-      }}
-    />
-
-    {/* Existing Overview content */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Left Column - Progress & Metrics */}
-      <div className="col-span-2 space-y-6">
-        {/* Progress Overview */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Progress Overview</h2>
-            <div className="grid grid-cols-3 gap-4">
-              {Object.entries(client.weeklyProgress || {}).map(([area, progress]) => (
-                <div key={area} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                  <div className="text-sm font-medium text-gray-500 dark:text-gray-400 capitalize">{area}</div>
-                  <div className="mt-2">
-                    <div className="flex items-center">
-                      <div className="flex-1">
-                        <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full">
-                          <div
-                            className="h-2 bg-blue-500 rounded-full"
-                            style={{ width: `${progress}%` }}
-                          />
+const OverviewTab = ({ client }: TabContentProps) => {
+  const [enlargedPhoto, setEnlargedPhoto] = useState<null | typeof latestProgressPhotos[0]>(null);
+  // Mock at-risk/engagement alerts and achievements
+  const atRiskAlerts = [
+    { id: 1, message: 'Missed last check-in', type: 'warning' },
+    { id: 2, message: 'Low engagement this week', type: 'info' },
+  ];
+  const recentAchievements = [
+    { id: 1, text: 'Completed 4-week program', icon: TrophyIcon, color: 'text-yellow-500' },
+    { id: 2, text: '7-day streak maintained', icon: FireIcon, color: 'text-red-500' },
+    { id: 3, text: 'Hit weight goal milestone', icon: SparklesIcon, color: 'text-blue-500' },
+  ];
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+              <div className="text-sm font-medium opacity-80">Check-in Streak</div>
+              <div className="mt-1 flex items-baseline">
+                <div className="text-2xl font-semibold">{client.metrics.streak}</div>
+                <div className="ml-2 text-sm opacity-80">weeks</div>
+              </div>
+              <div className="mt-2 text-xs opacity-80">Longest streak: 6 weeks</div>
+            </div>
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+              <div className="text-sm font-medium opacity-80">Completion Rate</div>
+              <div className="mt-1 flex items-baseline">
+                <div className="text-2xl font-semibold">{client.metrics.completionRate}%</div>
+              </div>
+              <div className="mt-2 text-xs opacity-80">Last 30 days</div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+              <div className="text-sm font-medium opacity-80">Last Check-in</div>
+              <div className="mt-1 flex items-baseline">
+                <div className="text-2xl font-semibold">{new Date(client.metrics.lastCheckIn).toLocaleDateString('en-GB')}</div>
+              </div>
+              <div className="mt-2 text-xs opacity-80">{getDaysAgo(client.metrics.lastCheckIn)} days ago</div>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl p-4 text-white">
+              <div className="text-sm font-medium opacity-80">Overall Progress</div>
+              <div className="mt-1 flex items-baseline">
+                <div className="text-2xl font-semibold">{client.metrics.progress}%</div>
+              </div>
+              <div className="mt-2 text-xs opacity-80">+5% this week</div>
+            </div>
+          </div>
+          {/* Goal Progress */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Goal Progress</h2>
+              <div className="space-y-4">
+                {client.goals.map((goal: any) => (
+                  <div key={goal.id}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">{goal.title}</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{goal.progress}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
+                      <div className="h-2 bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${goal.progress}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Recent Check-ins */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Check-ins</h2>
+              <div className="space-y-4">
+                {client.checkIns?.slice(0, 3).map((checkIn: any) => (
+                  <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center">
+                          <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {new Date(checkIn.date).toLocaleDateString('en-GB')}
+                          </span>
                         </div>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
                       </div>
-                      <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
-                        {progress}%
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        checkIn.status === 'completed'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
+                      }`}>
+                        {checkIn.status}
                       </span>
                     </div>
+                    {checkIn.metrics && (
+                      <div className="mt-3 grid grid-cols-3 gap-4">
+                        {Object.entries(checkIn.metrics).map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
+                            <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Recent Check-ins */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Recent Check-ins</h2>
-            <div className="space-y-4">
-              {client.checkIns?.slice(0, 3).map((checkIn: any) => (
-                <div key={checkIn.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                  <div className="flex items-start justify-between">
+          {/* Program History */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Program History</h2>
+              <div className="space-y-2">
+                {client.programHistory?.map((program: any) => (
+                  <div key={program.id} className="flex items-center justify-between">
                     <div>
-                      <div className="flex items-center">
-                        <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {new Date(checkIn.date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{checkIn.notes}</p>
+                      <span className="font-medium text-gray-900 dark:text-white">{program.name}</span>
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">{new Date(program.startDate).toLocaleDateString('en-GB')} - {program.endDate ? new Date(program.endDate).toLocaleDateString('en-GB') : 'Present'}</span>
                     </div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      checkIn.status === 'completed'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400'
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                      program.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400' :
+                      program.status === 'completed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400' :
+                      'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
                     }`}>
-                      {checkIn.status}
+                      {program.status}
                     </span>
                   </div>
-                  {checkIn.metrics && (
-                    <div className="mt-3 grid grid-cols-3 gap-4">
-                      {Object.entries(checkIn.metrics).map(([key, value]) => (
-                        <div key={key} className="text-sm">
-                          <span className="text-gray-500 dark:text-gray-400 capitalize">{key}: </span>
-                          <span className="text-gray-900 dark:text-white font-medium">{value}</span>
-                        </div>
-                      ))}
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* At-Risk/Engagement Alerts */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Engagement Alerts</h2>
+              <ul className="space-y-2">
+                {atRiskAlerts.map(alert => (
+                  <li key={alert.id} className={`flex items-center space-x-2 text-sm ${alert.type === 'warning' ? 'text-yellow-600' : 'text-blue-500'}`}>
+                    {alert.type === 'warning' ? <ExclamationTriangleIcon className="h-4 w-4" /> : <SparklesIcon className="h-4 w-4" />}
+                    <span>{alert.message}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          {/* Recent Achievements */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Achievements</h2>
+              <ul className="space-y-2">
+                {recentAchievements.map(a => (
+                  <li key={a.id} className="flex items-center space-x-2 text-sm">
+                    <a.icon className={`h-5 w-5 ${a.color}`} />
+                    <span>{a.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+        {/* Right Column */}
+        <div className="space-y-6 flex flex-col h-full">
+          {/* AI Insights */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm flex-1">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Insights</h2>
+                <SparklesIcon className="h-5 w-5 text-blue-500" />
+              </div>
+              <div className="prose prose-sm dark:prose-invert">
+                <p className="text-gray-600 dark:text-gray-300">{client.aiSummary?.overview}</p>
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                    <TrophyIcon className="h-4 w-4 text-green-500 mr-2" />
+                    Recent Wins
+                  </h3>
+                  <ul className="mt-2 space-y-2">
+                    {client.aiSummary?.wins.map((win: string, index: number) => (
+                      <li key={index} className="flex items-start">
+                        <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
+                        <span className="text-sm text-gray-600 dark:text-gray-300">{win}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                    <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-2" />
+                    Areas for Attention
+                  </h3>
+                  <ul className="mt-2 space-y-2">
+                    {client.aiSummary?.challenges.map((challenge: string, index: number) => (
+                      <li key={index} className="flex items-start">
+                        <ClockIcon className="h-4 w-4 text-yellow-500 mr-2 mt-1 flex-shrink-0" />
+                        <span className="text-sm text-gray-600 dark:text-gray-300">{challenge}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
+                    <SparklesIcon className="h-4 w-4 text-blue-500 mr-2" />
+                    Recommendations
+                  </h3>
+                  <ul className="mt-2 space-y-2">
+                    {client.aiSummary?.recommendations.map((rec: string, index: number) => (
+                      <li key={index} className="flex items-start">
+                        <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-2 mt-1 flex-shrink-0" />
+                        <span className="text-sm text-gray-600 dark:text-gray-300">{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Latest Progress Photos */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Latest Progress Photos</h2>
+              <div className="flex space-x-6">
+                {latestProgressPhotos.map(photo => (
+                  <div key={photo.id} className="flex flex-col items-center">
+                    <div
+                      className="relative h-32 w-24 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer hover:ring-2 hover:ring-blue-500"
+                      onClick={() => setEnlargedPhoto(photo)}
+                      title={`Click to enlarge ${photo.view}`}
+                    >
+                      <Image
+                        src={photo.url}
+                        alt={`${photo.view} progress photo`}
+                        fill
+                        className="object-cover"
+                      />
                     </div>
-                  )}
+                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">{photo.view}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Modal for enlarged photo */}
+              {enlargedPhoto && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setEnlargedPhoto(null)}>
+                  <div className="bg-white dark:bg-gray-900 rounded-lg p-4 max-w-lg w-full flex flex-col items-center relative" onClick={e => e.stopPropagation()}>
+                    <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" onClick={() => setEnlargedPhoto(null)}>&times;</button>
+                    <Image
+                      src={enlargedPhoto.url}
+                      alt={`${enlargedPhoto.view} progress photo`}
+                      width={400}
+                      height={500}
+                      className="object-contain rounded-lg"
+                    />
+                    <div className="mt-4 text-md font-medium text-gray-900 dark:text-white">{enlargedPhoto.view} - {new Date(enlargedPhoto.date).toLocaleDateString('en-GB')}</div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Right Column - AI Insights & Actions */}
-      <div className="space-y-6">
-        {/* AI Summary */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Insights</h2>
-              <SparklesIcon className="h-5 w-5 text-blue-500" />
-            </div>
-            <div className="prose prose-sm dark:prose-invert">
-              <p className="text-gray-600 dark:text-gray-300">{client.aiSummary?.overview}</p>
-              
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                  <TrophyIcon className="h-4 w-4 text-green-500 mr-2" />
-                  Recent Wins
-                </h3>
-                <ul className="mt-2 space-y-2">
-                  {client.aiSummary?.wins.map((win: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 mt-1 flex-shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">{win}</span>
-                    </li>
-                  ))}
-                </ul>
+          {/* Quick Actions */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+            <div className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
+              <div className="space-y-3">
+                <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center">
+                    <ClipboardDocumentListIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Schedule Check-in</span>
+                  </div>
+                  <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+                </button>
+                <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center">
+                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Send Message</span>
+                  </div>
+                  <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+                </button>
+                <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <div className="flex items-center">
+                    <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Update Goals</span>
+                  </div>
+                  <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+                </button>
               </div>
-
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                  <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500 mr-2" />
-                  Areas for Attention
-                </h3>
-                <ul className="mt-2 space-y-2">
-                  {client.aiSummary?.challenges.map((challenge: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <ClockIcon className="h-4 w-4 text-yellow-500 mr-2 mt-1 flex-shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">{challenge}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center">
-                  <SparklesIcon className="h-4 w-4 text-blue-500 mr-2" />
-                  Recommendations
-                </h3>
-                <ul className="mt-2 space-y-2">
-                  {client.aiSummary?.recommendations.map((rec: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <ArrowTrendingUpIcon className="h-4 w-4 text-blue-500 mr-2 mt-1 flex-shrink-0" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
-            <div className="space-y-3">
-              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <div className="flex items-center">
-                  <ClipboardDocumentListIcon className="h-5 w-5 text-gray-400 mr-3" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Schedule Check-in</span>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-              </button>
-              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <div className="flex items-center">
-                  <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-400 mr-3" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Send Message</span>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-              </button>
-              <button className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                <div className="flex items-center">
-                  <DocumentTextIcon className="h-5 w-5 text-gray-400 mr-3" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Update Goals</span>
-                </div>
-                <ChevronRightIcon className="h-5 w-5 text-gray-400" />
-              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CheckInsTab = ({ client }: TabContentProps) => {
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
@@ -1545,136 +1666,53 @@ const AIInsightsTab = ({ client }: TabContentProps) => (
   </div>
 );
 
-const mockClientData = {
-  id: '1',
-  firstName: 'John',
-  lastName: 'Smith',
-  name: 'John Smith',
-  email: 'john.smith@example.com',
-  phone: '+1 (555) 123-4567',
-  startDate: '2024-01-15',
-  status: 'active',
-  metrics: {
-    streak: 4,
-    completionRate: 85,
-    lastCheckIn: '2024-03-20',
-    progress: 75,
-    weight: { value: 82.5, unit: 'kg', change: -0.8 },
-    sleep: { value: 7.8, unit: 'hours', change: 0.3 },
-    energy: { value: 8.5, unit: '/10', change: 1.5 },
-    stress: { value: 4, unit: '/10', change: -2 }
+// Add this mock photo set at the top (or near OverviewTab)
+const latestProgressPhotos = [
+  {
+    id: 1,
+    url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=500&h=500&fit=crop',
+    date: '2024-03-20',
+    view: 'Front',
   },
-  program: {
-    type: 'Weight Loss',
-    currentWeek: 8,
-    totalWeeks: 12,
-    phase: 'Progressive'
+  {
+    id: 2,
+    url: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=500&h=500&fit=crop',
+    date: '2024-03-20',
+    view: 'Back',
   },
-  goals: [
-    { id: '1', title: 'Lose 20 pounds by June', progress: 65 },
-    { id: '2', title: 'Run a 5K under 30 minutes', progress: 40 },
-    { id: '3', title: 'Establish consistent meal prep routine', progress: 80 },
-    { id: '4', title: 'Improve sleep quality', progress: 70 }
-  ],
-  checkIns: [
-    {
-      id: '1',
-      formTitle: 'Weekly Progress Check-in',
-      date: '2024-03-20',
-      status: 'completed',
-      metrics: {
-        weight: '185',
-        sleep: '7.5',
-        energy: '8',
-        stress: '4'
-      },
-      responses: {
-        q1: { text: "Great progress this week. All workouts completed." },
-        q2: { text: "Energy levels have been consistently high" },
-        q3: { text: "Completed all planned workouts" },
-        q4: { text: "No concerns this week" }
-      },
-      notes: 'Great progress this week. All workouts completed.'
-    },
-    {
-      id: '2',
-      formTitle: 'Weekly Progress Check-in',
-      date: '2024-03-13',
-      status: 'completed',
-      metrics: {
-        weight: '187',
-        sleep: '7',
-        energy: '7',
-        stress: '5'
-      },
-      responses: {
-        q1: { text: "Struggled with evening snacking but maintained workout schedule." },
-        q2: { text: "Energy was good but fluctuated" },
-        q3: { text: "Missed one workout due to work" },
-        q4: { text: "Need help with evening cravings" }
-      },
-      notes: 'Struggled with evening snacking but maintained workout schedule.'
-    }
-  ],
-  weeklyProgress: {
-    training: 85,
-    nutrition: 75,
-    recovery: 80
+  {
+    id: 3,
+    url: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=500&h=500&fit=crop',
+    date: '2024-03-20',
+    view: 'Side',
   },
-  forms: [
-    {
-      id: 'form1',
-      title: 'Monthly Assessment',
-      status: 'pending',
-      date: '2024-04-01'
-    },
-    {
-      id: 'form2',
-      title: 'Nutrition Questionnaire',
-      status: 'completed',
-      date: '2024-03-15'
-    }
-  ],
-  aiSummary: {
-    overview: "John has been making steady progress towards his goals. His consistency in check-ins and workout completion is commendable.",
-    wins: [
-      "Maintained consistent workout schedule",
-      "Improved sleep quality",
-      "Hit protein intake goals"
-    ],
-    challenges: [
-      "Managing stress levels",
-      "Weekend nutrition adherence"
-    ],
-    recommendations: [
-      "Focus on stress management techniques",
-      "Implement evening routine for better sleep",
-      "Add mobility work to recovery days"
-    ]
-  },
-  checkInHistory: Array.from({ length: 20 }, (_, i) => ({
-    week: i + 1,
-    date: new Date(Date.now() - (i * 7 * 24 * 60 * 60 * 1000)).toISOString(),
-    score: Math.random() > 0.1 ? Math.floor(Math.random() * 40) + 60 : 0
-  }))
-};
+];
 
 export default function ClientProfilePage() {
   const params = useParams();
   const [activeTab, setActiveTab] = useState('overview');
-  const client = mockClientData; // Always use mock data
-  const loading = false;
-  const error = null;
   const { user } = useAuth();
+  const [loading, setLoading] = useState(false); // Not loading since using mock
+  const [error, setError] = useState<string | null>(null);
+  const [client, setClient] = useState<any>(mockClientData); // Use mock data by default
+  const [expandedProgram, setExpandedProgram] = useState<string | null>(null);
+
+  // Program history state
+  const [programAssignments, setProgramAssignments] = useState<any[]>([]);
+  const [programLoading, setProgramLoading] = useState(true);
+  const [programError, setProgramError] = useState<string | null>(null);
+
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+
+  // Remove useEffect that fetches real client data for now
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <DashboardNav />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center h-64">
-            <LoadingSpinner />
-          </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="animate-pulse">
+          <div className="h-20 w-20 rounded-full bg-gray-200 dark:bg-gray-700 mb-4" />
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 mb-2" />
+          <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700" />
         </div>
       </div>
     );
@@ -1682,19 +1720,15 @@ export default function ClientProfilePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <DashboardNav />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex flex-col items-center justify-center h-64">
-              <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mb-4" />
-              <p className="text-red-500 dark:text-red-400 text-lg font-medium mb-4">{error}</p>
-              <button
-                onClick={() => {}}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Try Again
-              </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <div className="bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Error</h3>
+              <div className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</div>
             </div>
           </div>
         </div>
@@ -1718,190 +1752,289 @@ export default function ClientProfilePage() {
         return <CalendarTab client={client} />;
       case 'ai-insights':
         return <AIInsightsTab client={client} />;
+      case 'settings':
+        return <div className="max-w-2xl mx-auto">
+          <ClientSettings client={client} onUpdate={async (updates) => {}} />
+        </div>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <DashboardNav />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Client Header */}
-        <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="h-16 w-16 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                  {client.avatar ? (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden mb-6">
+        <div className="p-6">
+          <div className="flex items-start justify-between">
+            {/* Client Info */}
+            <div className="flex items-center space-x-4">
+              <div className="relative group">
+                <div className="h-20 w-20 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all">
+                  {client?.avatar ? (
                     <Image
                       src={client.avatar}
                       alt={client.name}
-                      width={64}
-                      height={64}
+                      width={80}
+                      height={80}
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <UserIcon className="h-12 w-12 text-gray-400" />
+                    <UserCircleIcon className="h-16 w-16 text-gray-400" />
                   )}
                 </div>
-                <div>
-                  <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                    {client.name}
-                  </h1>
-                  <div className="flex items-center space-x-4 mt-1">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      Member since {new Date(client.startDate).toLocaleDateString()}
-                    </span>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      client.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400' :
-                      'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/10 dark:text-yellow-400'
-                    }`}>
-                      {client.status === 'active' ? 'Active' : 'Inactive'}
-                    </span>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="bg-black bg-opacity-50 rounded-full p-2">
+                    <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Link
-                  href={`/coach/messages?client=${client.id}`}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                  Message
-                </Link>
-                <button
-                  onClick={() => {/* TODO: Implement quick check-in */}}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                >
-                  <ClipboardDocumentListIcon className="h-5 w-5 mr-2" />
-                  Quick Check-in
-                </button>
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors flex items-center gap-2">
+                  {client?.name}
+                  <button onClick={() => setSettingsModalOpen(true)} className="ml-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="Client Settings">
+                    <Cog6ToothIcon className="h-5 w-5 text-gray-400 hover:text-blue-500" />
+                  </button>
+                </h1>
+                <div className="flex items-center space-x-4 mt-1">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Member since {client?.startDate ? new Date(client.startDate).toLocaleDateString('en-GB') : ''}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-400">
+                    {client?.status}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-6">
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Check-in Streak</div>
-                <div className="mt-1 flex items-baseline">
-                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.streak || 0}</div>
-                  <div className="ml-2 text-sm text-green-600 dark:text-green-400">weeks</div>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Rate</div>
-                <div className="mt-1 flex items-baseline">
-                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.completionRate || 0}%</div>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Check-in</div>
-                <div className="mt-1 flex items-baseline">
-                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                    {client.metrics?.lastCheckIn ? format(new Date(client.metrics.lastCheckIn), 'MMM d') : 'Never'}
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-gray-500 dark:text-gray-400">Overall Progress</div>
-                <div className="mt-1 flex items-baseline">
-                  <div className="text-2xl font-semibold text-gray-900 dark:text-white">{client.metrics?.progress || 0}%</div>
-                  <div className="ml-2 flex items-center text-sm text-green-600 dark:text-green-400">
-                    <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-                    <span>+5%</span>
-                  </div>
-                </div>
-              </div>
+            {/* Quick Actions */}
+            <div className="flex items-center space-x-3">
+              <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                Message
+              </button>
+              <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                <ClipboardDocumentListIcon className="h-5 w-5 mr-2" />
+                Quick Check-in
+              </button>
             </div>
           </div>
 
-          {/* Compliance Timeline Indicator */}
-          <div className="mt-6 p-6 bg-gray-800/50 border border-gray-700 rounded-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-white">Program Compliance Timeline</h3>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  &lt;60%
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  60-79%
-                </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  ≥80%
-                </span>
+          {/* Quick Stats */}
+          <div className="grid grid-cols-4 gap-4 mt-6">
+            {/* Check-in Streak */}
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium opacity-80">Check-in Streak</div>
+                  <div className="mt-1 flex items-baseline">
+                    <div className="text-2xl font-semibold">{client?.metrics?.streak || 0}</div>
+                    <div className="ml-2 text-sm opacity-80">weeks</div>
+                  </div>
+                </div>
+                <FireIcon className="h-8 w-8 opacity-80" />
               </div>
+              <div className="mt-2 text-xs opacity-80">Longest streak: {client?.metrics?.longestStreak || 0} weeks</div>
             </div>
-            
-            <div className="relative">
-              {/* Timeline Bar */}
-              <div className="h-8 flex rounded-lg overflow-hidden">
-                {client.checkInHistory?.map((checkIn, index) => (
-                  <div
-                    key={index}
-                    className={`flex-1 ${
-                      !checkIn.score 
-                        ? 'bg-gray-700' 
-                        : checkIn.score >= 80
-                        ? 'bg-green-500'
-                        : checkIn.score >= 60
-                        ? 'bg-yellow-500'
-                        : 'bg-red-500'
-                    } relative group cursor-pointer transition-all hover:opacity-90`}
-                  >
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap">
-                        <div className="font-medium">Week {checkIn.week}</div>
-                        <div className="text-gray-400">{format(new Date(checkIn.date), 'MMM d, yyyy')}</div>
-                        {checkIn.score ? (
-                          <div className="mt-1">Score: {checkIn.score}%</div>
-                        ) : (
-                          <div className="text-gray-400">Missed</div>
-                        )}
-                      </div>
-                      <div className="border-t-8 border-x-8 border-x-transparent border-t-gray-900 w-0 h-0 mx-auto"></div>
+
+            {/* Completion Rate */}
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium opacity-80">Completion Rate</div>
+                  <div className="mt-1 flex items-baseline">
+                    <div className="text-2xl font-semibold">{client?.metrics?.completionRate || 0}%</div>
+                  </div>
+                </div>
+                <CheckCircleIcon className="h-8 w-8 opacity-80" />
+              </div>
+              <div className="mt-2 text-xs opacity-80">Last 30 days</div>
+            </div>
+
+            {/* Last Check-in */}
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium opacity-80">Last Check-in</div>
+                  <div className="mt-1 flex items-baseline">
+                    <div className="text-2xl font-semibold">
+                      {client?.metrics?.lastCheckIn ? new Date(client.metrics.lastCheckIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
                     </div>
                   </div>
-                ))}
+                </div>
+                <CalendarIcon className="h-8 w-8 opacity-80" />
               </div>
+              <div className="mt-2 text-xs opacity-80">
+                {client?.metrics?.lastCheckIn ? `${getDaysAgo(client.metrics.lastCheckIn)} days ago` : 'No check-ins yet'}
+              </div>
+            </div>
 
-              {/* Week Labels */}
-              <div className="flex justify-between mt-2 text-sm text-gray-400">
-                <span>Week 1</span>
-                <span>Week {client.checkInHistory?.length || 20}</span>
+            {/* Overall Progress */}
+            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium opacity-80">Overall Progress</div>
+                  <div className="mt-1 flex items-baseline">
+                    <div className="text-2xl font-semibold">{client?.metrics?.progress || 0}%</div>
+                  </div>
+                </div>
+                <ChartBarIcon className="h-8 w-8 opacity-80" />
+              </div>
+              <div className="mt-2 text-xs opacity-80">
+                {client?.metrics?.progressChange ? `${client.metrics.progressChange > 0 ? '+' : ''}${client.metrics.progressChange}% this week` : 'No change'}
               </div>
             </div>
           </div>
-
-          {/* Tabs */}
-          <div className="border-t border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {['overview', 'check-ins', 'progress', 'forms', 'photos', 'calendar', 'ai-insights'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`${
-                    activeTab === tab
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        <div className="space-y-6">
-          {renderTabContent()}
         </div>
       </div>
+
+      {/* Program History Timeline */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Program History</h2>
+          
+          <div className="space-y-6">
+            {client?.programHistory?.map((program: any) => (
+              <div key={program.id} className="relative">
+                {/* Timeline Line */}
+                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
+                
+                {/* Program Card */}
+                <div className="relative pl-12">
+                  {/* Status Dot */}
+                  <div className={`absolute left-0 w-8 h-8 rounded-full border-4 border-white dark:border-gray-800 flex items-center justify-center ${
+                    program.status === 'active' ? 'bg-green-500' :
+                    program.status === 'completed' ? 'bg-blue-500' :
+                    'bg-gray-500'
+                  }`}>
+                    {program.status === 'active' ? <BoltIcon className="h-4 w-4 text-white" /> :
+                     program.status === 'completed' ? <CheckCircleIcon className="h-4 w-4 text-white" /> :
+                     <ClockIcon className="h-4 w-4 text-white" />}
+                  </div>
+
+                  {/* Program Content */}
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{program.name}</h3>
+                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(program.startDate).toLocaleDateString()} - {program.endDate ? new Date(program.endDate).toLocaleDateString() : 'Present'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setExpandedProgram(expandedProgram === program.id ? null : program.id)}
+                        className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                      >
+                        {expandedProgram === program.id ? (
+                          <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                        ) : (
+                          <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Progress</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{program.progress}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            program.status === 'active' ? 'bg-green-500' :
+                            program.status === 'completed' ? 'bg-blue-500' :
+                            'bg-gray-500'
+                          }`}
+                          style={{ width: `${program.progress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    {expandedProgram === program.id && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        {program.milestones && (
+                          <div className="space-y-3">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Milestones</h4>
+                            {program.milestones.map((milestone: any, index: number) => (
+                              <div key={index} className="flex items-center space-x-3">
+                                <TrophyIcon className="h-5 w-5 text-yellow-500" />
+                                <div>
+                                  <div className="text-sm text-gray-900 dark:text-white">{milestone.title}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {new Date(milestone.date).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {program.achievements && (
+                          <div className="mt-4 space-y-3">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Achievements</h4>
+                            {program.achievements.map((achievement: string, index: number) => (
+                              <div key={index} className="flex items-center space-x-3">
+                                <SparklesIcon className="h-5 w-5 text-blue-500" />
+                                <span className="text-sm text-gray-900 dark:text-white">{achievement}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {program.notes && (
+                          <div className="mt-4">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Notes</h4>
+                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{program.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-t border-gray-200 dark:border-gray-700">
+        <nav className="flex space-x-8 px-6" aria-label="Tabs">
+          {['overview', 'check-ins', 'progress', 'forms', 'photos', 'calendar', 'ai-insights', 'settings'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`${
+                activeTab === tab
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors`}
+            >
+              {tab.replace('-', ' ')}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="space-y-6">
+        {activeTab === 'settings' ? (
+          <div className="max-w-2xl mx-auto">
+            <ClientSettings client={client} onUpdate={async (updates) => {}} />
+          </div>
+        ) : (
+          renderTabContent()
+        )}
+      </div>
+      {/* Settings Modal */}
+      {settingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60" onClick={() => setSettingsModalOpen(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-lg w-full relative" onClick={e => e.stopPropagation()}>
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" onClick={() => setSettingsModalOpen(false)}>&times;</button>
+            <ClientSettings client={client} onUpdate={async (updates) => {}} />
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

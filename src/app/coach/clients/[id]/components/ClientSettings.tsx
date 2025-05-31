@@ -27,6 +27,12 @@ export default function ClientSettings({ client, onUpdate }: ClientSettingsProps
 
   // Fetch audit logs for this client
   useEffect(() => {
+    // Skip fetching logs for mock data
+    if (client.id === '1') {
+      setAuditLogs([]);
+      setLoading(false);
+      return;
+    }
     const fetchAuditLogs = async () => {
       setLoading(true);
       try {
@@ -37,7 +43,6 @@ export default function ClientSettings({ client, onUpdate }: ClientSettingsProps
       }
       setLoading(false);
     };
-
     fetchAuditLogs();
   }, [client.id]);
 
@@ -50,7 +55,7 @@ export default function ClientSettings({ client, onUpdate }: ClientSettingsProps
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm max-w-2xl mx-auto p-4 md:p-6">
       <div className="p-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
           Client Settings
@@ -140,7 +145,11 @@ export default function ClientSettings({ client, onUpdate }: ClientSettingsProps
           <div>
             <div className="flow-root">
               <ul role="list" className="-mb-8">
-                {loading ? (
+                {client.id === '1' ? (
+                  <div className="text-center py-4 text-gray-500 dark:text-gray-400">
+                    Audit log not available for mock data
+                  </div>
+                ) : loading ? (
                   <div className="text-center py-4">Loading...</div>
                 ) : auditLogs.length === 0 ? (
                   <div className="text-center py-4 text-gray-500 dark:text-gray-400">

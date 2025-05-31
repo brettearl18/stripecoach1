@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { getPriorityAlerts } from '@/lib/firebase/coachAnalytics'
+import { ExclamationCircleIcon, CheckCircleIcon, PhoneIcon } from '@heroicons/react/24/outline'
 
 // Mock data
 const mockAlerts: Alert[] = [
@@ -58,19 +60,18 @@ const mockAlerts: Alert[] = [
 
 export function PriorityAlerts() {
   const { user } = useAuth()
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [loading, setLoading] = useState(true)
+  const [alerts, setAlerts] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
   const [showResolved, setShowResolved] = useState(false)
 
   useEffect(() => {
-    // Simulate API call with mock data
-    const loadMockAlerts = async () => {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setAlerts(mockAlerts);
-      setLoading(false);
-    };
-    loadMockAlerts();
-  }, []);
+    if (user?.uid) {
+      setLoading(true);
+      getPriorityAlerts(user.uid)
+        .then(setAlerts)
+        .finally(() => setLoading(false));
+    }
+  }, [user?.uid]);
 
   const handleDismiss = async (alertId: string) => {
     try {
@@ -147,13 +148,26 @@ export function PriorityAlerts() {
     )
   }
 
+  if (!alerts.length) return <div className="py-4 text-center text-muted-foreground">No priority alerts.</div>;
+
+  const getBadgeColor = (priority: string) => {
+    switch (priority) {
+      case 'high':
+        return 'bg-red-100 text-red-700';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   return (
     <div className="rounded-xl border bg-card text-card-foreground shadow h-full">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Bell className="w-5 h-5" />
+              <ExclamationCircleIcon className="w-5 h-5 text-red-500" />
               Priority Alerts
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -172,68 +186,61 @@ export function PriorityAlerts() {
         </div>
         
         <div className="space-y-4">
-          {alerts.length === 0 ? (
-            <div className="flex items-center justify-center h-[180px]">
-              <div className="text-center text-muted-foreground">
-                <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No active alerts</p>
-              </div>
-            </div>
-          ) : (
-            alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="p-4 rounded-lg bg-background/50 border border-border/50 hover:bg-background/80 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1">{getAlertIcon(alert.type)}</div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Link 
-                          href={`/coach/clients/${alert.clientId}`}
-                          className="font-medium hover:underline"
-                        >
-                          {alert.clientName}
-                        </Link>
-                        {getPriorityBadge(alert.priority)}
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
+          {alerts.map((alert) => (
+            <div
+              key={alert.id}
+              className="p-4 rounded-lg bg-background/50 border border-border/50 hover:bg-background/80 transition-colors"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">{getAlertIcon(alert.type as AlertType)}</div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Link 
+                        href={`/coach/clients/${alert.clientId}`}
+                        className="font-medium hover:underline"
+                      >
+                        {alert.clientName}
+                      </Link>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${getBadgeColor(alert.priority || 'high')}`}>
+                        {alert.priority ? `${alert.priority} Priority` : 'Alert'}
+                      </span>
                     </div>
+                    <p className="text-sm text-muted-foreground mt-1">{alert.message}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDismiss(alert.id)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Dismiss
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleContact(alert.clientId, alert.clientName, alert.type)}
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-1" />
-                    Contact
-                  </Button>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleResolve(alert.id)}
-                    className="bg-green-500 hover:bg-green-600"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Resolve
-                  </Button>
-                </div>
               </div>
-            ))
-          )}
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDismiss(alert.id)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Dismiss
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleContact(alert.clientId, alert.clientName, alert.type as AlertType)}
+                  className="text-blue-500 hover:text-blue-600"
+                >
+                  <PhoneIcon className="w-4 h-4 mr-1" />
+                  Contact
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => handleResolve(alert.id)}
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  <CheckCircleIcon className="w-4 h-4 mr-1" />
+                  Resolve
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

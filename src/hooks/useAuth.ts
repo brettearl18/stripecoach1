@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { auth } from '@/lib/firebase/firebase-client';
-import { authService } from '@/lib/services/authService';
+import authService from '@/lib/services/authService';
 import { User } from 'firebase/auth';
 
 export interface AuthState {

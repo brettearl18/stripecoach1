@@ -27,6 +27,7 @@ import { DataTable } from '@/components/admin/DataTable';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { analyticsService } from '@/lib/services/database';
 
 interface CheckInWithClient extends CheckIn {
   client?: Client | null;
@@ -46,6 +47,15 @@ interface CheckInTemplate {
   }[];
   assignedClients: number;
   lastUpdated: string;
+}
+
+// Add AIAnalysis type for group insights
+interface AIAnalysis {
+  overallMood: Array<{ category: string; score: number; trend: string; change: number }>;
+  recentWins: string[];
+  commonChallenges: string[];
+  insights: Array<{ type: string; message: string; impact: string }>;
+  focusAreas: string[];
 }
 
 // Mock data for development
@@ -169,42 +179,22 @@ export default function CoachCheckIns() {
   const [sortField, setSortField] = useState<'date' | 'urgency' | 'compliance'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'responses' | 'templates'>('responses');
-  const [aiInsights, setAiInsights] = useState({
-    businessOverview: {
-      health: 'positive',
-      trends: ['Client engagement up 15%', 'Average compliance at 85%'],
-      alerts: ['3 clients at risk of missing check-ins']
-    },
-    clientOverview: {
-      segmentation: {
-        active: 12,
-        atRisk: 3,
-        new: 2,
-        topPerformers: 5
-      },
-      trends: ['Nutrition compliance improving', 'Workout consistency stable']
-    },
-    clientOfTheWeek: {
-      name: 'Sarah Johnson',
-      achievement: '4-week streak of perfect compliance',
-      summary: 'Showing exceptional dedication to nutrition and training'
-    }
-  });
+  const [aiInsights, setAiInsights] = useState<AIAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       loadCheckIns();
+      loadAIInsights();
     }
   }, [user]);
 
   const loadCheckIns = async () => {
     if (!user?.uid) return;
-    
     try {
       setIsLoading(true);
       const checkInsData = await getCheckIns(user.uid); // Only get check-ins for this coach
-      
-      // Fetch client data for each check-in
       const checkInsWithClients = await Promise.all(
         checkInsData.map(async (checkIn) => {
           let client = null;
@@ -221,12 +211,34 @@ export default function CoachCheckIns() {
           };
         })
       );
-
       setCheckIns(checkInsWithClients);
     } catch (error) {
       console.error('Error loading check-ins:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch recent check-ins and AI insights for the coach
+  const loadAIInsights = async () => {
+    if (!user?.uid) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const recentCheckIns = await analyticsService.getRecentCheckInsForCoach(user.uid, 14);
+      if (!recentCheckIns.length) throw new Error('No recent check-ins found');
+      const res = await fetch('/api/coach/ai-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkIns: recentCheckIns, analysisType: 'group' })
+      });
+      if (!res.ok) throw new Error('Failed to fetch AI insights');
+      const data = await res.json();
+      setAiInsights(data.insights);
+    } catch (error: any) {
+      setAiError(error.message || 'Failed to load AI insights');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -352,20 +364,20 @@ export default function CoachCheckIns() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className={`h-2 w-2 rounded-full ${
-                  aiInsights.businessOverview.health === 'positive' ? 'bg-green-500' : 'bg-yellow-500'
+                  aiInsights?.businessOverview.health === 'positive' ? 'bg-green-500' : 'bg-yellow-500'
                 }`} />
                 <span className="text-sm text-gray-400">Overall Health</span>
               </div>
               <div className="space-y-2">
-                {aiInsights.businessOverview.trends.map((trend, index) => (
+                {aiInsights?.businessOverview.trends.map((trend, index) => (
                   <p key={index} className="text-sm text-gray-300">{trend}</p>
                 ))}
               </div>
-              {aiInsights.businessOverview.alerts.length > 0 && (
+              {aiInsights?.businessOverview.alerts.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-800">
                   <p className="text-sm text-red-400 font-medium">Alerts</p>
                   <ul className="mt-2 space-y-1">
-                    {aiInsights.businessOverview.alerts.map((alert, index) => (
+                    {aiInsights?.businessOverview.alerts.map((alert, index) => (
                       <li key={index} className="text-sm text-red-400">{alert}</li>
                     ))}
                   </ul>
@@ -380,7 +392,7 @@ export default function CoachCheckIns() {
               <UserGroupIcon className="h-5 w-5 text-blue-500" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(aiInsights.clientOverview.segmentation).map(([key, value]) => (
+              {Object.entries(aiInsights?.clientOverview.segmentation || {}).map(([key, value]) => (
                 <div key={key} className="bg-[#23242a] rounded-lg p-3">
                   <p className="text-sm text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                   <p className="text-xl font-semibold text-white mt-1">{value}</p>
@@ -390,7 +402,7 @@ export default function CoachCheckIns() {
             <div className="mt-4 pt-4 border-t border-gray-800">
               <p className="text-sm text-gray-400 mb-2">Recent Trends</p>
               <ul className="space-y-1">
-                {aiInsights.clientOverview.trends.map((trend, index) => (
+                {aiInsights?.clientOverview.trends.map((trend, index) => (
                   <li key={index} className="text-sm text-gray-300">{trend}</li>
                 ))}
               </ul>
@@ -405,14 +417,14 @@ export default function CoachCheckIns() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="h-12 w-12 rounded-full bg-blue-600 flex items-center justify-center text-xl font-medium">
-                  {aiInsights.clientOfTheWeek.name.charAt(0)}
+                  {aiInsights?.clientOfTheWeek.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="font-medium text-white">{aiInsights.clientOfTheWeek.name}</p>
-                  <p className="text-sm text-gray-400">{aiInsights.clientOfTheWeek.achievement}</p>
+                  <p className="font-medium text-white">{aiInsights?.clientOfTheWeek.name}</p>
+                  <p className="text-sm text-gray-400">{aiInsights?.clientOfTheWeek.achievement}</p>
                 </div>
               </div>
-              <p className="text-sm text-gray-300">{aiInsights.clientOfTheWeek.summary}</p>
+              <p className="text-sm text-gray-300">{aiInsights?.clientOfTheWeek.summary}</p>
             </div>
           </div>
         </div>

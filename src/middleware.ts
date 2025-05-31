@@ -20,27 +20,40 @@ const protectedRoutes = {
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
-  const isClientRoute = request.nextUrl.pathname.startsWith('/client');
-  const isOnboardingRoute = request.nextUrl.pathname === '/client/onboarding';
+  const isAuth = !!token;
+  const isAuthPage = request.nextUrl.pathname.startsWith('/auth');
+  const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding');
+  const isCoachOnboardingPage = request.nextUrl.pathname.startsWith('/coach/onboarding');
+  const isClientOnboardingPage = request.nextUrl.pathname.startsWith('/client/onboarding');
 
   // Allow access to public routes
   if (publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))) {
     return NextResponse.next();
   }
 
-  // If user is not authenticated, redirect to login
-  if (!token) {
+  // If user is not authenticated and trying to access protected routes
+  if (!isAuth && !isAuthPage) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
-  // If user is a client and hasn't completed onboarding
-  if (isClientRoute && !isOnboardingRoute && token.role === 'client' && !token.onboardingCompleted) {
-    return NextResponse.redirect(new URL('/client/onboarding', request.url));
+  // If user is authenticated and trying to access auth pages
+  if (isAuth && isAuthPage) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // If user has completed onboarding and tries to access onboarding page
-  if (isOnboardingRoute && token.onboardingCompleted) {
-    return NextResponse.redirect(new URL('/client/dashboard', request.url));
+  // If user is authenticated but hasn't completed onboarding
+  if (isAuth && !isOnboardingPage && !isCoachOnboardingPage && !isClientOnboardingPage) {
+    const userRole = token?.role as string;
+    const onboardingCompleted = token?.onboardingCompleted as boolean;
+
+    if (!onboardingCompleted) {
+      // Redirect to appropriate onboarding flow based on role
+      if (userRole === 'coach') {
+        return NextResponse.redirect(new URL('/coach/onboarding', request.url));
+      } else if (userRole === 'client') {
+        return NextResponse.redirect(new URL('/client/onboarding', request.url));
+      }
+    }
   }
 
   return NextResponse.next();
@@ -56,9 +69,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-    '/client/:path*',
-    '/coach/:path*',
-    '/admin/:path*',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
